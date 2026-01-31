@@ -72,8 +72,9 @@ const AdminProductsPage: React.FC = () => {
     try {
       const response = await productsService.getAllProducts({ limit: 100 });
       setProducts(response.products);
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar produtos');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar produtos';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -158,8 +159,9 @@ const AdminProductsPage: React.FC = () => {
       handleCloseDialog();
       loadProducts();
       loadCategories();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao salvar produto');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao salvar produto';
+      toast.error(errorMessage);
     } finally {
       setFormLoading(false);
     }
@@ -175,8 +177,9 @@ const AdminProductsPage: React.FC = () => {
       toast.success('Produto excluído com sucesso!');
       loadProducts();
       loadCategories();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao excluir produto');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir produto';
+      toast.error(errorMessage);
     }
   };
 

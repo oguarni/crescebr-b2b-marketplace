@@ -245,8 +245,8 @@ export const getSupplierMetrics = asyncHandler(async (req: AuthenticatedRequest,
     attributes: ['id', 'name', 'price', 'category', 'createdAt'],
   });
 
+
   // Get orders related to this supplier's products
-  const { Op } = require('sequelize');
   const orders = await Order.findAll({
     include: [
       {
@@ -365,7 +365,7 @@ export const getDashboardAnalytics = asyncHandler(
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const thisYear = new Date(now.getFullYear(), 0, 1);
+    const _thisYear = new Date(now.getFullYear(), 0, 1);
 
     // Company statistics
     const totalCompanies = await User.count({ where: { role: 'supplier' } });

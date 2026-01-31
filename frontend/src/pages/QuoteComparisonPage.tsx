@@ -171,6 +171,19 @@ const QuoteComparisonPage: React.FC = () => {
 
   const bestQuote = getBestQuote();
 
+  if (loadingProducts) {
+    return (
+      <Container maxWidth='lg'>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+          <Typography sx={{ mt: 2 }} color='text.secondary'>
+            Carregando produtos...
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth='lg'>
       <Box sx={{ mb: 4 }}>

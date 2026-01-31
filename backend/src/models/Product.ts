@@ -7,7 +7,7 @@ interface PricingTier {
   discount: number;
 }
 
-interface ProductAttributes {
+export interface ProductAttributes {
   id: number;
   name: string;
   description: string;
@@ -25,16 +25,15 @@ interface ProductAttributes {
   updatedAt?: Date;
 }
 
-interface ProductCreationAttributes
+export interface ProductCreationAttributes
   extends Optional<
     ProductAttributes,
     'id' | 'tierPricing' | 'availability' | 'leadTime' | 'createdAt' | 'updatedAt'
-  > {}
+  > { }
 
 class Product
   extends Model<ProductAttributes, ProductCreationAttributes>
-  implements ProductAttributes
-{
+  implements ProductAttributes {
   public id!: number;
   public name!: string;
   public description!: string;

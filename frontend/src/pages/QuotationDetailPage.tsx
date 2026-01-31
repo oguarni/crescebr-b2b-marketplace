@@ -38,6 +38,7 @@ const QuotationDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [quotation, setQuotation] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -50,8 +51,8 @@ const QuotationDetailPage: React.FC = () => {
         setQuotation(data);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar cotação';
+        setError(errorMessage);
         toast.error(errorMessage);
-        navigate('/');
       } finally {
         setLoading(false);
       }
@@ -138,6 +139,26 @@ const QuotationDetailPage: React.FC = () => {
       <Container maxWidth="md">
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container maxWidth="md">
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Alert severity="error" sx={{ mb: 4 }}>
+            {error}
+          </Alert>
+          <Button
+            variant="contained"
+            component={Link}
+            to="/"
+            startIcon={<ArrowBack />}
+          >
+            Voltar para Início
+          </Button>
         </Box>
       </Container>
     );

@@ -12,7 +12,7 @@ import {
   getImportStats,
   productValidation,
 } from '../controllers/productsController';
-import { authenticateJWT, isSupplier, isAdmin } from '../middleware/auth';
+import { authenticateJWT, isSupplier, isAdmin, canModifyProduct } from '../middleware/auth';
 
 const router = Router();
 
@@ -26,7 +26,7 @@ router.get('/:id', getProductById);
 
 // Supplier-only routes (protected)
 router.post('/', authenticateJWT, isSupplier, productValidation, createProduct);
-router.put('/:id', authenticateJWT, isSupplier, productValidation, updateProduct);
+router.put('/:id', authenticateJWT, isSupplier, canModifyProduct, productValidation, updateProduct);
 router.post('/import/csv', authenticateJWT, isSupplier, importProductsFromCSV);
 
 // Admin-only routes (protected)

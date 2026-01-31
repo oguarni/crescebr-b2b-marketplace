@@ -1,0 +1,78 @@
+# Claude Code Ignore File
+# These patterns tell Claude to skip certain files/folders when exploring the codebase
+
+# Dependencies (large, not needed for context)
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+.next/
+out/
+
+# Generated assets
+frontend/dist/
+backend/dist/
+shared/dist/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+
+# Lock files (large, not needed for code context)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+**/package-lock.json
+
+# Test databases
+*.test.db
+*.db
+*.sqlite
+test.sqlite
+
+# Cache and temporary files
+.cache/
+.parcel-cache/
+*.tmp
+*.temp
+.eslintcache
+.prettiercache
+*.tsbuildinfo
+.tscache/
+
+# IDE configuration (not needed for code context)
+.idea/
+.vscode/
+*.sublime-workspace
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Uploads and user-generated content
+uploads/
+backend/uploads/
+
+# Environment files (may contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Git internal files
+.git/
+.git-rewrite/
+filter-repo/
+
+# Coverage reports (large HTML files)
+coverage/
+.nyc_output/
+
+# Database backups
+*.db.backup
+*.db.bak
+*.sqlite.backup

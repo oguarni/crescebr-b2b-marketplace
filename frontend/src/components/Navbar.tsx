@@ -29,8 +29,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useQuotationRequest } from '../contexts/QuotationContext';
-import { usePermissions } from './ProtectedRoute';
-import PermissionGuard, {
+
+import {
   AdminOnly,
   SupplierOnly,
   CustomerOnly,
@@ -43,7 +43,7 @@ const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { totalItems, toggleCart } = useCart();
   const { totalItems: quotationItems } = useQuotationRequest();
-  const permissions = usePermissions();
+
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));

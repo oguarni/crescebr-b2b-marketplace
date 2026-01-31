@@ -1,6 +1,6 @@
 import csv from 'csv-parser';
 import * as fs from 'fs';
-import Product from '../models/Product';
+import Product, { ProductCreationAttributes } from '../models/Product';
 import { Transaction, Op } from 'sequelize';
 import sequelize from '../config/database';
 
@@ -31,7 +31,7 @@ interface ValidationResult {
 }
 
 export class CSVImporter {
-  private static validateProductRow(row: ProductCSVRow, rowNumber: number): ValidationResult {
+  private static validateProductRow(row: ProductCSVRow, _rowNumber: number): ValidationResult {
     const errors: string[] = [];
 
     if (!row.name || row.name.trim().length === 0) {
@@ -104,12 +104,19 @@ export class CSVImporter {
     row: ProductCSVRow,
     transaction: Transaction
   ): Promise<Product> {
-    const productData: any = {
+    const productData: Partial<ProductCreationAttributes> = {
       name: row.name.trim(),
       description: row.description.trim(),
       price: parseFloat(row.price),
       imageUrl: row.imageUrl.trim(),
       category: row.category.trim(),
+      // Default values required by model
+      specifications: {},
+      unitPrice: parseFloat(row.price),
+      minimumOrderQuantity: 1,
+      leadTime: 7,
+      availability: 'in_stock',
+      tierPricing: [],
     };
 
     if (row.supplierId) {
@@ -124,7 +131,7 @@ export class CSVImporter {
       }
     }
 
-    return await Product.create(productData, { transaction });
+    return await Product.create(productData as ProductCreationAttributes, { transaction });
   }
 
   static async importProductsFromCSV(
@@ -169,8 +176,6 @@ export class CSVImporter {
           .on('error', reject);
       });
 
-      let processed = 0;
-
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize);
         const transaction = await sequelize.transaction();
@@ -200,7 +205,6 @@ export class CSVImporter {
 
               await this.processProductRow(row, transaction);
               result.imported++;
-              processed++;
             } catch (error) {
               result.failed++;
               result.errors.push({
@@ -299,31 +303,31 @@ export class CSVImporter {
   }> {
     const totalProducts = await Product.count();
 
-    const productsByCategory = await Product.findAll({
+    const productsByCategory = (await Product.findAll({
       attributes: ['category', [sequelize.fn('COUNT', sequelize.col('category')), 'count']],
       group: ['category'],
       raw: true,
-    });
+    })) as unknown as Array<{ category: string; count: string }>;
 
-    const categoryStats = productsByCategory.reduce((acc: any, item: any) => {
+    const categoryStats = productsByCategory.reduce((acc: Record<string, number>, item: { category: string; count: string }) => {
       acc[item.category] = parseInt(item.count);
       return acc;
-    }, {});
+    }, {} as Record<string, number>);
 
     const productsWithTierPricing = await Product.count({
       where: sequelize.where(sequelize.col('tierPricing'), { [Op.not]: null }),
     });
 
-    const productsBySupplier = await Product.findAll({
+    const productsBySupplier = (await Product.findAll({
       attributes: ['supplierId', [sequelize.fn('COUNT', sequelize.col('supplierId')), 'count']],
       group: ['supplierId'],
       raw: true,
-    });
+    })) as unknown as Array<{ supplierId: number; count: string }>;
 
-    const supplierStats = productsBySupplier.reduce((acc: any, item: any) => {
+    const supplierStats = productsBySupplier.reduce((acc: Record<string, number>, item: { supplierId: number; count: string }) => {
       acc[item.supplierId] = parseInt(item.count);
       return acc;
-    }, {});
+    }, {} as Record<string, number>);
 
     return {
       totalProducts,

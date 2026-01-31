@@ -12,12 +12,15 @@ import {
 import { authenticateJWT } from '../../middleware/auth';
 import { errorHandler } from '../../middleware/errorHandler';
 import User from '../../models/User';
-import { generateToken } from '../../utils/jwt';
+import { generateToken, generateTokenPair } from '../../utils/jwt';
 import { CNPJService } from '../../services/cnpjService';
 
 // Mock dependencies
 jest.mock('../../models/User');
-jest.mock('../../utils/jwt');
+jest.mock('../../utils/jwt', () => ({
+  generateToken: jest.fn(),
+  generateTokenPair: jest.fn(),
+}));
 jest.mock('../../services/cnpjService');
 jest.mock('../../middleware/auth', () => ({
   authenticateJWT: jest.fn(),
@@ -25,6 +28,7 @@ jest.mock('../../middleware/auth', () => ({
 
 const MockUser = User as jest.Mocked<typeof User>;
 const mockGenerateToken = generateToken as jest.MockedFunction<typeof generateToken>;
+const mockGenerateTokenPair = generateTokenPair as jest.MockedFunction<typeof generateTokenPair>;
 const mockCNPJService = CNPJService as jest.Mocked<typeof CNPJService>;
 const mockAuthenticateJWT = authenticateJWT as jest.MockedFunction<typeof authenticateJWT>;
 
@@ -43,6 +47,20 @@ app.use(errorHandler);
 describe('Auth Controller', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    MockUser.findOne.mockReset();
+    MockUser.create.mockReset();
+    MockUser.findByPk.mockReset();
+    mockGenerateTokenPair.mockReturnValue({
+      accessToken: 'mock-jwt-token',
+      refreshToken: 'mock-refresh-token',
+      expiresIn: 900
+    });
+    mockCNPJService.validateCNPJWithAPI.mockResolvedValue({
+      valid: true,
+      address: 'Test Address',
+      companyName: 'Test Company',
+    });
+    mockCNPJService.formatCNPJ.mockReturnValue('12.345.678/0001-90');
   });
 
   describe('POST /api/auth/register', () => {
@@ -51,6 +69,11 @@ describe('Auth Controller', () => {
       password: 'password123',
       cpf: '12345678901',
       address: 'Test Address, 123',
+      companyName: 'Test Company',
+      corporateName: 'Test Corp',
+      cnpj: '12.345.678/0001-90',
+      industrySector: 'other',
+      companyType: 'buyer',
     };
 
     it('should register a new customer successfully', async () => {
@@ -77,17 +100,23 @@ describe('Auth Controller', () => {
 
       // Assert
       expect(response.body.success).toBe(true);
-      expect(response.body.message).toBe('User registered successfully');
-      expect(response.body.data.token).toBe('mock-jwt-token');
+      expect(response.body.message).toBe('Company registered successfully');
+      expect(response.body.data.accessToken).toBe('mock-jwt-token');
       expect(response.body.data.user.email).toBe('test@example.com');
       expect(response.body.data.user.role).toBe('customer');
-      expect(MockUser.findOne).toHaveBeenCalledTimes(2); // Check email and CPF
+      expect(MockUser.findOne).toHaveBeenCalledTimes(3); // Check email, CPF, and CNPJ
       expect(MockUser.create).toHaveBeenCalledWith({
         email: 'test@example.com',
         password: 'password123',
         cpf: '12345678901',
-        address: 'Test Address, 123',
+        address: 'Test Address',
+        companyName: 'Test Company',
+        corporateName: 'Test Company',
+        cnpj: '12.345.678/0001-90',
+        industrySector: 'other',
+        companyType: 'buyer',
         role: 'customer',
+        status: 'approved',
       });
     });
 
@@ -189,7 +218,7 @@ describe('Auth Controller', () => {
 
   describe('POST /api/auth/login', () => {
     const validLoginData = {
-      email: 'test@example.com',
+      cnpj: '12.345.678/0001-90',
       password: 'password123',
     };
 
@@ -215,15 +244,15 @@ describe('Auth Controller', () => {
       // Assert
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Login successful');
-      expect(response.body.data.token).toBe('mock-jwt-token');
+      expect(response.body.data.accessToken).toBe('mock-jwt-token');
       expect(response.body.data.user.email).toBe('test@example.com');
       expect(mockUser.comparePassword).toHaveBeenCalledWith('password123');
     });
 
-    it('should return 400 for invalid email format', async () => {
+    it('should return 400 for invalid CNPJ format', async () => {
       // Arrange
       const invalidData = {
-        email: 'invalid-email',
+        cnpj: '123', // Invalid CNPJ length (<14)
         password: 'password123',
       };
 
@@ -238,7 +267,7 @@ describe('Auth Controller', () => {
     it('should return 400 for missing password', async () => {
       // Arrange
       const invalidData = {
-        email: 'test@example.com',
+        cnpj: '12.345.678/0001-90',
         // Missing password
       };
 
@@ -259,7 +288,7 @@ describe('Auth Controller', () => {
 
       // Assert
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Invalid email or password');
+      expect(response.body.error).toBe('Invalid CNPJ or password');
     });
 
     it('should return 401 when password is incorrect', async () => {
@@ -277,7 +306,7 @@ describe('Auth Controller', () => {
 
       // Assert
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Invalid email or password');
+      expect(response.body.error).toBe('Invalid CNPJ or password');
     });
 
     it('should handle database errors gracefully', async () => {
@@ -431,7 +460,7 @@ describe('Auth Controller', () => {
       expect(response.body.message).toBe(
         'Supplier registered successfully. Account pending approval.'
       );
-      expect(response.body.data.token).toBe('mock-jwt-token');
+      expect(response.body.data.accessToken).toBe('mock-jwt-token');
       expect(response.body.data.user.email).toBe('supplier@example.com');
       expect(response.body.data.user.role).toBe('supplier');
       expect(response.body.cnpjValidation).toEqual({
@@ -447,7 +476,10 @@ describe('Auth Controller', () => {
         cpf: '12345678901',
         address: 'Updated Address from CNPJ',
         companyName: 'Updated Company Name',
+        corporateName: 'Updated Company Name',
         cnpj: '12.345.678/0001-90',
+        industrySector: 'other',
+        companyType: 'supplier',
         role: 'supplier',
         status: 'pending',
       });
@@ -606,6 +638,9 @@ describe('Auth Controller', () => {
         cnpj: '12.345.678/0001-90',
         role: 'supplier',
         status: 'pending',
+        companyType: 'supplier',
+        industrySector: 'other',
+        corporateName: undefined,
       });
     });
 
@@ -647,6 +682,11 @@ describe('Auth Controller', () => {
         password: 'password123',
         cpf: '12345678901',
         address: 'Test Address, 123',
+        companyName: 'Test Company',
+        corporateName: 'Test Corp',
+        cnpj: '12.345.678/0001-90',
+        industrySector: 'other',
+        companyType: 'buyer',
       };
 
       const mockUser = {
@@ -662,6 +702,12 @@ describe('Auth Controller', () => {
       MockUser.findOne.mockResolvedValue(null);
       MockUser.create.mockResolvedValue(mockUser as any);
       mockGenerateToken.mockReturnValue('mock-jwt-token');
+      mockCNPJService.validateCNPJWithAPI.mockResolvedValue({
+        valid: true,
+        address: 'Test Address, 123',
+        companyName: 'Test Company',
+      });
+      mockCNPJService.formatCNPJ.mockReturnValue('12.345.678/0001-90');
 
       // Act
       const response = await request(app)

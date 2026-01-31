@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import toast from 'react-hot-toast';
 
 const api = axios.create({
   baseURL: '/api', // Use relative path for proxy
@@ -11,6 +12,22 @@ api.interceptors.request.use(config => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message = error.response?.data?.error || error.response?.data?.message || error.message || 'An unexpected error occurred';
+
+    if (error.response?.status === 401) {
+      localStorage.removeItem('crescebr_token');
+      window.location.href = '/login';
+    } else if (error.response?.status !== 404) {
+      toast.error(message);
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 class ApiService {
   private axiosInstance: AxiosInstance;

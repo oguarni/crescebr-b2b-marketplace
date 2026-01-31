@@ -117,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         delete apiService.getRawApi().defaults.headers.common['Authorization'];
         dispatch({ type: 'AUTH_FAILURE' });
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to fetch user:', error);
       // Token is invalid or expired, clear it
       localStorage.removeItem('crescebr_token');

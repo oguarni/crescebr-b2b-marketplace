@@ -222,6 +222,10 @@ describe('Products Controller', () => {
         price: 100.0,
         imageUrl: 'https://example.com/image.jpg',
         category: 'Electronics',
+        minimumOrderQuantity: 1,
+        specifications: null,
+        supplierId: 1,
+        unitPrice: 100.0,
       });
     });
 
@@ -278,6 +282,9 @@ describe('Products Controller', () => {
         price: 150.0,
         imageUrl: 'https://example.com/updated-image.jpg',
         category: 'Updated Category',
+        minimumOrderQuantity: undefined,
+        specifications: undefined,
+        unitPrice: 150.0,
       });
     });
 

@@ -21,11 +21,7 @@ import {
   MenuItem,
   TextField,
   Button,
-  Paper,
-  Divider,
   Alert,
-  Tabs,
-  Tab,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -33,14 +29,12 @@ import {
 } from '@mui/material';
 import {
   TrendingUp,
-  TrendingDown,
   AttachMoney,
   ShoppingCart,
   Timeline,
   Visibility,
   FileDownload,
   Refresh,
-  DateRange,
   FilterList,
 } from '@mui/icons-material';
 import {
@@ -54,14 +48,12 @@ import {
   PieChart,
   Pie,
   Cell,
-  BarChart,
-  Bar,
 } from 'recharts';
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
 
 interface TransactionData {
-  orders: any[];
+  orders: OrderDetail[];
   totalRevenue: number;
   ordersByStatus: Record<string, number>;
   totalOrders: number;
@@ -120,7 +112,7 @@ const AdminTransactionMonitoringPage: React.FC = () => {
     setError('');
 
     try {
-      const params: any = {};
+      const params: Record<string, string> = {};
       if (dateRange.startDate) params.startDate = dateRange.startDate;
       if (dateRange.endDate) params.endDate = dateRange.endDate;
       if (statusFilter) params.status = statusFilter;
@@ -154,8 +146,9 @@ const AdminTransactionMonitoringPage: React.FC = () => {
       };
 
       setMetrics(calculateMetrics());
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Error loading transaction data');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error loading transaction data';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

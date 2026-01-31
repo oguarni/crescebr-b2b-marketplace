@@ -141,7 +141,7 @@ const AdminQuotationsPage: React.FC = () => {
     setUpdating(true);
     try {
       const updatedQuotation = await quotationsService.updateQuotation(selectedQuotation.id, {
-        status: updateStatus as any,
+        status: updateStatus as 'pending' | 'processed' | 'completed' | 'rejected',
         adminNotes: updateNotes,
       });
 
@@ -282,7 +282,7 @@ const AdminQuotationsPage: React.FC = () => {
                     <Chip
                       icon={getStatusIcon(quotation.status)}
                       label={getStatusLabel(quotation.status)}
-                      color={getStatusColor(quotation.status) as any}
+                      color={getStatusColor(quotation.status) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                       size='small'
                     />
                   </TableCell>

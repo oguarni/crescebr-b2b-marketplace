@@ -21,17 +21,12 @@ import {
   Chip,
   Alert,
   CircularProgress,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   TextField,
   Tabs,
   Tab,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Divider,
   Badge,
 } from '@mui/material';
 import {
@@ -113,8 +108,9 @@ const AdminCompanyVerificationPage: React.FC = () => {
       });
 
       setVerificationQueue(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Error loading verification queue');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error loading verification queue';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -140,8 +136,9 @@ const AdminCompanyVerificationPage: React.FC = () => {
       setVerificationReason('');
       setSelectedCompany(null);
       loadVerificationQueue();
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error verifying company');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error verifying company';
+      toast.error(errorMessage);
     }
   };
 
@@ -163,8 +160,9 @@ const AdminCompanyVerificationPage: React.FC = () => {
       }
 
       loadVerificationQueue();
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error validating CNPJ');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error validating CNPJ';
+      toast.error(errorMessage);
     } finally {
       setCnpjValidating(false);
     }
@@ -322,8 +320,8 @@ const AdminCompanyVerificationPage: React.FC = () => {
           value={currentTab}
           onChange={(_, newValue) => {
             setCurrentTab(newValue);
-            const filters = ['pending', 'all', 'unvalidated_cnpj'];
-            setFilter(filters[newValue] as any);
+            const filters: Array<'all' | 'pending' | 'unvalidated_cnpj'> = ['pending', 'all', 'unvalidated_cnpj'];
+            setFilter(filters[newValue]);
             setPage(1);
           }}
         >
@@ -405,7 +403,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
                           icon={getStatusIcon(company.status)}
                           label={company.status}
                           size='small'
-                          color={getStatusColor(company.status) as any}
+                          color={getStatusColor(company.status) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                         />
                       </TableCell>
                       <TableCell>

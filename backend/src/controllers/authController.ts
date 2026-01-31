@@ -10,11 +10,11 @@ import {
 } from '../utils/jwt';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { RegisterRequest, LoginRequest, AuthResponse } from '../types';
+import { RegisterRequest, LoginRequest, AuthResponse as _AuthResponse } from '../types';
 import { CNPJService } from '../services/cnpjService';
 
 export const registerValidation = [
-  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  body('email').trim().isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
   body('cpf')
     .isLength({ min: 11, max: 14 })
@@ -37,12 +37,12 @@ export const loginValidation = [
 ];
 
 export const loginEmailValidation = [
-  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  body('email').trim().isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
 export const supplierRegisterValidation = [
-  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  body('email').trim().isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
   body('cpf')
     .isLength({ min: 11, max: 14 })

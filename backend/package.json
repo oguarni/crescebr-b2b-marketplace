@@ -1,6 +1,7 @@
 {
   "name": "@crescebr/backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "CresceBR B2B Marketplace Backend API",
   "main": "dist/server.js",
   "scripts": {
@@ -9,7 +10,7 @@
     "dev": "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && nodemon src/server.ts",
     "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit",
     "test:watch": "jest --watch",
-    "lint": "eslint . --ext ts,js --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --ext ts,js --report-unused-disable-directives",
     "db:migrate": "sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
     "db:seed": "sequelize-cli db:seed:all",

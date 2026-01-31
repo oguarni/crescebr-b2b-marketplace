@@ -1,18 +1,18 @@
-import bcrypt from 'bcryptjs';
-import User from '../User';
-import { sequelize } from '../../config/database';
+// Mock sequelize config BEFORE imports
+jest.mock('../../config/database', () => {
+  const { Sequelize } = require('sequelize');
+  return {
+    __esModule: true,
+    default: new Sequelize('sqlite::memory:', { logging: false }),
+  };
+});
 
 // Mock bcryptjs
 jest.mock('bcryptjs');
-const mockBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
 
-// Mock sequelize config
-jest.mock('../../config/database', () => ({
-  sequelize: {
-    define: jest.fn(),
-    sync: jest.fn(),
-  },
-}));
+import bcrypt from 'bcryptjs';
+import User from '../User';
+const mockBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
 
 describe('User Model', () => {
   beforeEach(() => {
@@ -26,7 +26,7 @@ describe('User Model', () => {
       user.password = 'hashed-password';
       const candidatePassword = 'plain-password';
 
-      mockBcrypt.compare.mockResolvedValue(true);
+      (mockBcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       // Act
       const result = await user.comparePassword(candidatePassword);
@@ -42,7 +42,7 @@ describe('User Model', () => {
       user.password = 'hashed-password';
       const candidatePassword = 'wrong-password';
 
-      mockBcrypt.compare.mockResolvedValue(false);
+      (mockBcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       // Act
       const result = await user.comparePassword(candidatePassword);
@@ -58,7 +58,7 @@ describe('User Model', () => {
       user.password = 'hashed-password';
       const candidatePassword = 'plain-password';
 
-      mockBcrypt.compare.mockRejectedValue(new Error('Bcrypt error'));
+      (mockBcrypt.compare as jest.Mock).mockRejectedValue(new Error('Bcrypt error'));
 
       // Act & Assert
       await expect(user.comparePassword(candidatePassword)).rejects.toThrow('Bcrypt error');
@@ -71,7 +71,7 @@ describe('User Model', () => {
       user.password = '';
       const candidatePassword = '';
 
-      mockBcrypt.compare.mockResolvedValue(true);
+      (mockBcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       // Act
       const result = await user.comparePassword(candidatePassword);
@@ -87,7 +87,7 @@ describe('User Model', () => {
       user.password = null as any;
       const candidatePassword = 'password';
 
-      mockBcrypt.compare.mockResolvedValue(false);
+      (mockBcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       // Act
       const result = await user.comparePassword(candidatePassword);
@@ -103,7 +103,7 @@ describe('User Model', () => {
       user.password = 'hashed-very-long-password';
       const candidatePassword = 'a'.repeat(1000);
 
-      mockBcrypt.compare.mockResolvedValue(true);
+      (mockBcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       // Act
       const result = await user.comparePassword(candidatePassword);
@@ -122,7 +122,7 @@ describe('User Model', () => {
       user.password = 'hashed-special-chars';
       const candidatePassword = '!@#$%^&*()_+-=[]{}|;:,.<>?';
 
-      mockBcrypt.compare.mockResolvedValue(true);
+      (mockBcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       // Act
       const result = await user.comparePassword(candidatePassword);
@@ -138,7 +138,7 @@ describe('User Model', () => {
       user.password = 'hashed-unicode';
       const candidatePassword = 'пароль测试🔒';
 
-      mockBcrypt.compare.mockResolvedValue(true);
+      (mockBcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       // Act
       const result = await user.comparePassword(candidatePassword);
@@ -155,7 +155,7 @@ describe('User Model', () => {
       const plainPassword = 'plain-password';
       const hashedPassword = 'hashed-password';
 
-      mockBcrypt.hash.mockResolvedValue(hashedPassword);
+      (mockBcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
 
       // Act
       const result = await User.hashPassword(plainPassword);
@@ -170,7 +170,7 @@ describe('User Model', () => {
       const plainPassword = '';
       const hashedPassword = 'hashed-empty';
 
-      mockBcrypt.hash.mockResolvedValue(hashedPassword);
+      (mockBcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
 
       // Act
       const result = await User.hashPassword(plainPassword);
@@ -184,7 +184,7 @@ describe('User Model', () => {
       // Arrange
       const plainPassword = 'plain-password';
 
-      mockBcrypt.hash.mockRejectedValue(new Error('Hashing failed'));
+      (mockBcrypt.hash as jest.Mock).mockRejectedValue(new Error('Hashing failed'));
 
       // Act & Assert
       await expect(User.hashPassword(plainPassword)).rejects.toThrow('Hashing failed');
@@ -196,7 +196,7 @@ describe('User Model', () => {
       const longPassword = 'a'.repeat(1000);
       const hashedPassword = 'hashed-long-password';
 
-      mockBcrypt.hash.mockResolvedValue(hashedPassword);
+      (mockBcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
 
       // Act
       const result = await User.hashPassword(longPassword);
@@ -211,7 +211,7 @@ describe('User Model', () => {
       const specialPassword = '!@#$%^&*()_+-=[]{}|;:,.<>?';
       const hashedPassword = 'hashed-special-password';
 
-      mockBcrypt.hash.mockResolvedValue(hashedPassword);
+      (mockBcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
 
       // Act
       const result = await User.hashPassword(specialPassword);
@@ -226,7 +226,7 @@ describe('User Model', () => {
       const unicodePassword = 'пароль测试🔒';
       const hashedPassword = 'hashed-unicode-password';
 
-      mockBcrypt.hash.mockResolvedValue(hashedPassword);
+      (mockBcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
 
       // Act
       const result = await User.hashPassword(unicodePassword);
@@ -241,7 +241,7 @@ describe('User Model', () => {
       const nullPassword = null as any;
       const hashedPassword = 'hashed-null';
 
-      mockBcrypt.hash.mockResolvedValue(hashedPassword);
+      (mockBcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
 
       // Act
       const result = await User.hashPassword(nullPassword);
@@ -258,7 +258,7 @@ describe('User Model', () => {
       const hashedPassword1 = 'hashed1';
       const hashedPassword2 = 'hashed2';
 
-      mockBcrypt.hash.mockResolvedValueOnce(hashedPassword1).mockResolvedValueOnce(hashedPassword2);
+      (mockBcrypt.hash as jest.Mock).mockResolvedValueOnce(hashedPassword1).mockResolvedValueOnce(hashedPassword2);
 
       // Act
       const result1 = await User.hashPassword(password1);
@@ -276,7 +276,7 @@ describe('User Model', () => {
     it('should use secure salt rounds (10)', async () => {
       // Arrange
       const password = 'test-password';
-      mockBcrypt.hash.mockResolvedValue('hashed');
+      (mockBcrypt.hash as jest.Mock).mockResolvedValue('hashed');
 
       // Act
       await User.hashPassword(password);
@@ -293,7 +293,7 @@ describe('User Model', () => {
       const user = new User();
       user.password = hashedPassword;
 
-      mockBcrypt.compare.mockResolvedValue(true);
+      (mockBcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       // Act
       const result = await user.comparePassword(plainPassword);
@@ -331,7 +331,7 @@ describe('User Model', () => {
       const user = new User();
       user.password = 'hashed-password';
 
-      mockBcrypt.compare.mockRejectedValue(new Error('Network error'));
+      (mockBcrypt.compare as jest.Mock).mockRejectedValue(new Error('Network error'));
 
       // Act & Assert
       await expect(user.comparePassword('password')).rejects.toThrow('Network error');
@@ -339,7 +339,7 @@ describe('User Model', () => {
 
     it('should handle bcrypt.hash memory errors', async () => {
       // Arrange
-      mockBcrypt.hash.mockRejectedValue(new Error('Out of memory'));
+      (mockBcrypt.hash as jest.Mock).mockRejectedValue(new Error('Out of memory'));
 
       // Act & Assert
       await expect(User.hashPassword('password')).rejects.toThrow('Out of memory');
@@ -350,7 +350,7 @@ describe('User Model', () => {
       const user = new User();
       user.password = 'corrupted-hash';
 
-      mockBcrypt.compare.mockRejectedValue(new Error('Invalid hash format'));
+      (mockBcrypt.compare as jest.Mock).mockRejectedValue(new Error('Invalid hash format'));
 
       // Act & Assert
       await expect(user.comparePassword('password')).rejects.toThrow('Invalid hash format');
@@ -361,7 +361,7 @@ describe('User Model', () => {
       const passwords = ['password1', 'password2', 'password3'];
       const hashedPasswords = ['hash1', 'hash2', 'hash3'];
 
-      mockBcrypt.hash
+      (mockBcrypt.hash as jest.Mock)
         .mockResolvedValueOnce(hashedPasswords[0])
         .mockResolvedValueOnce(hashedPasswords[1])
         .mockResolvedValueOnce(hashedPasswords[2]);
@@ -383,7 +383,7 @@ describe('User Model', () => {
       const user3 = new User();
       user3.password = 'hash3';
 
-      mockBcrypt.compare
+      (mockBcrypt.compare as jest.Mock)
         .mockResolvedValueOnce(true)
         .mockResolvedValueOnce(false)
         .mockResolvedValueOnce(true);
@@ -407,8 +407,8 @@ describe('User Model', () => {
       const plainPassword = 'user-password-123';
       const hashedPassword = '$2a$10$mockhashedpassword';
 
-      mockBcrypt.hash.mockResolvedValue(hashedPassword);
-      mockBcrypt.compare
+      (mockBcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
+      (mockBcrypt.compare as jest.Mock)
         .mockResolvedValueOnce(true) // Correct password
         .mockResolvedValueOnce(false); // Wrong password
 
@@ -444,8 +444,8 @@ describe('User Model', () => {
       const user = new User();
       user.password = oldHash;
 
-      mockBcrypt.compare.mockResolvedValue(true);
-      mockBcrypt.hash.mockResolvedValue(newHash);
+      (mockBcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (mockBcrypt.hash as jest.Mock).mockResolvedValue(newHash);
 
       // Act
       // 1. Verify old password

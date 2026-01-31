@@ -10,8 +10,16 @@ export const errorHandler = (
   err: AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
+  if (!err) {
+    res.status(500).json({
+      success: false,
+      error: 'Server Error',
+    });
+    return;
+  }
+
   let error = { ...err };
   error.message = err.message;
 
@@ -57,11 +65,12 @@ export const errorHandler = (
     } as AppError;
   }
 
-  res.status(error.statusCode || 500).json({
+  const statusCode = error.statusCode || 500;
+  res.status(statusCode).json({
     success: false,
-    error: error.message || 'Server Error',
+    error: error.message || (statusCode === 500 ? 'Server Error' : ''),
   });
 };
 
 export const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextFunction) =>
-  Promise.resolve(fn(req, res, next)).catch(next);
+  Promise.resolve().then(() => fn(req, res, next)).catch(next);

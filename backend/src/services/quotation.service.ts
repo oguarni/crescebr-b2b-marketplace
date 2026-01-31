@@ -18,6 +18,16 @@ class QuotationService {
       throw new Error(`Products not found: ${missingIds.join(', ')}`);
     }
 
+    // Validate minimum order quantities
+    for (const item of input.items) {
+      const product = products.find(p => p.id === item.productId);
+      if (product && product.minimumOrderQuantity && item.quantity < product.minimumOrderQuantity) {
+        throw new Error(
+          `Quantity for product "${product.name}" must be at least ${product.minimumOrderQuantity} units. Current: ${item.quantity}`
+        );
+      }
+    }
+
     // Create quotation
     const quotation = await quotationRepository.create({
       companyId: input.companyId,
@@ -78,7 +88,7 @@ class QuotationService {
     return quotationRepository.findByIdWithItemsAndUser(id);
   }
 
-  async processWithCalculations(id: number, calculations: any) {
+  async processWithCalculations(id: number, _calculations: any) {
     const quotation = await quotationRepository.findById(id);
 
     if (!quotation) {

@@ -3,6 +3,9 @@ import User from './User';
 import Product from './Product';
 import Quotation from './Quotation';
 import QuotationItem from './QuotationItem';
+import Order from './Order';
+import OrderStatusHistory from './OrderStatusHistory';
+import Rating from './Rating';
 
 // Set up associations
 User.hasMany(Quotation, { foreignKey: 'userId', as: 'quotations' });
@@ -19,6 +22,9 @@ const models = {
   Product,
   Quotation,
   QuotationItem,
+  Order,
+  OrderStatusHistory,
+  Rating,
   sequelize,
 };
 

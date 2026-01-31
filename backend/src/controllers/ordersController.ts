@@ -40,6 +40,18 @@ export const createOrderFromQuotation = asyncHandler(
         .json({ success: false, error: 'Only processed quotations can be converted to orders' });
     }
 
+    // Check if quotation has expired
+    if (quotation.validUntil) {
+      const expirationDate = new Date(quotation.validUntil);
+      const now = new Date();
+      if (now > expirationDate) {
+        return res.status(400).json({
+          success: false,
+          error: `This quotation expired on ${expirationDate.toLocaleDateString()}. Please request a new quotation.`,
+        });
+      }
+    }
+
     try {
       const { calculations } = await QuoteService.getQuotationWithCalculations(quotationId);
 
@@ -49,6 +61,9 @@ export const createOrderFromQuotation = asyncHandler(
         totalAmount: calculations.grandTotal,
         status: 'pending',
       });
+
+      // Update quotation status to completed
+      await quotation.update({ status: 'completed' });
 
       const fullOrder = await Order.findByPk(order.id, {
         include: [

@@ -1,5 +1,15 @@
 # Backend - CresceBR
 
+## Language Configuration
+
+**Always use English** for:
+- Code comments and documentation
+- Commit messages
+- Variable and function names
+- All generated content
+
+---
+
 ## Tech Stack
 - Node.js 16+ with Express 5.1.0
 - TypeScript 5.8.3
@@ -564,6 +574,17 @@ After completing each phase, verify:
 - [ ] Manual test: Create quotation as customer
 - [ ] Manual test: View quotations as admin
 - [ ] Manual test: Update quotation status as admin
+
+---
+
+## What NOT to Change
+
+These patterns are working well - do not refactor:
+
+1. **Express middleware chain** - Well-structured authentication and RBAC
+2. **Sequelize model definitions** - Clean schema with proper associations
+3. **Error handling middleware** - Centralized error handling
+4. **Route organization** - Clear separation by domain
 
 ---
 

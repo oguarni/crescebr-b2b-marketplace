@@ -122,7 +122,10 @@ Buyer:     buyer@example.com / buyer123
 
 ### Git
 - Main branch: `main`
-- Feature branches: `feature/feature-name`
+- Feature branches: `feature/<feature-name>`
+- Bug fix branches: `fix/<bug-name>`
+- Documentation branches: `docs/<description>`
+- Refactor branches: `refactor/<description>`
 - Commits in English, descriptive and concise
 
 ### Code

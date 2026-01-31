@@ -219,7 +219,7 @@ export const progressiveRateLimit = (req: Request, res: Response, next: NextFunc
     windowMs,
     maxRequests,
     message: `Too many requests for your user type. Please try again later.`,
-    keyGenerator: (req: Request) => {
+    keyGenerator: (_req: Request) => {
       const userId = user?.id || 'anonymous';
       return `progressive:${ip}:${userId}`;
     },

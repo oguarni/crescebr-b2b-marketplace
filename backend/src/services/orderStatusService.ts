@@ -81,7 +81,7 @@ export class OrderStatusService {
   static async updateOrderStatus(
     orderId: string,
     updateData: OrderStatusUpdate,
-    companyId: number
+    _companyId: number
   ): Promise<Order> {
     const order = await Order.findByPk(orderId, {
       include: [
@@ -308,12 +308,12 @@ export class OrderStatusService {
     const averageProcessingTime =
       completedOrders.length > 0
         ? completedOrders.reduce((sum, order) => {
-            const processingTime =
-              new Date(order.updatedAt).getTime() - new Date(order.createdAt).getTime();
-            return sum + processingTime;
-          }, 0) /
-          completedOrders.length /
-          (1000 * 60 * 60 * 24)
+          const processingTime =
+            new Date(order.updatedAt).getTime() - new Date(order.createdAt).getTime();
+          return sum + processingTime;
+        }, 0) /
+        completedOrders.length /
+        (1000 * 60 * 60 * 24)
         : 0;
 
     return {

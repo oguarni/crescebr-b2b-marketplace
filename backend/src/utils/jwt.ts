@@ -2,10 +2,10 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
 import { AuthTokenPayload } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
-const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'fallback-refresh-secret-key';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m'; // Shorter access token expiry
-const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d'; // Longer refresh token expiry
+const getJwtSecret = () => process.env.JWT_SECRET || 'fallback-secret-key';
+
+const getJwtExpiresIn = () => process.env.JWT_EXPIRES_IN || '15m';
+const getRefreshTokenExpiresIn = () => process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
 
 // Store for refresh tokens (in production, use Redis or database)
 interface RefreshTokenStore {
@@ -49,8 +49,8 @@ class TokenManager {
     expiresIn: number;
   } {
     // Generate access token with shorter expiry
-    const accessToken = jwt.sign(payload as object, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN,
+    const accessToken = jwt.sign(payload as object, getJwtSecret(), {
+      expiresIn: getJwtExpiresIn(),
     } as SignOptions);
 
     // Generate refresh token
@@ -58,7 +58,7 @@ class TokenManager {
 
     // Store refresh token
     const expiresAt = new Date();
-    expiresAt.setTime(expiresAt.getTime() + this.parseExpiry(REFRESH_TOKEN_EXPIRES_IN));
+    expiresAt.setTime(expiresAt.getTime() + this.parseExpiry(getRefreshTokenExpiresIn()));
 
     this.refreshTokenStore[refreshToken] = {
       userId: payload.id,
@@ -70,7 +70,7 @@ class TokenManager {
     return {
       accessToken,
       refreshToken,
-      expiresIn: this.parseExpiry(JWT_EXPIRES_IN) / 1000, // Convert to seconds
+      expiresIn: this.parseExpiry(getJwtExpiresIn()) / 1000, // Convert to seconds
     };
   }
 
@@ -99,7 +99,7 @@ class TokenManager {
 
   verifyAccessToken(token: string): AuthTokenPayload {
     try {
-      return jwt.verify(token, JWT_SECRET) as AuthTokenPayload;
+      return jwt.verify(token, getJwtSecret()) as AuthTokenPayload;
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
         throw new Error('Access token expired');
@@ -204,8 +204,8 @@ class TokenManager {
     const oldestToken =
       activeTokens.length > 0
         ? activeTokens.reduce((oldest, current) =>
-            current.createdAt < oldest.createdAt ? current : oldest
-          ).createdAt
+          current.createdAt < oldest.createdAt ? current : oldest
+        ).createdAt
         : null;
 
     return {
@@ -227,7 +227,7 @@ const tokenManager = new TokenManager();
 
 // Legacy functions for backward compatibility
 export const generateToken = (payload: AuthTokenPayload): string => {
-  return jwt.sign(payload as object, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as SignOptions);
+  return jwt.sign(payload as object, getJwtSecret(), { expiresIn: getJwtExpiresIn() } as SignOptions);
 };
 
 export const verifyToken = (token: string): AuthTokenPayload => {
@@ -238,7 +238,11 @@ export const extractTokenFromHeader = (authHeader: string | undefined): string |
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
-  return authHeader.substring(7);
+  const token = authHeader.substring(7);
+  if (!token.trim()) {
+    return null;
+  }
+  return token.trimStart();
 };
 
 // New enhanced functions

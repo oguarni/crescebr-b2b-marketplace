@@ -57,7 +57,8 @@ const HomePage: React.FC = () => {
   const [error, setError] = useState('');
 
   // Basic Filters
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // Immediate input value
+  const [searchTerm, setSearchTerm] = useState(''); // Debounced search term for API
   const [selectedCategory, setSelectedCategory] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -143,6 +144,15 @@ const HomePage: React.FC = () => {
       console.error('Erro ao carregar especificações:', err);
     }
   }, []);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(searchInput);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     loadProducts();
@@ -271,10 +281,6 @@ const HomePage: React.FC = () => {
     }).format(price);
   };
 
-  const generateRandomRating = () => {
-    // Generate random rating between 3.5 and 5.0 for demo purposes
-    return Math.round((Math.random() * 1.5 + 3.5) * 2) / 2;
-  };
 
   return (
     <Container maxWidth='lg'>
@@ -297,8 +303,8 @@ const HomePage: React.FC = () => {
             <TextField
               fullWidth
               placeholder='Buscar produtos, especificações, fornecedores...'
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position='start'>
@@ -573,14 +579,8 @@ const HomePage: React.FC = () => {
                       {product.description}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Rating
-                        value={generateRandomRating()}
-                        precision={0.5}
-                        size='small'
-                        readOnly
-                      />
-                      <Typography variant='body2' color='text.secondary' sx={{ ml: 1 }}>
-                        ({Math.floor(Math.random() * 50) + 10})
+                      <Typography variant='body2' color='text.secondary'>
+                        No ratings yet
                       </Typography>
                     </Box>
                     <Typography variant='h5' color='primary' fontWeight='bold'>

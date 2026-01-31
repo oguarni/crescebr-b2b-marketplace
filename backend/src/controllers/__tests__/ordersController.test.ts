@@ -74,7 +74,10 @@ describe('Orders Controller', () => {
 
   describe('POST /api/orders', () => {
     it('should create order from quotation successfully', async () => {
-      const mockQuotation = createMockQuotation({ id: 1, companyId: 1, status: 'processed' });
+      const mockQuotation = {
+        ...createMockQuotation({ id: 1, companyId: 1, status: 'processed' }),
+        update: jest.fn().mockResolvedValue(true),
+      };
       const mockCalculations = {
         items: [],
         totalSubtotal: 1000,

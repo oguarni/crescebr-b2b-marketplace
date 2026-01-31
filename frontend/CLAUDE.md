@@ -1,5 +1,15 @@
 # Frontend - CresceBR
 
+## Language Configuration
+
+**Always use English** for:
+- Code comments and documentation
+- Commit messages
+- Variable and function names
+- All generated content
+
+---
+
 ## Tech Stack
 - React 19.1.0 + TypeScript 5.8.3
 - Vite 7.0 (build and dev server)
@@ -587,6 +597,14 @@ These patterns are working well - do not refactor:
 3. **QuotationRequestContext** - Appropriate for its use case
 4. **Services layer** - Good API abstraction
 5. **ProtectedRoute component** - Clean access control
+
+---
+
+## System Roles
+
+- `admin`: Full access, company verification, dashboard
+- `supplier`: Product management, quotation responses
+- `buyer/customer`: Browse products, request quotations, place orders
 
 ---
 

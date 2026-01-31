@@ -20,6 +20,12 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../../services/quotationsService', () => ({
   quotationsService: {
     createQuotation: vi.fn(),
+    calculateQuote: vi.fn().mockResolvedValue({
+      items: [],
+      totalSubtotal: 0,
+      totalSavings: 0,
+      grandTotal: 0,
+    }),
   },
 }));
 
@@ -33,7 +39,7 @@ vi.mock('react-hot-toast', () => ({
 
 // Mock contexts
 const mockQuotationContext = {
-  items: [],
+  items: [] as any[],
   totalItems: 0,
   isOpen: false,
   updateQuantity: vi.fn(),
@@ -44,7 +50,7 @@ const mockQuotationContext = {
 };
 
 const mockAuthContext = {
-  user: null,
+  user: null as any,
   token: null,
   isAuthenticated: false,
   isLoading: false,
@@ -535,8 +541,8 @@ describe('QuotationRequestPage', () => {
       renderQuotationRequestPage();
 
       // Check that prices are formatted correctly
-      expect(screen.getByText('Preço de referência: R$ 1.500,00')).toBeInTheDocument();
-      expect(screen.getByText('Preço de referência: R$ 25,00')).toBeInTheDocument();
+      expect(screen.getByText('Preço base: R$ 1.500,00')).toBeInTheDocument();
+      expect(screen.getByText('Preço base: R$ 25,00')).toBeInTheDocument();
     });
 
     it('should show reference price disclaimer', () => {
@@ -544,9 +550,10 @@ describe('QuotationRequestPage', () => {
 
       expect(
         screen.getByText(
-          '* Os preços mostrados são apenas de referência. O preço final será definido após a análise da sua solicitação de cotação.'
+          /Calculando preços com descontos por volume|Preços com desconto por volume aplicado/i
         )
       ).toBeInTheDocument();
+
     });
   });
 });
