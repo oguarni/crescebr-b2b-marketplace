@@ -28,6 +28,7 @@ import {
   Business,
   Category,
 } from '@mui/icons-material';
+import { SelectChangeEvent } from '@mui/material/Select';
 import { useAuth } from '../contexts/AuthContext';
 import { viaCepService } from '../services/viaCepService';
 import toast from 'react-hot-toast';
@@ -129,8 +130,8 @@ const RegisterPage: React.FC = () => {
           zipCode: viaCepService.formatCep(cep),
         }));
         toast.success('Endereço preenchido automaticamente!');
-      } catch (error: any) {
-        toast.error(error.message);
+      } catch (error: unknown) {
+        toast.error(error instanceof Error ? error.message : 'Erro ao buscar endereço');
       } finally {
         setIsLoadingCep(false);
       }
@@ -220,8 +221,9 @@ const RegisterPage: React.FC = () => {
       });
       toast.success('Empresa cadastrada com sucesso!');
       navigate('/');
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error || err.message || 'Erro ao fazer cadastro';
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
+      const errorMessage = axiosErr.response?.data?.error || axiosErr.message || 'Erro ao fazer cadastro';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -594,8 +596,11 @@ const RegisterPage: React.FC = () => {
                     id='companySize'
                     value={formData.companySize}
                     label='Porte da Empresa'
-                    onChange={e =>
-                      setFormData(prev => ({ ...prev, companySize: e.target.value as any }))
+                    onChange={(e: SelectChangeEvent<string>) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        companySize: e.target.value as typeof prev.companySize,
+                      }))
                     }
                   >
                     <MenuItem value='micro'>Microempresa</MenuItem>
@@ -615,8 +620,11 @@ const RegisterPage: React.FC = () => {
                     id='annualRevenue'
                     value={formData.annualRevenue}
                     label='Faturamento Anual'
-                    onChange={e =>
-                      setFormData(prev => ({ ...prev, annualRevenue: e.target.value as any }))
+                    onChange={(e: SelectChangeEvent<string>) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        annualRevenue: e.target.value as typeof prev.annualRevenue,
+                      }))
                     }
                   >
                     <MenuItem value='under_500k'>Até R$ 500.000</MenuItem>

@@ -52,7 +52,7 @@ const MyQuotationsPage: React.FC = () => {
     }
   }, [user]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status) {
       case 'pending':
         return 'warning';
@@ -187,7 +187,7 @@ const MyQuotationsPage: React.FC = () => {
                   <Chip
                     icon={getStatusIcon(quotation.status)}
                     label={getStatusLabel(quotation.status)}
-                    color={getStatusColor(quotation.status) as any}
+                    color={getStatusColor(quotation.status)}
                   />
                 </Box>
 
@@ -206,7 +206,7 @@ const MyQuotationsPage: React.FC = () => {
                           variant="rounded"
                           sx={{ width: 40, height: 40, mr: 1 }}
                           imgProps={{
-                            onError: (e) => {
+                            onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
                               e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0yMCAxMkwyOCAyMEgyNFYyOEgxNlYyMEgxMkwyMCAxMloiIGZpbGw9IiM5MDkwOTAiLz4KPHN2Zz4K';
                             }
                           }}

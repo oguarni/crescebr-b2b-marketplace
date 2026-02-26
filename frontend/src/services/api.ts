@@ -36,17 +36,17 @@ class ApiService {
     this.axiosInstance = axiosInstance;
   }
 
-  async get<T>(url: string): Promise<T> {
-    const response: AxiosResponse<T> = await this.axiosInstance.get(url);
+  async get<T>(url: string, options?: { params?: Record<string, string> }): Promise<T> {
+    const response: AxiosResponse<T> = await this.axiosInstance.get(url, options);
     return response.data;
   }
 
-  async post<T>(url: string, data?: any): Promise<T> {
+  async post<T>(url: string, data?: unknown): Promise<T> {
     const response: AxiosResponse<T> = await this.axiosInstance.post(url, data);
     return response.data;
   }
 
-  async put<T>(url: string, data?: any): Promise<T> {
+  async put<T>(url: string, data?: unknown): Promise<T> {
     const response: AxiosResponse<T> = await this.axiosInstance.put(url, data);
     return response.data;
   }

@@ -6,24 +6,18 @@ import {
   Grid,
   Card,
   CardContent,
-  CardActions,
   Button,
   Chip,
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
   IconButton,
   Alert,
   CircularProgress,
-  Divider,
-  Paper,
   Tabs,
   Tab,
-  LinearProgress,
 } from '@mui/material';
 import {
-  TrendingUp,
   AttachMoney,
   ShoppingCart,
   Star,
@@ -43,7 +37,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { quotationsService } from '../services/quotationsService';
 import { ordersService } from '../services/ordersService';
-import { productsService } from '../services/productsService';
 import { Quotation, Order, Product } from '@shared/types';
 import toast from 'react-hot-toast';
 
@@ -88,8 +81,8 @@ const SupplierDashboardPage: React.FC = () => {
         loadPendingQuotations(),
         loadLowStockProducts(),
       ]);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
+    } catch (_error) {
+      console.error('Error loading dashboard data:', _error);
       toast.error('Error loading dashboard data');
     } finally {
       setLoading(false);
@@ -108,23 +101,21 @@ const SupplierDashboardPage: React.FC = () => {
         totalProducts: 127,
         pendingQuotations: 8,
       });
-    } catch (error) {
-      console.error('Error loading metrics:', error);
+    } catch (_error) {
+      console.error('Error loading metrics:', _error);
     }
   };
 
   const loadRecentOrders = async () => {
     try {
-      const response = await ordersService.getUserOrders();
-      if (response.success && response.data) {
-        // Filter to show only recent orders that need attention
-        const recentActiveOrders = response.data
-          .filter((order: Order) => order.status === 'pending' || order.status === 'processing')
-          .slice(0, 5);
-        setRecentOrders(recentActiveOrders);
-      }
-    } catch (error) {
-      console.error('Error loading recent orders:', error);
+      const result = await ordersService.getUserOrders();
+      // Filter to show only recent orders that need attention
+      const recentActiveOrders = result.orders
+        .filter((order: Order) => order.status === 'pending' || order.status === 'processing')
+        .slice(0, 5);
+      setRecentOrders(recentActiveOrders);
+    } catch (_error) {
+      console.error('Error loading recent orders:', _error);
     }
   };
 
@@ -132,15 +123,13 @@ const SupplierDashboardPage: React.FC = () => {
     try {
       // This would need a supplier-specific quotations endpoint
       // For now, using the admin endpoint as placeholder
-      const response = await quotationsService.getAllQuotations();
-      if (response.success && response.data) {
-        const pending = response.data
-          .filter((quote: Quotation) => quote.status === 'pending')
-          .slice(0, 5);
-        setPendingQuotes(pending);
-      }
-    } catch (error) {
-      console.error('Error loading pending quotations:', error);
+      const data = await quotationsService.getAllQuotations();
+      const pending = data
+        .filter((quote: Quotation) => quote.status === 'pending')
+        .slice(0, 5);
+      setPendingQuotes(pending);
+    } catch (_error) {
+      console.error('Error loading pending quotations:', _error);
     }
   };
 
@@ -149,32 +138,36 @@ const SupplierDashboardPage: React.FC = () => {
       // This would be a supplier-specific endpoint for inventory
       // For now, using placeholder data
       setLowStockProducts([]);
-    } catch (error) {
-      console.error('Error loading low stock products:', error);
+    } catch (_error) {
+      console.error('Error loading low stock products:', _error);
     }
   };
 
-  const handleQuoteAction = async (quoteId: number, action: 'accept' | 'reject') => {
+  const handleQuoteAction = async (_quoteId: number, action: 'accept' | 'reject') => {
     try {
       // This would call a supplier quote response endpoint
       toast.success(`Quote ${action}ed successfully`);
       loadPendingQuotations(); // Reload
-    } catch (error) {
+    } catch (_error) {
       toast.error(`Error ${action}ing quote`);
     }
   };
 
   const handleOrderStatusUpdate = async (orderId: string, status: string) => {
     try {
-      await ordersService.updateOrderStatus(orderId, status);
+      await ordersService.updateOrderStatus(orderId, {
+        status: status as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled',
+      });
       toast.success('Order status updated successfully');
       loadRecentOrders(); // Reload
-    } catch (error) {
+    } catch (_error) {
       toast.error('Error updating order status');
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (
+    status: string
+  ): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status) {
       case 'pending':
         return 'warning';
@@ -394,7 +387,7 @@ const SupplierDashboardPage: React.FC = () => {
                       <Box display='flex' alignItems='center' gap={1}>
                         <Chip
                           label={order.status}
-                          color={getStatusColor(order.status) as any}
+                          color={getStatusColor(order.status)}
                           size='small'
                         />
                         <IconButton

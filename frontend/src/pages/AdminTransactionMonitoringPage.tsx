@@ -96,7 +96,6 @@ const AdminTransactionMonitoringPage: React.FC = () => {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [currentTab, setCurrentTab] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
   const [orderDetailDialog, setOrderDetailDialog] = useState(false);
 
@@ -119,7 +118,7 @@ const AdminTransactionMonitoringPage: React.FC = () => {
 
       const response = await authService.adminRequest('/admin/transaction-monitoring', {
         params,
-      });
+      }) as { data: TransactionData };
 
       setTransactionData(response.data);
 
@@ -175,7 +174,7 @@ const AdminTransactionMonitoringPage: React.FC = () => {
     });
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status.toLowerCase()) {
       case 'delivered':
         return 'success';
@@ -217,7 +216,7 @@ const AdminTransactionMonitoringPage: React.FC = () => {
       const dayOrders = transactionData.orders.filter(
         order => order.createdAt.split('T')[0] === date
       );
-      const revenue = dayOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount), 0);
+      const revenue = dayOrders.reduce((sum, order) => sum + order.totalAmount, 0);
 
       return {
         date: new Date(date).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }),
@@ -339,7 +338,7 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                 label='Data Inicial'
                 type='date'
                 value={dateRange.startDate}
-                onChange={e => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
@@ -349,7 +348,7 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                 label='Data Final'
                 type='date'
                 value={dateRange.endDate}
-                onChange={e => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
@@ -495,9 +494,12 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                 <ResponsiveContainer width='100%' height='100%'>
                   <LineChart data={revenueChartData}>
                     <CartesianGrid strokeDasharray='3 3' />
+                    {/* @ts-expect-error recharts v3 JSX type compatibility */}
                     <XAxis dataKey='date' />
-                    <YAxis tickFormatter={value => `R$ ${(value / 1000).toFixed(0)}k`} />
-                    <Tooltip formatter={value => [formatCurrency(value as number), 'Receita']} />
+                    {/* @ts-expect-error recharts v3 JSX type compatibility */}
+                    <YAxis tickFormatter={(value: number) => `R$ ${(value / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(value: unknown) => [formatCurrency(value as number), 'Receita']} />
+                    {/* @ts-expect-error recharts v3 JSX type compatibility */}
                     <Line type='monotone' dataKey='revenue' stroke='#1976d2' strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -515,13 +517,14 @@ const AdminTransactionMonitoringPage: React.FC = () => {
               <Box sx={{ height: 300 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                   <PieChart>
+                    {/* @ts-expect-error recharts v3 JSX type compatibility */}
                     <Pie
                       data={statusPieData}
                       cx='50%'
                       cy='50%'
                       outerRadius={80}
                       dataKey='value'
-                      label={entry => `${entry.name}: ${entry.value}`}
+                      label={(entry: { name: string; value: number }) => `${entry.name}: ${entry.value}`}
                     >
                       {statusPieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -574,12 +577,12 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                       <Chip
                         label={getStatusLabel(order.status)}
                         size='small'
-                        color={getStatusColor(order.status) as any}
+                        color={getStatusColor(order.status)}
                       />
                     </TableCell>
                     <TableCell align='right'>
                       <Typography variant='subtitle2' color='primary'>
-                        {formatCurrency(parseFloat(order.totalAmount))}
+                        {formatCurrency(order.totalAmount)}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -646,14 +649,14 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                   <Chip
                     label={getStatusLabel(selectedOrder.status)}
                     size='small'
-                    color={getStatusColor(selectedOrder.status) as any}
+                    color={getStatusColor(selectedOrder.status)}
                     sx={{ mb: 2 }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <Typography variant='subtitle2'>Valor Total</Typography>
                   <Typography variant='h6' color='primary' sx={{ mb: 2 }}>
-                    {formatCurrency(parseFloat(selectedOrder.totalAmount))}
+                    {formatCurrency(selectedOrder.totalAmount)}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>

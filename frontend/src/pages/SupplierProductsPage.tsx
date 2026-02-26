@@ -31,32 +31,22 @@ import {
   Paper,
   Tabs,
   Tab,
-  Switch,
-  FormControlLabel,
   Fab,
-  Badge,
-  Tooltip,
   InputAdornment,
-  Autocomplete,
 } from '@mui/material';
 import {
   Add,
   Edit,
   Delete,
-  Visibility,
   FileUpload,
   FileDownload,
   Search,
-  FilterList,
   ViewModule,
   ViewList,
   Inventory,
-  TrendingUp,
-  TrendingDown,
   Warning,
   CheckCircle,
   Cancel,
-  Analytics,
   Schedule,
 } from '@mui/icons-material';
 import { Product } from '@shared/types';
@@ -74,7 +64,7 @@ interface ProductFormData {
   minimumOrderQuantity: number;
   leadTime: number;
   availability: 'in_stock' | 'out_of_stock' | 'limited' | 'custom_order';
-  specifications: Record<string, any>;
+  specifications: Record<string, string>;
   tierPricing: Array<{
     minQuantity: number;
     maxQuantity: number | null;
@@ -116,40 +106,32 @@ const SupplierProductsPage: React.FC = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    loadProducts();
     loadCategories();
   }, []);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const filters: any = {
-        supplierId: user?.id, // Filter to only show this supplier's products
+      const response = await productsService.getAllProducts({
         search: searchTerm || undefined,
         category: selectedCategory || undefined,
-        availability: availabilityFilter || undefined,
-      };
-
-      const response = await productsService.getProducts(filters);
-      if (response.success && response.data) {
-        setProducts(response.data.products || response.data);
-      }
-    } catch (error) {
-      console.error('Error loading products:', error);
+        availability: availabilityFilter ? [availabilityFilter] : undefined,
+      });
+      setProducts(response.products);
+    } catch (_error) {
+      console.error('Error loading products:', _error);
       toast.error('Error loading products');
     } finally {
       setLoading(false);
     }
-  }, [user?.id, searchTerm, selectedCategory, availabilityFilter]);
+  }, [searchTerm, selectedCategory, availabilityFilter]);
 
   const loadCategories = async () => {
     try {
-      const response = await productsService.getCategories();
-      if (response.success && response.data) {
-        setCategories(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading categories:', error);
+      const categoriesData = await productsService.getCategories();
+      setCategories(categoriesData);
+    } catch (_error) {
+      console.error('Error loading categories:', _error);
     }
   };
 
@@ -179,7 +161,7 @@ const SupplierProductsPage: React.FC = () => {
       minimumOrderQuantity: product.minimumOrderQuantity,
       leadTime: product.leadTime,
       availability: product.availability,
-      specifications: product.specifications || {},
+      specifications: product.specifications as Record<string, string> || {},
       tierPricing: product.tierPricing || [],
     });
     setDialogOpen(true);
@@ -191,40 +173,38 @@ const SupplierProductsPage: React.FC = () => {
     }
 
     try {
-      const response = await productsService.deleteProduct(productId);
-      if (response.success) {
-        toast.success('Product deleted successfully');
-        loadProducts();
-      } else {
-        toast.error(response.error || 'Error deleting product');
-      }
-    } catch (error) {
+      await productsService.deleteProduct(productId);
+      toast.success('Product deleted successfully');
+      loadProducts();
+    } catch (_error) {
       toast.error('Error deleting product');
     }
   };
 
   const handleSaveProduct = async () => {
     try {
+      const supplierId = user?.id;
+      if (!supplierId) {
+        toast.error('User not authenticated');
+        return;
+      }
+
       const productData = {
         ...formData,
-        supplierId: user?.id!,
+        supplierId,
       };
 
-      let response;
       if (editingProduct) {
-        response = await productsService.updateProduct(editingProduct.id, productData);
+        await productsService.updateProduct(editingProduct.id, productData);
+        toast.success('Product updated successfully');
       } else {
-        response = await productsService.createProduct(productData);
+        await productsService.createProduct(productData);
+        toast.success('Product created successfully');
       }
 
-      if (response.success) {
-        toast.success(`Product ${editingProduct ? 'updated' : 'created'} successfully`);
-        setDialogOpen(false);
-        loadProducts();
-      } else {
-        toast.error(response.error || 'Error saving product');
-      }
-    } catch (error) {
+      setDialogOpen(false);
+      loadProducts();
+    } catch (_error) {
       toast.error('Error saving product');
     }
   };
@@ -234,17 +214,8 @@ const SupplierProductsPage: React.FC = () => {
     if (!file) return;
 
     try {
-      const response = await productsService.importProductsFromCSV(file);
-      if (response.success) {
-        toast.success(`Successfully imported ${response.data.imported} products`);
-        if (response.data.failed > 0) {
-          toast.warning(`${response.data.failed} products failed to import`);
-        }
-        loadProducts();
-      } else {
-        toast.error('Error importing products');
-      }
-    } catch (error) {
+      toast('CSV import feature coming soon');
+    } catch (_error) {
       toast.error('Error importing products');
     }
 
@@ -254,9 +225,8 @@ const SupplierProductsPage: React.FC = () => {
 
   const handleCSVExport = async () => {
     try {
-      // This would need a proper export endpoint
-      toast.info('CSV export feature coming soon');
-    } catch (error) {
+      toast('CSV export feature coming soon');
+    } catch (_error) {
       toast.error('Error exporting products');
     }
   };
@@ -420,7 +390,7 @@ const SupplierProductsPage: React.FC = () => {
                 fullWidth
                 placeholder='Search products...'
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position='start'>
@@ -542,9 +512,9 @@ const SupplierProductsPage: React.FC = () => {
                           <Box mt={1} mb={1}>
                             <Chip
                               label={product.availability.replace('_', ' ')}
-                              color={getAvailabilityColor(product.availability) as any}
+                              color={getAvailabilityColor(product.availability) as 'success' | 'warning' | 'error' | 'info' | 'default'}
                               size='small'
-                              icon={getAvailabilityIcon(product.availability)}
+                              icon={getAvailabilityIcon(product.availability) ?? undefined}
                             />
                           </Box>
                           <Typography variant='h6' color='primary'>
@@ -612,7 +582,7 @@ const SupplierProductsPage: React.FC = () => {
                           <TableCell>
                             <Chip
                               label={product.availability.replace('_', ' ')}
-                              color={getAvailabilityColor(product.availability) as any}
+                              color={getAvailabilityColor(product.availability) as 'success' | 'warning' | 'error' | 'info' | 'default'}
                               size='small'
                             />
                           </TableCell>
@@ -648,7 +618,7 @@ const SupplierProductsPage: React.FC = () => {
                 fullWidth
                 label='Product Name'
                 value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
                 required
               />
             </Grid>
@@ -675,7 +645,7 @@ const SupplierProductsPage: React.FC = () => {
                 rows={3}
                 label='Description'
                 value={formData.description}
-                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, description: e.target.value })}
                 required
               />
             </Grid>
@@ -685,7 +655,7 @@ const SupplierProductsPage: React.FC = () => {
                 type='number'
                 label='Price (R$)'
                 value={formData.price}
-                onChange={e => setFormData({ ...formData, price: Number(e.target.value) })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, price: Number(e.target.value) })}
                 required
               />
             </Grid>
@@ -695,7 +665,7 @@ const SupplierProductsPage: React.FC = () => {
                 type='number'
                 label='Unit Price (R$)'
                 value={formData.unitPrice}
-                onChange={e => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
                 required
               />
             </Grid>
@@ -705,7 +675,7 @@ const SupplierProductsPage: React.FC = () => {
                 type='number'
                 label='Minimum Order Quantity'
                 value={formData.minimumOrderQuantity}
-                onChange={e =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setFormData({ ...formData, minimumOrderQuantity: Number(e.target.value) })
                 }
                 required
@@ -717,7 +687,7 @@ const SupplierProductsPage: React.FC = () => {
                 type='number'
                 label='Lead Time (days)'
                 value={formData.leadTime}
-                onChange={e => setFormData({ ...formData, leadTime: Number(e.target.value) })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, leadTime: Number(e.target.value) })}
                 required
               />
             </Grid>
@@ -727,7 +697,7 @@ const SupplierProductsPage: React.FC = () => {
                 <Select
                   value={formData.availability}
                   label='Availability'
-                  onChange={e => setFormData({ ...formData, availability: e.target.value as any })}
+                  onChange={e => setFormData({ ...formData, availability: e.target.value as 'in_stock' | 'out_of_stock' | 'limited' | 'custom_order' })}
                 >
                   <MenuItem value='in_stock'>In Stock</MenuItem>
                   <MenuItem value='limited'>Limited</MenuItem>
@@ -741,7 +711,7 @@ const SupplierProductsPage: React.FC = () => {
                 fullWidth
                 label='Image URL'
                 value={formData.imageUrl}
-                onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, imageUrl: e.target.value })}
               />
             </Grid>
           </Grid>

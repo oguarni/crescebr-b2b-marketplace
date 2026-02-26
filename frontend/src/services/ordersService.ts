@@ -1,6 +1,13 @@
 import { Order, ApiResponse } from '@shared/types';
 import { apiService } from './api';
 
+interface PaginationInfo {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 interface CreateOrderFromQuotationRequest {
   quotationId: number;
 }
@@ -64,7 +71,7 @@ class OrdersService {
     const response = await apiService.get<
       ApiResponse<{
         orders: Order[];
-        pagination: any;
+        pagination: PaginationInfo;
       }>
     >(`/orders/user?${queryParams.toString()}`);
 
@@ -134,7 +141,7 @@ class OrdersService {
     const response = await apiService.get<
       ApiResponse<{
         orders: Order[];
-        pagination: any;
+        pagination: PaginationInfo;
       }>
     >(`/orders/admin/all?${queryParams.toString()}`);
 

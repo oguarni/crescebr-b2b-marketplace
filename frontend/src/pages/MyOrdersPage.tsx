@@ -15,7 +15,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   FormControl,
   InputLabel,
   Select,
@@ -98,7 +97,7 @@ const MyOrdersPage: React.FC = () => {
 
       setOrders(response.orders);
       setTotalPages(response.pagination.totalPages);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Erro ao carregar pedidos');
     } finally {
       setLoading(false);
@@ -113,7 +112,7 @@ const MyOrdersPage: React.FC = () => {
     try {
       const history = await ordersService.getOrderHistory(order.id);
       setOrderHistory(history);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Erro ao carregar histórico do pedido');
     } finally {
       setTimelineLoading(false);
@@ -146,7 +145,8 @@ const MyOrdersPage: React.FC = () => {
   const getTimelineDotColor = (
     status: string
   ): 'grey' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
-    return ordersService.getStatusColor(status);
+    const color = ordersService.getStatusColor(status);
+    return color === 'default' ? 'grey' : color;
   };
 
   if (user?.role !== 'customer') {

@@ -271,10 +271,10 @@ const AdminQuotationsPage: React.FC = () => {
                   <TableCell>
                     <Box>
                       <Typography variant='body2' fontWeight='medium'>
-                        {quotation.user?.email}
+                        {quotation.company?.email}
                       </Typography>
                       <Typography variant='caption' color='text.secondary'>
-                        CPF: {quotation.user?.cpf}
+                        CNPJ: {quotation.company?.cnpj}
                       </Typography>
                     </Box>
                   </TableCell>
@@ -391,7 +391,7 @@ const AdminQuotationsPage: React.FC = () => {
               rows={4}
               fullWidth
               value={updateNotes}
-              onChange={e => setUpdateNotes(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUpdateNotes(e.target.value)}
               placeholder='Adicione observações sobre esta cotação...'
             />
           </Box>

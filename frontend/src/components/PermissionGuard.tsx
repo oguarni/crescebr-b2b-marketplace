@@ -9,7 +9,7 @@ interface PermissionGuardProps {
   requireAdmin?: boolean;
   requireApproved?: boolean;
   requireRole?: UserRole;
-  fallback?: React.ComponentType | React.ReactElement | null;
+  fallback?: React.ReactNode;
   showFallback?: boolean;
 }
 
@@ -24,40 +24,26 @@ const PermissionGuard: React.FC<PermissionGuardProps> = ({
 }) => {
   const permissions = usePermissions();
 
+  const renderFallback = () => (showFallback && fallback ? <>{fallback}</> : null);
+
   // Check admin requirement
   if (requireAdmin && !permissions.isAdmin()) {
-    return showFallback && fallback
-      ? React.isValidElement(fallback)
-        ? fallback
-        : React.createElement(fallback)
-      : null;
+    return renderFallback();
   }
 
   // Check specific role requirement
   if (requireRole && !permissions.hasRole(requireRole)) {
-    return showFallback && fallback
-      ? React.isValidElement(fallback)
-        ? fallback
-        : React.createElement(fallback)
-      : null;
+    return renderFallback();
   }
 
   // Check allowed roles
   if (allowedRoles && !permissions.hasAnyRole(allowedRoles)) {
-    return showFallback && fallback
-      ? React.isValidElement(fallback)
-        ? fallback
-        : React.createElement(fallback)
-      : null;
+    return renderFallback();
   }
 
   // Check approved status for suppliers
   if (requireApproved && permissions.isSupplier() && !permissions.isApprovedSupplier()) {
-    return showFallback && fallback
-      ? React.isValidElement(fallback)
-        ? fallback
-        : React.createElement(fallback)
-      : null;
+    return renderFallback();
   }
 
   return <>{children}</>;

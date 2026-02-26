@@ -23,26 +23,18 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
   Chip,
   Alert,
   CircularProgress,
   Paper,
   Tabs,
   Tab,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
-  Badge,
-  Tooltip,
   InputAdornment,
   List,
   ListItem,
   ListItemText,
   ListItemAvatar,
   Avatar,
-  Divider,
 } from '@mui/material';
 import {
   Visibility,
@@ -50,29 +42,19 @@ import {
   LocalShipping,
   CheckCircle,
   Schedule,
-  Warning,
   Cancel,
   Search,
-  FilterList,
   Assignment,
   Phone,
   Email,
   LocationOn,
   Business,
-  Inventory,
-  TrendingUp,
   Info,
   PlayArrow,
-  Pause,
-  Done,
-  Close,
-  Print,
-  Download,
 } from '@mui/icons-material';
 import { Order, OrderStatusHistory } from '@shared/types';
 import { ordersService } from '../services/ordersService';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 interface StatusUpdateDialog {
@@ -111,39 +93,34 @@ const SupplierOrdersPage: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<string>('');
 
   const { user } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    loadOrders();
-  }, []);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await ordersService.getUserOrders();
-      if (response.success && response.data) {
-        // Filter to only show orders for products from this supplier
-        const supplierOrders = response.data.filter((order: Order) =>
-          order.items?.some(item => item.product?.supplierId === user?.id)
-        );
-        setOrders(supplierOrders);
-      }
-    } catch (error) {
-      console.error('Error loading orders:', error);
+      const result = await ordersService.getUserOrders();
+      // Filter to only show orders for products from this supplier
+      const supplierOrders = result.orders.filter((order: Order) =>
+        order.items?.some(item => item.product?.supplierId === user?.id)
+      );
+      setOrders(supplierOrders);
+    } catch (_error) {
+      console.error('Error loading orders:', _error);
       toast.error('Error loading orders');
     } finally {
       setLoading(false);
     }
   }, [user?.id]);
 
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
   const loadOrderHistory = async (orderId: string) => {
     try {
-      const response = await ordersService.getOrderHistory(orderId);
-      if (response.success && response.data) {
-        setOrderHistory(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading order history:', error);
+      const result = await ordersService.getOrderHistory(orderId);
+      setOrderHistory(result.timeline as unknown as OrderStatusHistory[]);
+    } catch (_error) {
+      console.error('Error loading order history:', _error);
     }
   };
 
@@ -151,38 +128,30 @@ const SupplierOrdersPage: React.FC = () => {
     if (!statusUpdateDialog.order) return;
 
     try {
-      const updateData: any = {
-        status: statusUpdateDialog.newStatus,
-        notes: statusUpdateDialog.notes,
+      const updateData = {
+        status: statusUpdateDialog.newStatus as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled',
+        notes: statusUpdateDialog.notes || undefined,
+        trackingNumber: statusUpdateDialog.trackingNumber || undefined,
       };
 
-      if (statusUpdateDialog.trackingNumber) {
-        updateData.trackingNumber = statusUpdateDialog.trackingNumber;
-      }
-
-      const response = await ordersService.updateOrderStatus(
+      await ordersService.updateOrderStatus(
         statusUpdateDialog.order.id,
-        statusUpdateDialog.newStatus,
-        statusUpdateDialog.notes
+        updateData
       );
 
-      if (response.success) {
-        toast.success('Order status updated successfully');
-        setStatusUpdateDialog({
-          open: false,
-          order: null,
-          newStatus: '',
-          trackingNumber: '',
-          notes: '',
-        });
-        loadOrders();
-        if (selectedOrder?.id === statusUpdateDialog.order.id) {
-          loadOrderHistory(statusUpdateDialog.order.id);
-        }
-      } else {
-        toast.error(response.error || 'Error updating order status');
+      toast.success('Order status updated successfully');
+      setStatusUpdateDialog({
+        open: false,
+        order: null,
+        newStatus: '',
+        trackingNumber: '',
+        notes: '',
+      });
+      loadOrders();
+      if (selectedOrder?.id === statusUpdateDialog.order.id) {
+        loadOrderHistory(statusUpdateDialog.order.id);
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error('Error updating order status');
     }
   };
@@ -193,7 +162,9 @@ const SupplierOrdersPage: React.FC = () => {
     setDetailsDialogOpen(true);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (
+    status: string
+  ): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status) {
       case 'pending':
         return 'warning';
@@ -295,7 +266,7 @@ const SupplierOrdersPage: React.FC = () => {
           </Box>
           <Chip
             label={order.status}
-            color={getStatusColor(order.status) as any}
+            color={getStatusColor(order.status)}
             icon={getStatusIcon(order.status)}
           />
         </Box>
@@ -471,7 +442,7 @@ const SupplierOrdersPage: React.FC = () => {
                 fullWidth
                 placeholder='Search orders...'
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position='start'>
@@ -594,7 +565,7 @@ const SupplierOrdersPage: React.FC = () => {
                 fullWidth
                 label='Tracking Number'
                 value={statusUpdateDialog.trackingNumber}
-                onChange={e =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setStatusUpdateDialog({
                     ...statusUpdateDialog,
                     trackingNumber: e.target.value,
@@ -610,7 +581,7 @@ const SupplierOrdersPage: React.FC = () => {
               rows={3}
               label='Notes (optional)'
               value={statusUpdateDialog.notes}
-              onChange={e =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setStatusUpdateDialog({
                   ...statusUpdateDialog,
                   notes: e.target.value,
@@ -678,7 +649,7 @@ const SupplierOrdersPage: React.FC = () => {
                     Status:{' '}
                     <Chip
                       label={selectedOrder.status}
-                      color={getStatusColor(selectedOrder.status) as any}
+                      color={getStatusColor(selectedOrder.status)}
                       size='small'
                     />
                   </Typography>

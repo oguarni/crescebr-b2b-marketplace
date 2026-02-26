@@ -16,7 +16,16 @@ vi.mock('react-hot-toast', () => ({
 }));
 
 // Mock useAuth hook
-const mockAuthContext = {
+const mockAuthContext: {
+  user: Record<string, unknown> | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: ReturnType<typeof vi.fn>;
+  register: ReturnType<typeof vi.fn>;
+  logout: ReturnType<typeof vi.fn>;
+  fetchUser: ReturnType<typeof vi.fn>;
+} = {
   user: null,
   token: null,
   isAuthenticated: false,
@@ -104,6 +113,13 @@ describe('Navbar', () => {
       cpf: '123.456.789-00',
       address: 'Test Address',
       role: 'customer',
+      companyName: 'Test Company',
+      corporateName: 'Test Corporate',
+      cnpj: '12.345.678/0001-90',
+      cnpjValidated: false,
+      industrySector: 'Test Sector',
+      companyType: 'buyer',
+      status: 'approved',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -124,6 +140,13 @@ describe('Navbar', () => {
       cpf: '123.456.789-00',
       address: 'Test Address',
       role: 'admin',
+      companyName: 'Admin Company',
+      corporateName: 'Admin Corporate',
+      cnpj: '12.345.678/0001-90',
+      cnpjValidated: true,
+      industrySector: 'Admin Sector',
+      companyType: 'both',
+      status: 'approved',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -145,6 +168,13 @@ describe('Navbar', () => {
       cpf: '123.456.789-00',
       address: 'Test Address',
       role: 'customer',
+      companyName: 'Customer Company',
+      corporateName: 'Customer Corporate',
+      cnpj: '12.345.678/0001-90',
+      cnpjValidated: false,
+      industrySector: 'Customer Sector',
+      companyType: 'buyer',
+      status: 'approved',
       createdAt: new Date(),
       updatedAt: new Date(),
     };

@@ -19,16 +19,12 @@ import {
   Pagination,
   CircularProgress,
   Alert,
-  Rating,
   Collapse,
-  IconButton,
   Slider,
   FormControlLabel,
   Checkbox,
   Autocomplete,
   Paper,
-  Divider,
-  Tooltip,
 } from '@mui/material';
 import {
   Search,
@@ -43,6 +39,7 @@ import {
   LocalShipping,
   Inventory,
 } from '@mui/icons-material';
+
 import { Product } from '@shared/types';
 import { productsService } from '../services/productsService';
 import { useCart } from '../contexts/CartContext';
@@ -82,7 +79,19 @@ const HomePage: React.FC = () => {
     setError('');
 
     try {
-      const filters: any = {
+      const filters: {
+        search?: string;
+        category?: string;
+        page: number;
+        limit: number;
+        minPrice?: number;
+        maxPrice?: number;
+        minMoq?: number;
+        maxMoq?: number;
+        maxLeadTime?: number;
+        availability?: string[];
+        specifications?: Record<string, string>;
+      } = {
         search: searchTerm || undefined,
         category: selectedCategory || undefined,
         page,
@@ -110,8 +119,8 @@ const HomePage: React.FC = () => {
 
       setProducts(response.products);
       setTotalPages(response.pagination.totalPages);
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar produtos');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar produtos');
     } finally {
       setLoading(false);
     }
@@ -216,10 +225,6 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const handleQuotationRequest = (product: Product) => {
-    addToQuotationRequest(product);
-  };
-
   const getButtonText = () => {
     if (!isAuthenticated || user?.role === 'customer') {
       return 'Adicionar à Cotação';
@@ -304,7 +309,7 @@ const HomePage: React.FC = () => {
               fullWidth
               placeholder='Buscar produtos, especificações, fornecedores...'
               value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchInput(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position='start'>
@@ -548,7 +553,7 @@ const HomePage: React.FC = () => {
                     image={product.imageUrl}
                     alt={product.name}
                     sx={{ objectFit: 'cover' }}
-                    onError={e => {
+                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
                       e.currentTarget.src =
                         'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0xMDAgNjBMMTQwIDEwMEgxMjBWMTQwSDgwVjEwMEg2MEwxMDAgNjBaIiBmaWxsPSIjOTA5MDkwIi8+CjwvdHZnPgo=';
                     }}

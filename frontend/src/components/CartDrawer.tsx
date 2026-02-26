@@ -96,7 +96,7 @@ const CartDrawer: React.FC = () => {
                         variant="rounded"
                         sx={{ width: 60, height: 60 }}
                         imgProps={{
-                          onError: (e) => {
+                          onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
                             e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0zMCAxOEw0MiAzMEgzNlY0MkgyNFYzMEgxOEwzMCAxOFoiIGZpbGw9IiM5MDkwOTAiLz4KPHN2Zz4K';
                           }
                         }}
@@ -123,7 +123,7 @@ const CartDrawer: React.FC = () => {
                             <TextField
                               size="small"
                               value={item.quantity}
-                              onChange={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 const qty = parseInt(e.target.value) || 0;
                                 handleQuantityChange(item.id, qty);
                               }}

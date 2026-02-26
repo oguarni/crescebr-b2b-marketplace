@@ -64,10 +64,10 @@ class AuthService {
     endpoint: string,
     options: {
       method?: string;
-      params?: Record<string, any>;
-      data?: any;
+      params?: Record<string, string>;
+      data?: unknown;
     } = {}
-  ): Promise<any> {
+  ): Promise<unknown> {
     const { method = 'GET', params, data } = options;
 
     if (method === 'GET') {

@@ -41,7 +41,7 @@ interface SupplierQuote {
     tax: number;
     total: number;
     savings: number;
-    appliedTier: any;
+    appliedTier: Record<string, unknown> | null;
   } | null;
   error?: string;
 }
