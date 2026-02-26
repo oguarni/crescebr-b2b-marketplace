@@ -10,10 +10,11 @@ import {
   updateOrderStatusValidation,
 } from '../controllers/ordersController';
 import { authenticateJWT, isAdmin } from '../middleware/auth';
+import { generalRateLimit } from '../middleware/rateLimiting';
 
 const router = Router();
 
-router.use(authenticateJWT);
+router.use(authenticateJWT, generalRateLimit);
 
 // Customer/General routes
 router.post('/', createOrderValidation, createOrderFromQuotation);

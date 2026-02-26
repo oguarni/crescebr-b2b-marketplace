@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticateJWT, isAdmin } from '../middleware/auth';
+import { adminRateLimit } from '../middleware/rateLimiting';
 import {
   getAllPendingCompanies,
   verifyCompany,
@@ -16,8 +17,8 @@ import {
 
 const router = Router();
 
-// All admin routes require authentication and admin role
-router.use(authenticateJWT, isAdmin);
+// All admin routes require authentication, admin role, and rate limiting
+router.use(authenticateJWT, isAdmin, adminRateLimit);
 
 // Dashboard and analytics
 router.get('/dashboard', (req, res) => {
