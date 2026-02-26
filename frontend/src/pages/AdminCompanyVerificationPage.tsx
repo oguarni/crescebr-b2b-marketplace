@@ -101,13 +101,13 @@ const AdminCompanyVerificationPage: React.FC = () => {
     try {
       const response = await authService.adminRequest('/admin/verification-queue', {
         params: {
-          page,
-          limit: 10,
+          page: String(page),
+          limit: '10',
           filter,
         },
-      });
+      }) as { data: unknown };
 
-      setVerificationQueue(response.data);
+      setVerificationQueue(response.data as Parameters<typeof setVerificationQueue>[0]);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error loading verification queue';
       setError(errorMessage);
@@ -129,7 +129,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
           reason: verificationReason || undefined,
           validateCNPJ: status === 'approved',
         },
-      });
+      }) as { data: { message: string } };
 
       toast.success(response.data.message);
       setVerificationDialog(false);
@@ -150,7 +150,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
         {
           method: 'POST',
         }
-      );
+      ) as { data: { user: Parameters<typeof setSelectedCompany>[0] } };
 
       toast.success('CNPJ validation completed successfully');
 
@@ -670,7 +670,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
               multiline
               rows={3}
               value={verificationReason}
-              onChange={e => setVerificationReason(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVerificationReason(e.target.value)}
               placeholder='Adicione uma observação sobre a verificação...'
               sx={{ mb: 2 }}
             />

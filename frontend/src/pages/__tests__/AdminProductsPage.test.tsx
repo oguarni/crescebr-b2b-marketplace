@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import AdminProductsPage from '../AdminProductsPage';
@@ -39,6 +39,13 @@ const mockProducts = [
     price: 1500.0,
     imageUrl: 'https://example.com/pump.jpg',
     category: 'Industrial Equipment',
+    supplierId: 1,
+    unitPrice: 1500.0,
+    minimumOrderQuantity: 1,
+    leadTime: 7,
+    availability: 'in_stock' as const,
+    specifications: {},
+    tierPricing: [],
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -49,6 +56,13 @@ const mockProducts = [
     price: 25.0,
     imageUrl: 'https://example.com/helmet.jpg',
     category: 'Safety Equipment',
+    supplierId: 1,
+    unitPrice: 25.0,
+    minimumOrderQuantity: 1,
+    leadTime: 7,
+    availability: 'in_stock' as const,
+    specifications: {},
+    tierPricing: [],
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -220,11 +234,14 @@ describe('AdminProductsPage', () => {
       await user.type(screen.getByLabelText(/preço/i), '100.50');
       await user.type(screen.getByLabelText(/url da imagem/i), 'https://example.com/test.jpg');
 
-      // Select category - use direct change event to avoid dropdown timing issues
-      const categorySelect = screen.getByRole('combobox').querySelector('input');
-      if (categorySelect) {
-        fireEvent.change(categorySelect, { target: { value: 'Industrial Equipment' } });
-      }
+      // Select category - open dropdown and click option
+      const categoryCombobox = screen.getByRole('combobox');
+      await user.click(categoryCombobox);
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+      const option = screen.getByRole('option', { name: 'Industrial Equipment' });
+      await user.click(option);
 
       // Submit form
       vi.mocked(productsService.createProduct).mockResolvedValue({
@@ -234,6 +251,13 @@ describe('AdminProductsPage', () => {
         price: 100.5,
         imageUrl: 'https://example.com/test.jpg',
         category: 'Industrial Equipment',
+        supplierId: 1,
+        unitPrice: 100.5,
+        minimumOrderQuantity: 1,
+        leadTime: 7,
+        availability: 'in_stock' as const,
+        specifications: {},
+        tierPricing: [],
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -242,13 +266,15 @@ describe('AdminProductsPage', () => {
       await user.click(saveButton);
 
       await waitFor(() => {
-        expect(productsService.createProduct).toHaveBeenCalledWith({
-          name: 'New Test Product',
-          description: 'Test product description',
-          price: 100.5,
-          imageUrl: 'https://example.com/test.jpg',
-          category: 'Industrial Equipment',
-        });
+        expect(productsService.createProduct).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'New Test Product',
+            description: 'Test product description',
+            price: 100.5,
+            imageUrl: 'https://example.com/test.jpg',
+            category: 'Industrial Equipment',
+          })
+        );
       });
 
       await waitFor(() => {
@@ -351,19 +377,23 @@ describe('AdminProductsPage', () => {
       vi.mocked(productsService.updateProduct).mockResolvedValue({
         ...mockProducts[0],
         name: 'Updated Industrial Pump',
+        availability: 'in_stock' as const,
       });
 
       const saveButton = screen.getByRole('button', { name: /salvar/i });
       await user.click(saveButton);
 
       await waitFor(() => {
-        expect(productsService.updateProduct).toHaveBeenCalledWith(1, {
-          name: 'Updated Industrial Pump',
-          description: 'High-performance industrial water pump',
-          price: 1500,
-          imageUrl: 'https://example.com/pump.jpg',
-          category: 'Industrial Equipment',
-        });
+        expect(productsService.updateProduct).toHaveBeenCalledWith(
+          1,
+          expect.objectContaining({
+            name: 'Updated Industrial Pump',
+            description: 'High-performance industrial water pump',
+            price: 1500,
+            imageUrl: 'https://example.com/pump.jpg',
+            category: 'Industrial Equipment',
+          })
+        );
       });
 
       expect(toast.success).toHaveBeenCalledWith('Produto atualizado com sucesso!');

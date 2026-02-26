@@ -23,65 +23,32 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
   Chip,
   Alert,
   CircularProgress,
   Paper,
   Tabs,
   Tab,
-  Badge,
-  Tooltip,
   InputAdornment,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Avatar,
-  Divider,
-  Stepper,
-  Step,
-  StepLabel,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  FormControlLabel,
-  Switch,
 } from '@mui/material';
 import {
   Visibility,
-  Edit,
   CheckCircle,
   Cancel,
   Search,
-  FilterList,
   Assignment,
-  AttachMoney,
   Schedule,
-  Warning,
   Info,
   Business,
   Email,
   Phone,
-  LocationOn,
-  CalendarToday,
   Send,
-  Print,
-  Download,
-  ExpandMore,
-  Calculator,
-  LocalShipping,
-  Inventory,
   TrendingUp,
-  AccessTime,
   PlayArrow,
-  Done,
-  Close,
 } from '@mui/icons-material';
-import { Quotation, QuotationItem } from '@shared/types';
+import { Quotation } from '@shared/types';
 import { quotationsService } from '../services/quotationsService';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 interface QuotationResponse {
@@ -137,32 +104,29 @@ const SupplierQuotationsPage: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState<string>('');
 
   const { user } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    loadQuotations();
-  }, []);
 
   const loadQuotations = useCallback(async () => {
     setLoading(true);
     try {
       // This would ideally be a supplier-specific endpoint
       // For now, using the admin endpoint and filtering
-      const response = await quotationsService.getAllQuotations();
-      if (response.success && response.data) {
-        // Filter quotations that include products from this supplier
-        const supplierQuotations = response.data.filter((quotation: Quotation) =>
-          quotation.items?.some(item => item.product?.supplierId === user?.id)
-        );
-        setQuotations(supplierQuotations);
-      }
-    } catch (error) {
-      console.error('Error loading quotations:', error);
+      const data = await quotationsService.getAllQuotations();
+      // Filter quotations that include products from this supplier
+      const supplierQuotations = data.filter((quotation: Quotation) =>
+        quotation.items?.some(item => item.product?.supplierId === user?.id)
+      );
+      setQuotations(supplierQuotations);
+    } catch (_error) {
+      console.error('Error loading quotations:', _error);
       toast.error('Error loading quotations');
     } finally {
       setLoading(false);
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    loadQuotations();
+  }, [loadQuotations]);
 
   const handleViewDetails = (quotation: Quotation) => {
     setSelectedQuotation(quotation);
@@ -199,22 +163,22 @@ const SupplierQuotationsPage: React.FC = () => {
     });
   };
 
-  const handleAcceptQuotation = async (quotationId: number) => {
+  const handleAcceptQuotation = async (_quotationId: number) => {
     try {
       // This would call a supplier-specific accept endpoint
       toast.success('Quotation accepted successfully');
       loadQuotations();
-    } catch (error) {
+    } catch (_error) {
       toast.error('Error accepting quotation');
     }
   };
 
-  const handleRejectQuotation = async (quotationId: number, reason: string) => {
+  const handleRejectQuotation = async (_quotationId: number, _reason: string) => {
     try {
       // This would call a supplier-specific reject endpoint
       toast.success('Quotation rejected');
       loadQuotations();
-    } catch (error) {
+    } catch (_error) {
       toast.error('Error rejecting quotation');
     }
   };
@@ -229,7 +193,7 @@ const SupplierQuotationsPage: React.FC = () => {
         response: initialResponse,
       });
       loadQuotations();
-    } catch (error) {
+    } catch (_error) {
       toast.error('Error submitting quotation response');
     }
   };
@@ -264,7 +228,9 @@ const SupplierQuotationsPage: React.FC = () => {
     });
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (
+    status: string
+  ): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status) {
       case 'pending':
         return 'warning';
@@ -294,7 +260,9 @@ const SupplierQuotationsPage: React.FC = () => {
     }
   };
 
-  const getPriorityColor = (requestedDeliveryDate?: Date) => {
+  const getPriorityColor = (
+    requestedDeliveryDate?: Date
+  ): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     if (!requestedDeliveryDate) return 'default';
 
     const now = new Date();
@@ -380,13 +348,13 @@ const SupplierQuotationsPage: React.FC = () => {
           <Box display='flex' gap={1} flexDirection='column' alignItems='flex-end'>
             <Chip
               label={quotation.status}
-              color={getStatusColor(quotation.status) as any}
+              color={getStatusColor(quotation.status)}
               icon={getStatusIcon(quotation.status)}
             />
             {quotation.requestedDeliveryDate && (
               <Chip
                 label={getPriorityLabel(quotation.requestedDeliveryDate)}
-                color={getPriorityColor(quotation.requestedDeliveryDate) as any}
+                color={getPriorityColor(quotation.requestedDeliveryDate)}
                 size='small'
               />
             )}
@@ -570,7 +538,7 @@ const SupplierQuotationsPage: React.FC = () => {
                 fullWidth
                 placeholder='Search quotations...'
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position='start'>
@@ -739,7 +707,7 @@ const SupplierQuotationsPage: React.FC = () => {
                             type='number'
                             size='small'
                             value={item.unitPrice}
-                            onChange={e => updateItemPrice(index, Number(e.target.value))}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateItemPrice(index, Number(e.target.value))}
                             inputProps={{ min: 0, step: 0.01 }}
                           />
                         </TableCell>
@@ -779,7 +747,7 @@ const SupplierQuotationsPage: React.FC = () => {
                     type='date'
                     label='Valid Until'
                     value={responseDialog.response.validUntil}
-                    onChange={e =>
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       setResponseDialog({
                         ...responseDialog,
                         response: { ...responseDialog.response, validUntil: e.target.value },
@@ -793,7 +761,7 @@ const SupplierQuotationsPage: React.FC = () => {
                     fullWidth
                     label='Payment Terms'
                     value={responseDialog.response.paymentTerms}
-                    onChange={e =>
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       setResponseDialog({
                         ...responseDialog,
                         response: { ...responseDialog.response, paymentTerms: e.target.value },
@@ -806,7 +774,7 @@ const SupplierQuotationsPage: React.FC = () => {
                     fullWidth
                     label='Delivery Terms'
                     value={responseDialog.response.deliveryTerms}
-                    onChange={e =>
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       setResponseDialog({
                         ...responseDialog,
                         response: { ...responseDialog.response, deliveryTerms: e.target.value },
@@ -821,7 +789,7 @@ const SupplierQuotationsPage: React.FC = () => {
                     rows={2}
                     label='Additional Notes'
                     value={responseDialog.response.notes}
-                    onChange={e =>
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       setResponseDialog({
                         ...responseDialog,
                         response: { ...responseDialog.response, notes: e.target.value },
@@ -889,7 +857,7 @@ const SupplierQuotationsPage: React.FC = () => {
                     Status:{' '}
                     <Chip
                       label={selectedQuotation.status}
-                      color={getStatusColor(selectedQuotation.status) as any}
+                      color={getStatusColor(selectedQuotation.status)}
                       size='small'
                     />
                   </Typography>

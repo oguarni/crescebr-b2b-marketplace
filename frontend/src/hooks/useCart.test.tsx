@@ -32,6 +32,13 @@ const mockProduct: Product = {
   price: 100.0,
   imageUrl: 'https://example.com/image.jpg',
   category: 'Test Category',
+  supplierId: 1,
+  unitPrice: 100.0,
+  minimumOrderQuantity: 1,
+  leadTime: 7,
+  availability: 'in_stock',
+  specifications: {},
+  tierPricing: [],
 };
 
 const mockProduct2: Product = {
@@ -41,6 +48,13 @@ const mockProduct2: Product = {
   price: 200.0,
   imageUrl: 'https://example.com/image2.jpg',
   category: 'Test Category',
+  supplierId: 1,
+  unitPrice: 200.0,
+  minimumOrderQuantity: 1,
+  leadTime: 7,
+  availability: 'in_stock',
+  specifications: {},
+  tierPricing: [],
 };
 
 describe('useCart', () => {

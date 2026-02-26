@@ -19,7 +19,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Alert,
   CircularProgress,
   Rating,
@@ -31,14 +30,12 @@ import {
 import {
   Compare,
   Search,
-  LocalShipping,
   Business,
-  Star,
   ExpandMore,
   ExpandLess,
   ShoppingCart,
-  Savings,
 } from '@mui/icons-material';
+import { SelectChangeEvent } from '@mui/material/Select';
 import { quotationsService } from '../services/quotationsService';
 import { productsService } from '../services/productsService';
 import { Product } from '@shared/types';
@@ -64,7 +61,7 @@ interface SupplierQuote {
     tax: number;
     total: number;
     savings: number;
-    appliedTier: any;
+    appliedTier: Record<string, unknown> | null;
   } | null;
   error?: string;
 }
@@ -90,7 +87,7 @@ const QuoteComparisonPage: React.FC = () => {
     try {
       const response = await productsService.getAllProducts({ limit: 100 });
       setProducts(response.products);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Erro ao carregar produtos');
     } finally {
       setLoadingProducts(false);
@@ -125,11 +122,11 @@ const QuoteComparisonPage: React.FC = () => {
       setQuotes(response.quotes);
 
       if (response.quotes.length === 0) {
-        toast.info('Nenhum fornecedor encontrado para este produto');
+        toast('Nenhum fornecedor encontrado para este produto');
       } else {
         toast.success(`${response.quotes.length} cotações encontradas`);
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error('Erro ao buscar cotações');
     } finally {
       setLoading(false);
@@ -229,7 +226,7 @@ const QuoteComparisonPage: React.FC = () => {
                 label='Quantidade'
                 type='number'
                 value={quantity}
-                onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                 inputProps={{
                   min: selectedProduct?.minimumOrderQuantity || 1,
                   step: 1,
@@ -247,7 +244,7 @@ const QuoteComparisonPage: React.FC = () => {
                 fullWidth
                 label='Sua Localização'
                 value={buyerLocation}
-                onChange={e => setBuyerLocation(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBuyerLocation(e.target.value)}
                 placeholder='Ex: Curitiba'
               />
             </Grid>
@@ -258,7 +255,7 @@ const QuoteComparisonPage: React.FC = () => {
                 <Select
                   value={shippingMethod}
                   label='Entrega'
-                  onChange={e => setShippingMethod(e.target.value as any)}
+                  onChange={(e: SelectChangeEvent<string>) => setShippingMethod(e.target.value)}
                 >
                   <MenuItem value='economy'>Econômica</MenuItem>
                   <MenuItem value='standard'>Padrão</MenuItem>
@@ -491,7 +488,7 @@ const QuoteComparisonPage: React.FC = () => {
                             </>
                           ) : (
                             <>
-                              <TableCell align='center' colSpan={5}>
+                              <TableCell align='center' {...{ colSpan: 5 }}>
                                 <Alert severity='error' sx={{ width: 'fit-content', mx: 'auto' }}>
                                   {supplierQuote.error || 'Erro ao calcular cotação'}
                                 </Alert>
@@ -513,7 +510,7 @@ const QuoteComparisonPage: React.FC = () => {
 
                         {/* Expanded Details */}
                         <TableRow>
-                          <TableCell colSpan={8} sx={{ p: 0 }}>
+                          <TableCell {...{ colSpan: 8 }} sx={{ p: 0 }}>
                             <Collapse in={expandedQuote === index} timeout='auto' unmountOnExit>
                               {supplierQuote.quote && (
                                 <Box sx={{ p: 2, backgroundColor: 'grey.50' }}>

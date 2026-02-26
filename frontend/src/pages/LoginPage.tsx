@@ -43,8 +43,9 @@ const LoginPage: React.FC = () => {
       }
       toast.success('Login realizado com sucesso!');
       navigate(from, { replace: true });
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error || err.message || 'Erro ao fazer login';
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
+      const errorMessage = axiosErr.response?.data?.error || axiosErr.message || 'Erro ao fazer login';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -104,7 +105,7 @@ const LoginPage: React.FC = () => {
                 autoComplete='organization'
                 autoFocus
                 value={cnpj}
-                onChange={e => setCnpj(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCnpj(e.target.value)}
                 placeholder='00.000.000/0000-00'
                 InputProps={{
                   startAdornment: (
@@ -125,7 +126,7 @@ const LoginPage: React.FC = () => {
                 autoComplete='email'
                 autoFocus
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position='start'>
@@ -145,7 +146,7 @@ const LoginPage: React.FC = () => {
               id='password'
               autoComplete='current-password'
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position='start'>

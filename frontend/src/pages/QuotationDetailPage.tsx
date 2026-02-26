@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -10,7 +10,6 @@ import {
   Chip,
   Grid,
   Avatar,
-  Divider,
   CircularProgress,
   Alert,
   Paper,
@@ -40,12 +39,11 @@ const QuotationDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchQuotation = async () => {
       if (!id) return;
-      
+
       try {
         const data = await quotationsService.getQuotationById(parseInt(id));
         setQuotation(data);
@@ -59,9 +57,9 @@ const QuotationDetailPage: React.FC = () => {
     };
 
     fetchQuotation();
-  }, [id, navigate]);
+  }, [id]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status) {
       case 'pending':
         return 'warning';
@@ -132,7 +130,6 @@ const QuotationDetailPage: React.FC = () => {
   };
 
   const isAdmin = user?.role === 'admin';
-  const isCustomer = user?.role === 'customer';
 
   if (loading) {
     return (
@@ -194,8 +191,8 @@ const QuotationDetailPage: React.FC = () => {
           <Chip
             icon={getStatusIcon(quotation.status)}
             label={getStatusLabel(quotation.status)}
-            color={getStatusColor(quotation.status) as any}
-            size="large"
+            color={getStatusColor(quotation.status)}
+            size="medium"
           />
         </Box>
         <Typography variant="body1" color="text.secondary">
@@ -205,7 +202,7 @@ const QuotationDetailPage: React.FC = () => {
 
       <Grid container spacing={3}>
         {/* Customer Information - Only for Admin */}
-        {isAdmin && quotation.user && (
+        {isAdmin && quotation.company && (
           <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
@@ -217,15 +214,15 @@ const QuotationDetailPage: React.FC = () => {
                     Email:
                   </Typography>
                   <Typography variant="body1">
-                    {quotation.user.email}
+                    {quotation.company.email}
                   </Typography>
                 </Box>
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" color="text.secondary">
-                    CPF:
+                    CNPJ:
                   </Typography>
                   <Typography variant="body1">
-                    {quotation.user.cpf}
+                    {quotation.company.cnpj}
                   </Typography>
                 </Box>
                 <Box>
@@ -233,7 +230,7 @@ const QuotationDetailPage: React.FC = () => {
                     Endereço:
                   </Typography>
                   <Typography variant="body1">
-                    {quotation.user.address}
+                    {quotation.company.address}
                   </Typography>
                 </Box>
               </CardContent>

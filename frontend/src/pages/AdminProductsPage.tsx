@@ -152,7 +152,16 @@ const AdminProductsPage: React.FC = () => {
         await productsService.updateProduct(editingProduct.id, productData);
         toast.success('Produto atualizado com sucesso!');
       } else {
-        await productsService.createProduct(productData);
+        await productsService.createProduct({
+          ...productData,
+          supplierId: 0,
+          unitPrice: price,
+          minimumOrderQuantity: 1,
+          leadTime: 7,
+          availability: 'in_stock',
+          specifications: {},
+          tierPricing: [],
+        });
         toast.success('Produto criado com sucesso!');
       }
 
@@ -314,7 +323,7 @@ const AdminProductsPage: React.FC = () => {
                 fullWidth
                 label="Nome do Produto"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
               />
             </Grid>
             <Grid item xs={12}>
@@ -324,7 +333,7 @@ const AdminProductsPage: React.FC = () => {
                 multiline
                 rows={3}
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, description: e.target.value })}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -334,7 +343,7 @@ const AdminProductsPage: React.FC = () => {
                 type="number"
                 inputProps={{ min: 0, step: 0.01 }}
                 value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, price: e.target.value })}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -343,7 +352,7 @@ const AdminProductsPage: React.FC = () => {
                 <Select
                   value={formData.category}
                   label="Categoria"
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, category: String(e.target.value) })}
                 >
                   {categories.map((category) => (
                     <MenuItem key={category} value={category}>
@@ -362,7 +371,7 @@ const AdminProductsPage: React.FC = () => {
                   fullWidth
                   label="Nome da Nova Categoria"
                   placeholder="Digite o nome da nova categoria"
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, category: e.target.value })}
                 />
               </Grid>
             )}
@@ -371,7 +380,7 @@ const AdminProductsPage: React.FC = () => {
                 fullWidth
                 label="URL da Imagem"
                 value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, imageUrl: e.target.value })}
                 placeholder="https://exemplo.com/imagem.jpg"
               />
             </Grid>
