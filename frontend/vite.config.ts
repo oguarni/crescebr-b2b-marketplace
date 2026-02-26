@@ -17,7 +17,7 @@ export default defineConfig({
     proxy: {
       // Proxy API requests to the backend container
       '/api': {
-        target: 'http://backend:3001', // Service name from docker-compose
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
       },
@@ -27,5 +27,11 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
+    poolOptions: {
+      threads: {
+        maxThreads: 2,
+        minThreads: 1,
+      },
+    },
   },
 });
