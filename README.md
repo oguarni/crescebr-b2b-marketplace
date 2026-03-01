@@ -1,11 +1,10 @@
-<p align="center">
+<div align="center">
   <img src="frontend/public/logo.png" alt="CresceBR Logo" width="450" />
-</p>
-
-<p align="center">
+  <br />
+  <a href="#key-features">🌐 English</a>&nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="#visao-geral">🇧🇷 Português</a>&nbsp;&nbsp;|&nbsp;&nbsp;
-  <a href="#key-features">🌐 English</a>
-</p>
+  
+</div>
 
 <h1 align="center">CresceBR B2B Marketplace</h1>
 
