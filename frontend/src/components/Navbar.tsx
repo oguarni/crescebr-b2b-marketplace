@@ -30,12 +30,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useQuotationRequest } from '../contexts/QuotationContext';
 
-import {
-  AdminOnly,
-  SupplierOnly,
-  CustomerOnly,
-  ApprovedSupplierOnly,
-} from './PermissionGuard';
+import { AdminOnly, SupplierOnly, CustomerOnly, ApprovedSupplierOnly } from './PermissionGuard';
 import toast from 'react-hot-toast';
 
 const Navbar: React.FC = () => {
@@ -96,19 +91,29 @@ const Navbar: React.FC = () => {
   return (
     <AppBar position='sticky' elevation={1}>
       <Toolbar>
-        <Typography
-          variant='h6'
+        <Box
           component={Link}
           to='/'
           sx={{
             flexGrow: 1,
+            display: 'flex',
+            alignItems: 'center',
             textDecoration: 'none',
             color: 'inherit',
-            fontWeight: 'bold',
+            gap: 1.5,
           }}
         >
-          CresceBR
-        </Typography>
+          <img src='/logo_icon.png' alt='CresceBR Logo' style={{ height: '40px', width: 'auto' }} />
+          <Typography
+            variant='h6'
+            sx={{
+              fontWeight: '900',
+              letterSpacing: '-0.5px',
+            }}
+          >
+            CresceBR
+          </Typography>
+        </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {/* Dynamic Action Buttons Based on Permissions */}

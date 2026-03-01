@@ -110,3 +110,6 @@ filter-repo/
 
 # Package lock files (optional - uncomment if using yarn or pnpm exclusively)
 # package-lock.json
+
+# Documentation and design assets
+docs/
