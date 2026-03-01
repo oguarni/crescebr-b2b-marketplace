@@ -4,7 +4,7 @@
 </div>
 <h1 align="center">B2B Marketplace</h1>
 <p align="center">
-  Industrial procurement platform connecting Brazilian buyers and suppliers through structured quotation workflows.
+  Structured procurement platform for the Brazilian industrial market — verified companies, volume-based quotations, and complete order lifecycle management.
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
@@ -17,15 +17,62 @@
 
 ---
 
+<div align="center">
+  <img src="docs/screenshot.png" alt="CresceBR Dashboard" width="900" />
+</div>
+
+---
+
 ## Key Features
 
-- **CNPJ Validation** — Real-time company verification via Brasil API
-- **Role-based Access** — Buyer, Supplier, and Admin with granular permissions
-- **Quotation Engine** — Tier-based volume pricing with automated tax and shipping calculations
-- **Order Lifecycle** — Full status tracking from pending to delivered
-- **Bulk CSV Import** — Large product catalog ingestion for suppliers
-- **Admin Dashboard** — Company verification, analytics, and user management
-- **JWT Security** — Token-based auth with Helmet, rate limiting, and bcrypt
+- **CNPJ Validation** — Real-time company verification via Brasil API ensures only legitimate businesses transact
+- **Role-based Access** — Granular permissions for Buyer, Supplier, and Admin roles with middleware-enforced RBAC
+- **Quotation Engine** — Tier-based volume pricing with automated tax and shipping calculations per request
+- **Order Lifecycle** — Full status tracking from pending through confirmed, shipped, and delivered
+- **Bulk CSV Import** — Suppliers can ingest large product catalogs in a single operation
+- **Admin Dashboard** — Company verification queue, platform analytics, and user management
+- **JWT Security** — Token-based auth hardened with Helmet, rate limiting, and bcrypt hashing
+
+---
+
+## Tech Stack
+
+| Layer         | Technology                        |
+| ------------- | --------------------------------- |
+| Frontend      | React 19, TypeScript, MUI, Vite   |
+| Backend       | Node.js, Express 5, TypeScript    |
+| Database      | PostgreSQL 15, Sequelize ORM      |
+| Auth          | JWT, bcrypt, Helmet               |
+| File handling | Multer (CSV import, file uploads) |
+| External API  | Brasil API (CNPJ validation)      |
+| DevOps        | Docker, Docker Compose            |
+
+---
+
+## Getting Started
+
+### Docker (recommended)
+
+```bash
+git clone https://github.com/oguarni/CresceBR.git crescebr-b2b-marketplace
+cd crescebr-b2b-marketplace
+
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+
+docker-compose up --build
+```
+
+Access: `http://localhost:5173` (frontend) | `http://localhost:3001` (API)
+
+### Local development
+
+```bash
+npm run setup   # install all dependencies
+npm run dev     # start frontend (5173) + backend (3001) concurrently
+```
+
+Prerequisites: Node.js 20+, PostgreSQL 15 running locally.
 
 ---
 
@@ -83,137 +130,18 @@ crescebr-b2b-marketplace/
 
 ---
 
-## Tech Stack
+## API Overview
 
-| Layer         | Technology                        |
-| ------------- | --------------------------------- |
-| Frontend      | React 19, TypeScript, MUI, Vite   |
-| Backend       | Node.js, Express 5, TypeScript    |
-| Database      | PostgreSQL 15, Sequelize ORM      |
-| Auth          | JWT, bcrypt, Helmet               |
-| File handling | Multer (CSV import, file uploads) |
-| External API  | Brasil API (CNPJ validation)      |
-| DevOps        | Docker, Docker Compose            |
+| Domain     | Endpoints | Description                                         |
+| ---------- | --------- | --------------------------------------------------- |
+| Auth       | 4         | Register (buyer/supplier), login, profile           |
+| Companies  | 3         | List, verify, and stats (admin-only)                |
+| Products   | 6         | CRUD, bulk CSV import, template download            |
+| Quotations | 5         | Create, list, detail, update status, process        |
+| Orders     | 5         | Create from quotation, list, history, status, stats |
+| Admin      | 3         | Analytics dashboard, company management             |
 
----
-
-## Getting Started
-
-### Docker (recommended)
-
-```bash
-git clone https://github.com/oguarni/CresceBR.git crescebr-b2b-marketplace
-cd crescebr-b2b-marketplace
-
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-
-docker-compose up --build
-```
-
-Access: `http://localhost:5173` (frontend) | `http://localhost:3001` (API)
-
-### Local development
-
-```bash
-npm run setup   # install all dependencies
-npm run dev     # start frontend (5173) + backend (3001) concurrently
-```
-
-Prerequisites: Node.js 20+, PostgreSQL 15 running locally.
-
----
-
-## Demo Credentials
-
-| Role     | Email                | Password    | CNPJ               |
-| -------- | -------------------- | ----------- | ------------------ |
-| Admin    | admin@crescebr.com   | admin123    | 11.222.333/0001-81 |
-| Supplier | supplier@example.com | supplier123 | 12.345.678/0001-90 |
-| Buyer    | buyer@example.com    | buyer123    | 98.765.432/0001-10 |
-
----
-
-## API Reference
-
-### Auth
-
-```
-POST /api/auth/register            Register buyer company
-POST /api/auth/register-supplier   Register supplier company
-POST /api/auth/login               Login
-GET  /api/auth/profile             Current user profile
-```
-
-### Companies
-
-```
-GET  /api/companies                List companies (admin)
-PUT  /api/companies/:id/verify     Verify company (admin)
-GET  /api/companies/stats          Company statistics (admin)
-```
-
-### Products
-
-```
-GET    /api/products               List with filters
-POST   /api/products               Create (supplier)
-PUT    /api/products/:id           Update (supplier)
-DELETE /api/products/:id           Delete (supplier)
-POST   /api/products/import-csv    Bulk import (supplier)
-GET    /api/products/sample-csv    Download CSV template
-```
-
-### Quotations
-
-```
-POST /api/quotations               Create request (buyer)
-GET  /api/quotations               List user quotations
-GET  /api/quotations/:id           Quotation details
-PUT  /api/quotations/:id           Update status (supplier)
-POST /api/quotations/:id/process   Process quotation (supplier)
-```
-
-### Orders
-
-```
-POST /api/orders                   Create from quotation
-GET  /api/orders                   List user orders
-GET  /api/orders/:id/history       Order status history
-PUT  /api/orders/:id/status        Update status (supplier/admin)
-GET  /api/orders/stats             Order statistics (admin)
-```
-
-### Admin
-
-```
-GET /api/admin/analytics           Dashboard analytics
-GET /api/admin/companies           Company management
-PUT /api/admin/companies/:id       Update company status
-```
-
----
-
-## Architecture Assessment
-
-| Area            | Status     | Notes                                                 |
-| --------------- | ---------- | ----------------------------------------------------- |
-| Stack Modernity | Strong     | React 19, Express 5, TypeScript full-stack            |
-| Data Layer      | Strong     | PostgreSQL 15 + Sequelize with repository pattern     |
-| Security        | Good       | JWT + RBAC + CNPJ validation + rate limiting + Helmet |
-| Testing         | Moderate   | 25+ test files; needs E2E expansion                   |
-| DevOps          | Needs Work | Docker ready, no CI/CD pipeline                       |
-| Observability   | Needs Work | No structured logging or monitoring                   |
-
-**Verdict:** Architecture is solid for MVP and early production. Express 5 + Sequelize + React 19 is modern and viable. PostgreSQL 15 is an excellent fit for the B2B domain.
-
-Recommended next steps:
-
-1. CI/CD pipeline (GitHub Actions)
-2. PostgreSQL connection pooling
-3. Structured logging (Winston or Pino)
-4. Auth middleware consolidation
-5. E2E test suite
+Base URL: `http://localhost:3001/api`
 
 ---
 
@@ -247,6 +175,16 @@ npm run test     # Vitest suite
 
 ---
 
+## Demo Credentials
+
+| Role     | Email                | Password    | CNPJ               |
+| -------- | -------------------- | ----------- | ------------------ |
+| Admin    | admin@crescebr.com   | admin123    | 11.222.333/0001-81 |
+| Supplier | supplier@example.com | supplier123 | 12.345.678/0001-90 |
+| Buyer    | buyer@example.com    | buyer123    | 98.765.432/0001-10 |
+
+---
+
 ## Contributing
 
 1. Fork the repository
@@ -265,43 +203,26 @@ Licensed under **CC BY-NC-SA 4.0**. See [LICENSE](LICENSE) for details.
 
 <h2 id="visao-geral">🇧🇷 Visão Geral</h2>
 
-**CresceBR** é uma plataforma de marketplace B2B para o mercado industrial brasileiro. Conecta empresas compradoras e fornecedoras por meio de um fluxo estruturado de cotações, gestão de pedidos e verificação de CNPJ em tempo real.
+**CresceBR** é uma plataforma de marketplace B2B para o mercado industrial brasileiro. Conecta empresas compradoras e fornecedoras por meio de cotações estruturadas com precificação por volume, verificação de CNPJ em tempo real, e rastreamento completo do ciclo de pedidos.
 
-### Como executar
+### Stack
+
+- React 19 + TypeScript + MUI (frontend)
+- Node.js + Express 5 + TypeScript (backend)
+- PostgreSQL 15 + Sequelize ORM (banco de dados)
+- JWT + RBAC + Helmet (autenticação e segurança)
+- Docker + Docker Compose (infraestrutura)
+
+### Executar com Docker
 
 ```bash
 git clone https://github.com/oguarni/CresceBR.git crescebr-b2b-marketplace
 cd crescebr-b2b-marketplace
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp backend/.env.example backend/.env && cp frontend/.env.example frontend/.env
 docker-compose up --build
 ```
 
-Acesse: `http://localhost:5173`
-
-### Tecnologias principais
-
-- React 19 + TypeScript (frontend)
-- Node.js + Express 5 (backend)
-- PostgreSQL 15 + Sequelize (banco de dados)
-- JWT + RBAC (autenticação e permissões)
-- Docker (containerização)
-
-### Contas de teste
-
-| Perfil     | E-mail               | Senha       |
-| ---------- | -------------------- | ----------- |
-| Admin      | admin@crescebr.com   | admin123    |
-| Fornecedor | supplier@example.com | supplier123 |
-| Comprador  | buyer@example.com    | buyer123    |
-
-### Funcionalidades principais
-
-- Validação de CNPJ via Brasil API
-- Cotações com precificação por volume
-- Catálogo de produtos com importação CSV
-- Rastreamento completo do ciclo de pedidos
-- Painel administrativo com analytics
+Acesse `http://localhost:5173`. Para instruções detalhadas, consulte as seções em inglês acima.
 
 ---
 
