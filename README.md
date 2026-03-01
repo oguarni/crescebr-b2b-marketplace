@@ -1,10 +1,10 @@
 <p align="center">
-  <a href="#visao-geral">🇧🇷 Português</a>&nbsp;&nbsp;|&nbsp;&nbsp;
-  <a href="#key-features">🌐 English</a>
+  <img src="frontend/public/logo.png" alt="CresceBR Logo" width="180" />
 </p>
 
 <p align="center">
-  <img src="docs/logo.png" alt="CresceBR Logo" width="180" />
+  <a href="#visao-geral">🇧🇷 Português</a>&nbsp;&nbsp;|&nbsp;&nbsp;
+  <a href="#key-features">🌐 English</a>
 </p>
 
 <h1 align="center">CresceBR B2B Marketplace</h1>
