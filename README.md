@@ -3,7 +3,7 @@
   <div><a href="#key-features">🌐 English</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="#visao-geral">🇧🇷 Português</a></div>
 </div>
 
-<h1 align="center">CresceBR B2B Marketplace</h1>
+<h1 align="center">B2B Marketplace</h1>
 
 <p align="center">
   Industrial procurement platform connecting Brazilian buyers and suppliers through structured quotation workflows.
