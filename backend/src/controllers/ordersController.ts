@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { body, validationResult } from 'express-validator';
+import { validationResult } from 'express-validator';
 import { AuthenticatedRequest } from '../middleware/auth';
 import Order from '../models/Order';
 import Quotation from '../models/Quotation';
@@ -7,10 +7,13 @@ import User from '../models/User';
 import { asyncHandler } from '../middleware/errorHandler';
 import { OrderStatusService } from '../services/orderStatusService';
 import { QuoteService } from '../services/quoteService';
+import {
+  createOrderValidation,
+  updateOrderStatusValidation,
+  updateOrderNfeValidation,
+} from '../validators/order.validators';
 
-export const createOrderValidation = [
-  body('quotationId').isInt({ min: 1 }).withMessage('Valid quotation ID is required'),
-];
+export { createOrderValidation, updateOrderStatusValidation, updateOrderNfeValidation };
 
 export const createOrderFromQuotation = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
@@ -93,14 +96,7 @@ export const createOrderFromQuotation = asyncHandler(
   }
 );
 
-export const updateOrderStatusValidation = [
-  body('status')
-    .isIn(['pending', 'processing', 'shipped', 'delivered', 'cancelled'])
-    .withMessage('Invalid status'),
-  body('trackingNumber').optional().isString().withMessage('Tracking number must be a string'),
-  body('estimatedDeliveryDate').optional().isISO8601().withMessage('Invalid date format'),
-  body('notes').optional().isString().withMessage('Notes must be a string'),
-];
+// updateOrderStatusValidation is imported from validators/order.validators.ts
 
 export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const errors = validationResult(req);
@@ -113,7 +109,7 @@ export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, 
   }
 
   const { orderId } = req.params;
-  const { status, trackingNumber, estimatedDeliveryDate, notes } = req.body;
+  const { status, trackingNumber, estimatedDeliveryDate, notes, nfeAccessKey, nfeUrl } = req.body;
   const companyId = req.user?.id!;
   const userRole = req.user?.role;
 
@@ -132,6 +128,8 @@ export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, 
         trackingNumber,
         estimatedDeliveryDate: estimatedDeliveryDate ? new Date(estimatedDeliveryDate) : undefined,
         notes,
+        nfeAccessKey,
+        nfeUrl,
       },
       companyId
     );
@@ -269,5 +267,51 @@ export const getOrderStats = asyncHandler(async (req: AuthenticatedRequest, res:
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get order stats',
     });
+  }
+});
+
+export const updateOrderNfe = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      details: errors.array(),
+    });
+  }
+
+  const { orderId } = req.params;
+  const { nfeAccessKey, nfeUrl } = req.body;
+  const requesterId = req.user?.id!;
+  const requesterRole = req.user?.role!;
+
+  if (requesterRole !== 'admin' && requesterRole !== 'supplier') {
+    return res.status(403).json({
+      success: false,
+      error: 'Only admins and suppliers can update NF-e data',
+    });
+  }
+
+  try {
+    const updatedOrder = await OrderStatusService.updateOrderNfe(
+      orderId,
+      { nfeAccessKey, nfeUrl },
+      requesterId,
+      requesterRole
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'NF-e data updated successfully',
+      data: updatedOrder,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update NF-e data';
+    const status = message.includes('Access denied')
+      ? 403
+      : message.includes('not found')
+        ? 404
+        : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });

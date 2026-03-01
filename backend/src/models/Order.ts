@@ -11,6 +11,8 @@ interface OrderAttributes {
   totalAmount: number;
   estimatedDeliveryDate?: Date;
   trackingNumber?: string;
+  nfeAccessKey?: string;
+  nfeUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -18,7 +20,14 @@ interface OrderAttributes {
 interface OrderCreationAttributes
   extends Optional<
     OrderAttributes,
-    'id' | 'status' | 'estimatedDeliveryDate' | 'trackingNumber' | 'createdAt' | 'updatedAt'
+    | 'id'
+    | 'status'
+    | 'estimatedDeliveryDate'
+    | 'trackingNumber'
+    | 'nfeAccessKey'
+    | 'nfeUrl'
+    | 'createdAt'
+    | 'updatedAt'
   > {}
 
 class Order extends Model<OrderAttributes, OrderCreationAttributes> implements OrderAttributes {
@@ -29,6 +38,8 @@ class Order extends Model<OrderAttributes, OrderCreationAttributes> implements O
   public totalAmount!: number;
   public estimatedDeliveryDate?: Date;
   public trackingNumber?: string;
+  public nfeAccessKey?: string;
+  public nfeUrl?: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -73,6 +84,16 @@ Order.init(
     trackingNumber: {
       type: DataTypes.STRING(100),
       allowNull: true,
+    },
+    nfeAccessKey: {
+      type: DataTypes.STRING(44),
+      allowNull: true,
+      comment: 'Brazilian NF-e access key — exactly 44 numeric digits',
+    },
+    nfeUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'URL pointing to the NF-e document',
     },
   },
   {
