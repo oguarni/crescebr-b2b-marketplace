@@ -2,6 +2,11 @@ import Order from '../models/Order';
 import User from '../models/User';
 import Quotation from '../models/Quotation';
 
+export interface NfeUpdateData {
+  nfeAccessKey?: string;
+  nfeUrl?: string;
+}
+
 type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 interface StatusTransition {
@@ -16,13 +21,15 @@ interface OrderStatusUpdate {
   trackingNumber?: string;
   estimatedDeliveryDate?: Date;
   notes?: string;
+  nfeAccessKey?: string;
+  nfeUrl?: string;
 }
 
 export class OrderStatusService {
   private static readonly STATUS_TRANSITIONS: StatusTransition[] = [
     { from: 'pending', to: 'processing' },
     { from: 'pending', to: 'cancelled' },
-    { from: 'processing', to: 'shipped', requiredFields: ['trackingNumber'] },
+    { from: 'processing', to: 'shipped', requiredFields: ['trackingNumber', 'nfeAccessKey'] },
     { from: 'processing', to: 'cancelled' },
     { from: 'shipped', to: 'delivered' },
     { from: 'shipped', to: 'cancelled' },
@@ -128,6 +135,14 @@ export class OrderStatusService {
 
     if (updateData.trackingNumber) {
       updateFields.trackingNumber = updateData.trackingNumber;
+    }
+
+    if (updateData.nfeAccessKey) {
+      updateFields.nfeAccessKey = updateData.nfeAccessKey;
+    }
+
+    if (updateData.nfeUrl) {
+      updateFields.nfeUrl = updateData.nfeUrl;
     }
 
     if (updateData.estimatedDeliveryDate) {
@@ -308,12 +323,12 @@ export class OrderStatusService {
     const averageProcessingTime =
       completedOrders.length > 0
         ? completedOrders.reduce((sum, order) => {
-          const processingTime =
-            new Date(order.updatedAt).getTime() - new Date(order.createdAt).getTime();
-          return sum + processingTime;
-        }, 0) /
-        completedOrders.length /
-        (1000 * 60 * 60 * 24)
+            const processingTime =
+              new Date(order.updatedAt).getTime() - new Date(order.createdAt).getTime();
+            return sum + processingTime;
+          }, 0) /
+          completedOrders.length /
+          (1000 * 60 * 60 * 24)
         : 0;
 
     return {
@@ -327,5 +342,64 @@ export class OrderStatusService {
       totalOrders,
       averageProcessingTime,
     };
+  }
+
+  /**
+   * Corrects the NF-e fields (nfeAccessKey / nfeUrl) on an already-shipped
+   * or delivered order.
+   *
+   * @param orderId   UUID of the target order.
+   * @param data      Fields to update — at least one must be present.
+   * @param requesterId  companyId of the authenticated user making the request.
+   * @param requesterRole  Role of the authenticated user ('admin' | 'supplier' | …).
+   */
+  static async updateOrderNfe(
+    orderId: string,
+    data: NfeUpdateData,
+    requesterId: number,
+    requesterRole: string
+  ): Promise<Order> {
+    const order = await Order.findByPk(orderId, {
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'email', 'role'] },
+        { model: Quotation, as: 'quotation' },
+      ],
+    });
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    // Only the order's own supplier or an admin may correct NF-e data
+    if (requesterRole !== 'admin' && order.companyId !== requesterId) {
+      throw new Error('Access denied: you do not own this order');
+    }
+
+    // NF-e corrections only make sense after the order has been shipped
+    const allowedStatuses: string[] = ['shipped', 'delivered'];
+    if (!allowedStatuses.includes(order.status)) {
+      throw new Error(
+        `NF-e data can only be updated on orders with status 'shipped' or 'delivered'. Current status: ${order.status}`
+      );
+    }
+
+    if (!data.nfeAccessKey && !data.nfeUrl) {
+      throw new Error('At least one of nfeAccessKey or nfeUrl must be provided');
+    }
+
+    const patch: Partial<NfeUpdateData> = {};
+    if (data.nfeAccessKey) patch.nfeAccessKey = data.nfeAccessKey;
+    if (data.nfeUrl) patch.nfeUrl = data.nfeUrl;
+
+    await order.update(patch);
+
+    const updatedOrder = await Order.findByPk(orderId, {
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'email', 'role'] },
+        { model: Quotation, as: 'quotation' },
+      ],
+    });
+
+    return updatedOrder!;
   }
 }

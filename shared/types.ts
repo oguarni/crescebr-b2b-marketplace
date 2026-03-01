@@ -155,6 +155,8 @@ export interface Order {
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   estimatedDeliveryDate?: Date;
   trackingNumber?: string;
+  nfeAccessKey?: string;
+  nfeUrl?: string;
   shippingAddress: string;
   notes: string | null;
   createdAt?: Date;

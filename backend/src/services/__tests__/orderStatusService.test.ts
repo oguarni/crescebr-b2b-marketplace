@@ -12,6 +12,21 @@ const MockOrder = Order as jest.Mocked<typeof Order>;
 const MockUser = User as jest.Mocked<typeof User>;
 const MockQuotation = Quotation as jest.Mocked<typeof Quotation>;
 
+// ---------------------------------------------------------------------------
+// Helper
+// ---------------------------------------------------------------------------
+function createMockOrder(overrides: Record<string, any> = {}) {
+  return {
+    id: 'order-mock',
+    status: 'pending',
+    companyId: 1,
+    quotationId: 1,
+    totalAmount: 100,
+    update: jest.fn().mockResolvedValue(true),
+    ...overrides,
+  };
+}
+
 describe('OrderStatusService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -200,28 +215,89 @@ describe('OrderStatusService', () => {
       ).rejects.toThrow('trackingNumber is required for this status transition');
     });
 
+    it('should require nfeAccessKey when tracking number is present for shipping', async () => {
+      const mockOrder = {
+        id: 'order-123',
+        status: 'processing',
+        update: jest.fn(),
+      };
+
+      MockOrder.findByPk.mockResolvedValue(mockOrder as any);
+
+      // trackingNumber provided, but nfeAccessKey is missing
+      await expect(
+        OrderStatusService.updateOrderStatus(
+          'order-123',
+          { status: 'shipped', trackingNumber: 'TRACK123' },
+          1
+        )
+      ).rejects.toThrow('nfeAccessKey is required for this status transition');
+    });
+
+    it('should save nfeAccessKey and nfeUrl when shipping transition is complete', async () => {
+      const mockOrder = {
+        id: 'order-123',
+        status: 'processing',
+        update: jest.fn().mockResolvedValue(true),
+      };
+      const NFE_KEY = '12345678901234567890123456789012345678901234'; // 44 digits
+      const NFE_URL = 'https://nfe.example.com/doc/12345678901234567890123456789012345678901234';
+
+      MockOrder.findByPk.mockResolvedValueOnce(mockOrder as any).mockResolvedValueOnce({
+        ...mockOrder,
+        status: 'shipped',
+        trackingNumber: 'TRACK123',
+        nfeAccessKey: NFE_KEY,
+        nfeUrl: NFE_URL,
+      } as any);
+
+      const result = await OrderStatusService.updateOrderStatus(
+        'order-123',
+        { status: 'shipped', trackingNumber: 'TRACK123', nfeAccessKey: NFE_KEY, nfeUrl: NFE_URL },
+        1
+      );
+
+      // Both NF-e fields must be forwarded to order.update()
+      expect(mockOrder.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'shipped',
+          trackingNumber: 'TRACK123',
+          nfeAccessKey: NFE_KEY,
+          nfeUrl: NFE_URL,
+          estimatedDeliveryDate: expect.any(Date),
+        })
+      );
+
+      // And they must be present on the returned order
+      expect((result as any).nfeAccessKey).toBe(NFE_KEY);
+      expect((result as any).nfeUrl).toBe(NFE_URL);
+    });
+
     it('should update with tracking number when provided', async () => {
       const mockOrder = {
         id: 'order-123',
         status: 'processing',
         update: jest.fn().mockResolvedValue(true),
       };
+      const NFE_KEY = '12345678901234567890123456789012345678901234';
 
       MockOrder.findByPk.mockResolvedValueOnce(mockOrder as any).mockResolvedValueOnce({
         ...mockOrder,
         status: 'shipped',
         trackingNumber: 'TRACK123',
+        nfeAccessKey: NFE_KEY,
       } as any);
 
       await OrderStatusService.updateOrderStatus(
         'order-123',
-        { status: 'shipped', trackingNumber: 'TRACK123' },
+        { status: 'shipped', trackingNumber: 'TRACK123', nfeAccessKey: NFE_KEY },
         1
       );
 
       expect(mockOrder.update).toHaveBeenCalledWith({
         status: 'shipped',
         trackingNumber: 'TRACK123',
+        nfeAccessKey: NFE_KEY,
         estimatedDeliveryDate: expect.any(Date),
       });
     });
@@ -232,6 +308,7 @@ describe('OrderStatusService', () => {
         status: 'processing',
         update: jest.fn().mockResolvedValue(true),
       };
+      const NFE_KEY = '12345678901234567890123456789012345678901234';
 
       MockOrder.findByPk
         .mockResolvedValueOnce(mockOrder as any)
@@ -239,7 +316,7 @@ describe('OrderStatusService', () => {
 
       await OrderStatusService.updateOrderStatus(
         'order-123',
-        { status: 'shipped', trackingNumber: 'TRACK123' },
+        { status: 'shipped', trackingNumber: 'TRACK123', nfeAccessKey: NFE_KEY },
         1
       );
 
@@ -255,6 +332,7 @@ describe('OrderStatusService', () => {
         update: jest.fn().mockResolvedValue(true),
       };
       const customDate = new Date('2023-12-31');
+      const NFE_KEY = '12345678901234567890123456789012345678901234';
 
       MockOrder.findByPk
         .mockResolvedValueOnce(mockOrder as any)
@@ -265,6 +343,7 @@ describe('OrderStatusService', () => {
         {
           status: 'shipped',
           trackingNumber: 'TRACK123',
+          nfeAccessKey: NFE_KEY,
           estimatedDeliveryDate: customDate,
         },
         1
@@ -518,6 +597,141 @@ describe('OrderStatusService', () => {
       const result = await OrderStatusService.getOrderStatusStats();
 
       expect(result.averageProcessingTime).toBe(5); // (4 + 6) / 2 = 5 days
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // updateOrderNfe
+  // ---------------------------------------------------------------------------
+  describe('updateOrderNfe', () => {
+    // 44-digit key with a valid Modulo 11 check digit
+    const VALID_NFE_KEY = '35240312345678000195550010000014761000047680';
+    const VALID_NFE_URL =
+      'https://nfe.example.com/doc/35240312345678000195550010000014761000047680';
+    const REQUESTER_ID = 42;
+
+    it('should update nfeAccessKey on a shipped order', async () => {
+      const mockOrder = createMockOrder({
+        id: 'order-123',
+        status: 'shipped',
+        companyId: REQUESTER_ID,
+      });
+
+      MockOrder.findByPk
+        .mockResolvedValueOnce(mockOrder as any)
+        .mockResolvedValueOnce({ ...mockOrder, nfeAccessKey: VALID_NFE_KEY } as any);
+
+      const result = await OrderStatusService.updateOrderNfe(
+        'order-123',
+        { nfeAccessKey: VALID_NFE_KEY },
+        REQUESTER_ID,
+        'supplier'
+      );
+
+      expect(mockOrder.update).toHaveBeenCalledWith({ nfeAccessKey: VALID_NFE_KEY });
+      expect((result as any).nfeAccessKey).toBe(VALID_NFE_KEY);
+    });
+
+    it('should update both nfeAccessKey and nfeUrl on a delivered order', async () => {
+      const mockOrder = createMockOrder({
+        id: 'order-456',
+        status: 'delivered',
+        companyId: REQUESTER_ID,
+      });
+
+      MockOrder.findByPk.mockResolvedValueOnce(mockOrder as any).mockResolvedValueOnce({
+        ...mockOrder,
+        nfeAccessKey: VALID_NFE_KEY,
+        nfeUrl: VALID_NFE_URL,
+      } as any);
+
+      const result = await OrderStatusService.updateOrderNfe(
+        'order-456',
+        { nfeAccessKey: VALID_NFE_KEY, nfeUrl: VALID_NFE_URL },
+        REQUESTER_ID,
+        'supplier'
+      );
+
+      expect(mockOrder.update).toHaveBeenCalledWith({
+        nfeAccessKey: VALID_NFE_KEY,
+        nfeUrl: VALID_NFE_URL,
+      });
+      expect((result as any).nfeUrl).toBe(VALID_NFE_URL);
+    });
+
+    it('should allow admin to update nfe data on any order', async () => {
+      // Admin uses a different companyId — should still succeed
+      const mockOrder = createMockOrder({ id: 'order-789', status: 'shipped', companyId: 99 });
+
+      MockOrder.findByPk
+        .mockResolvedValueOnce(mockOrder as any)
+        .mockResolvedValueOnce({ ...mockOrder, nfeUrl: VALID_NFE_URL } as any);
+
+      await expect(
+        OrderStatusService.updateOrderNfe('order-789', { nfeUrl: VALID_NFE_URL }, 1, 'admin')
+      ).resolves.toBeDefined();
+
+      expect(mockOrder.update).toHaveBeenCalledWith({ nfeUrl: VALID_NFE_URL });
+    });
+
+    it('should throw when order is not found', async () => {
+      MockOrder.findByPk.mockResolvedValue(null);
+
+      await expect(
+        OrderStatusService.updateOrderNfe(
+          'order-999',
+          { nfeUrl: VALID_NFE_URL },
+          REQUESTER_ID,
+          'supplier'
+        )
+      ).rejects.toThrow('Order not found');
+    });
+
+    it('should throw for a supplier who does not own the order', async () => {
+      const mockOrder = createMockOrder({ id: 'order-123', status: 'shipped', companyId: 999 });
+      MockOrder.findByPk.mockResolvedValueOnce(mockOrder as any);
+
+      await expect(
+        OrderStatusService.updateOrderNfe(
+          'order-123',
+          { nfeUrl: VALID_NFE_URL },
+          REQUESTER_ID,
+          'supplier'
+        )
+      ).rejects.toThrow('Access denied');
+    });
+
+    it('should throw when order is not in shipped or delivered status', async () => {
+      const mockOrder = createMockOrder({
+        id: 'order-123',
+        status: 'processing',
+        companyId: REQUESTER_ID,
+      });
+      MockOrder.findByPk.mockResolvedValueOnce(mockOrder as any);
+
+      await expect(
+        OrderStatusService.updateOrderNfe(
+          'order-123',
+          { nfeAccessKey: VALID_NFE_KEY },
+          REQUESTER_ID,
+          'supplier'
+        )
+      ).rejects.toThrow(
+        "NF-e data can only be updated on orders with status 'shipped' or 'delivered'"
+      );
+    });
+
+    it('should throw when no nfe fields are provided', async () => {
+      const mockOrder = createMockOrder({
+        id: 'order-123',
+        status: 'shipped',
+        companyId: REQUESTER_ID,
+      });
+      MockOrder.findByPk.mockResolvedValueOnce(mockOrder as any);
+
+      await expect(
+        OrderStatusService.updateOrderNfe('order-123', {}, REQUESTER_ID, 'supplier')
+      ).rejects.toThrow('At least one of nfeAccessKey or nfeUrl must be provided');
     });
   });
 });
