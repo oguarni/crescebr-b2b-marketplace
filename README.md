@@ -1,14 +1,11 @@
 <div align="center">
-  <img src="frontend/public/logo.png" alt="CresceBR Logo" width="450" />
-  <div><a href="#key-features">🌐 English</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="#visao-geral">🇧🇷 Português</a></div>
+  <img src="frontend/public/logo.png" alt="CresceBR Logo" width="450" /><br>
+  <a href="#key-features">🌐 English</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="#visao-geral">🇧🇷 Português</a>
 </div>
-
 <h1 align="center">B2B Marketplace</h1>
-
 <p align="center">
   Industrial procurement platform connecting Brazilian buyers and suppliers through structured quotation workflows.
 </p>
-
 <p align="center">
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
   <img src="https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white" alt="Express 5" />
