@@ -1,370 +1,315 @@
-# CresceBR B2B Marketplace
-
-**CresceBR** is a comprehensive B2B (Business-to-Business) marketplace platform developed for UTFPR's E-commerce course (7th semester). This platform connects buyers and suppliers in an industrial marketplace environment with advanced features for quotations, order management, and company verification.
-
-## 🎯 Project Overview
-
-This MVP implements a complete B2B marketplace following SOLID principles and modern web development practices. The platform facilitates business relationships between companies through a secure, scalable, and user-friendly interface.
-
-**Course:** E-commerce  
-**Institution:** UTFPR (Federal University of Technology - Paraná)  
-**Semester:** 7th  
-**Professor:** Maria Adelina Silva Brito
-
-## ✨ Key Features
-
-### 🏢 Company Management & Authentication
-
-- **CNPJ Validation:** Real-time validation using Brasil API (https://brasilapi.com.br)
-- **Company Registration:** Separate registration flows for buyers and suppliers
-- **JWT Authentication:** Secure token-based authentication with role-based access
-- **Company Verification:** Admin workflow for company approval
-
-### 📋 Quotation System (Core Feature)
-
-- **Request Quotations:** Buyers can request quotes for multiple products
-- **Tier-based Pricing:** Volume discounts based on quantity ranges
-- **Quote Processing:** Suppliers can review and process quotation requests
-- **Automatic Calculations:** Tax, shipping, and total cost calculations
-
-### 📦 Industrial Product Catalog
-
-- **Product Management:** CRUD operations with technical specifications
-- **Bulk Import:** CSV import functionality for large product catalogs
-- **Advanced Search:** Filter by category, specifications, and price range
-- **Image Management:** Support for product images and technical documents
-
-### 📊 Order Management System
-
-- **Order Creation:** Convert approved quotations into orders
-- **Status Tracking:** Complete order lifecycle management
-- **Delivery Estimates:** Automatic calculation based on shipping method
-- **Bulk Operations:** Process multiple orders simultaneously
-
-### 👨‍💼 Admin Dashboard
-
-- **Company Verification:** Approve/reject company registrations
-- **Analytics Dashboard:** Comprehensive business metrics and insights
-- **User Management:** Role-based access control and user administration
-- **System Monitoring:** Track platform performance and usage
-
-### 📈 Business Intelligence
-
-- **Revenue Analytics:** Track sales performance and growth trends
-- **Order Statistics:** Monitor order status distribution and processing times
-- **Company Insights:** Analyze buyer/supplier activity and engagement
-- **Export Capabilities:** Generate reports in multiple formats
-
-## 🏗️ Architecture
-
-### Technology Stack
-
-- **Frontend:** React + TypeScript + Chakra UI
-- **Backend:** Node.js + Express + TypeScript
-- **Database:** PostgreSQL with Sequelize ORM
-- **Authentication:** JWT with role-based access control
-- **File Processing:** Multer for CSV imports and file uploads
-- **API Integration:** Brasil API for CNPJ validation
-- **Containerization:** Docker & Docker Compose
-
-### System Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   React Frontend│    │  Express Backend│    │   PostgreSQL    │
-│   (Port 3000)   │◄──►│   (Port 3001)   │◄──►│   (Port 5432)   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                              │
-                              ▼
-                       ┌─────────────────┐
-                       │   Brasil API    │
-                       │ (CNPJ Validation)│
-                       └─────────────────┘
-```
-
-### Database Schema
-
-- **Users:** Company information, authentication, and role management
-- **Products:** Industrial catalog with specifications and pricing
-- **Quotations:** Quote requests, items, and processing status
-- **Orders:** Order management with status tracking and delivery
-- **Admin:** System configuration and analytics data
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- [Docker](https://www.docker.com/get-started) (v20.10+)
-- [Docker Compose](https://docs.docker.com/compose/install/) (v2.0+)
-- [Git](https://git-scm.com/)
-
-### Installation
-
-1. **Clone the repository:**
-
-   ```bash
-   git clone <repository-url>
-   cd MarketPlace_B2B/B2B
-   ```
-
-2. **Environment setup:**
-
-   ```bash
-   # Backend environment
-   cp backend/.env.example backend/.env
-
-   # Frontend environment
-   cp frontend/.env.example frontend/.env
-   ```
-
-3. **Start the application:**
-
-   ```bash
-   docker-compose up --build
-   ```
-
-4. **Access the platform:**
-   - **Frontend:** http://localhost:3000
-   - **Backend API:** http://localhost:3001
-   - **Database:** localhost:5432
-
-### Test Accounts
-
-After initial setup, you can use these test accounts:
-
-**Admin Account:**
-
-- Email: admin@crescebr.com
-- Password: admin123
-- CNPJ: 11.222.333/0001-81
-
-**Supplier Account:**
-
-- Email: supplier@example.com
-- Password: supplier123
-- CNPJ: 12.345.678/0001-90
-
-**Buyer Account:**
-
-- Email: buyer@example.com
-- Password: buyer123
-- CNPJ: 98.765.432/0001-10
-
-## 📡 API Documentation
-
-### Authentication Endpoints
-
-```
-POST /api/auth/register           # Register new buyer company
-POST /api/auth/register-supplier  # Register new supplier company
-POST /api/auth/login             # Company login
-GET  /api/auth/profile           # Get current user profile
-```
-
-### Company Management
-
-```
-GET    /api/companies           # List all companies (admin)
-PUT    /api/companies/:id/verify # Verify company (admin)
-GET    /api/companies/stats     # Company statistics (admin)
-```
-
-### Product Catalog
-
-```
-GET    /api/products             # List products with filters
-POST   /api/products             # Create product (supplier)
-PUT    /api/products/:id         # Update product (supplier)
-DELETE /api/products/:id         # Delete product (supplier)
-POST   /api/products/import-csv  # Bulk import products (supplier)
-GET    /api/products/sample-csv  # Download sample CSV template
-```
-
-### Quotation System
-
-```
-POST   /api/quotations           # Create quotation request (buyer)
-GET    /api/quotations           # List user quotations
-GET    /api/quotations/:id       # Get quotation details
-PUT    /api/quotations/:id       # Update quotation status (supplier)
-POST   /api/quotations/:id/process # Process quotation (supplier)
-```
-
-### Order Management
-
-```
-POST   /api/orders               # Create order from quotation
-GET    /api/orders               # List user orders
-GET    /api/orders/:id/history   # Get order status history
-PUT    /api/orders/:id/status    # Update order status (supplier/admin)
-GET    /api/orders/stats         # Order statistics (admin)
-```
-
-### Admin Dashboard
-
-```
-GET    /api/admin/analytics      # Dashboard analytics
-GET    /api/admin/companies      # Company management
-PUT    /api/admin/companies/:id  # Update company status
-```
-
-## 🧪 Testing
-
-### Running Tests
-
-```bash
-# Backend tests
-cd backend && npm test
-
-# Frontend tests
-cd frontend && npm test
-
-# Run tests in Docker
-docker-compose exec backend npm test
-docker-compose exec frontend npm test
-```
-
-### Test Coverage
-
-- **Unit Tests:** Controllers, services, and utilities
-- **Integration Tests:** API endpoints and database operations
-- **Authentication Tests:** JWT and role-based access control
-- **Business Logic Tests:** Quotation calculations and order workflows
-
-## 🔧 Development
-
-### Backend Development
-
-```bash
-cd backend
-npm install
-npm run dev    # Start with hot reload
-npm run build  # Build for production
-npm run lint   # Code linting
-```
-
-### Frontend Development
-
-```bash
-cd frontend
-npm install
-npm start      # Start development server
-npm run build  # Build for production
-npm run lint   # Code linting
-```
-
-### Database Management
-
-```bash
-# Run migrations
-npm run db:migrate
-
-# Seed database
-npm run db:seed
-
-# Reset database
-npm run db:migrate:undo:all && npm run db:migrate && npm run db:seed
-```
-
-## 📝 Business Rules
-
-### Company Types
-
-- **Buyer:** Can request quotations and place orders
-- **Supplier:** Can manage products and process quotations
-- **Admin:** Full system access and company verification
-
-### Quotation Workflow
-
-1. Buyer creates quotation request with product items
-2. System calculates pricing based on quantity tiers
-3. Supplier reviews and can accept/modify the quotation
-4. Approved quotations can be converted to orders
-5. Orders follow a defined status workflow (pending → processing → shipped → delivered)
-
-### Pricing Logic
-
-- **Base Price:** Product unit price
-- **Quantity Discounts:** Tier-based volume pricing
-- **Tax Calculation:** Configurable tax rates
-- **Shipping Costs:** Calculated based on weight and distance
-
-## 🔒 Security Features
-
-- **CNPJ Validation:** Real-time validation with Brasil API
-- **Input Sanitization:** Protection against XSS and injection attacks
-- **Rate Limiting:** API request throttling
-- **JWT Security:** Secure token management with expiration
-- **Role-based Access:** Granular permission control
-- **Password Hashing:** bcrypt for secure password storage
-
-## 🚀 Deployment
-
-### Production Deployment
-
-```bash
-# Build production images
-docker-compose -f docker-compose.prod.yml build
-
-# Deploy to production
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-### Environment Variables
-
-Required environment variables for production:
-
-```
-DATABASE_URL=postgresql://user:password@host:port/database
-JWT_SECRET=your-secret-key
-JWT_EXPIRES_IN=24h
-NODE_ENV=production
-CNPJ_API_URL=https://brasilapi.com.br/api/cnpj/v1/
-```
-
-## 📊 Monitoring & Analytics
-
-The platform includes comprehensive analytics:
-
-- **User Engagement:** Track company registration and activity
-- **Sales Performance:** Monitor quotation conversion rates
-- **System Health:** API response times and error rates
-- **Business Metrics:** Revenue tracking and growth analysis
-
-## 🤝 Contributing
-
-This is an academic project, but contributions are welcome:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the **CC BY-NC-SA 4.0**. This license covers all current and historical commits in this repository. See the [LICENSE](LICENSE) file for details.
-
-## 🎓 Academic Context
-
-This project was developed as part of the E-commerce course curriculum at UTFPR, focusing on:
-
-- Modern web development practices
-- B2B marketplace architecture
-- Database design and optimization
-- API development and documentation
-- User experience design for business applications
-- Security best practices
-- Testing methodologies
-
-## 📞 Support
-
-For questions about this project:
-
-- **Academic:** Contact Professor Maria Adelina Silva Brito
-- **Technical:** Open an issue on the repository
-- **Documentation:** Refer to the inline code comments and API documentation
+<p align="center">
+  <a href="#visao-geral">🇧🇷 Português</a>&nbsp;&nbsp;|&nbsp;&nbsp;
+  <a href="#key-features">🌐 English</a>
+</p>
+
+<p align="center">
+  <img src="docs/logo.png" alt="CresceBR Logo" width="180" />
+</p>
+
+<h1 align="center">CresceBR B2B Marketplace</h1>
+
+<p align="center">
+  Industrial procurement platform connecting Brazilian buyers and suppliers through structured quotation workflows.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
+  <img src="https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white" alt="Express 5" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 15" />
+  <img src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey" alt="License" />
+</p>
 
 ---
 
-**CresceBR** - Empowering Brazilian businesses through technology 🇧🇷
+## Key Features
+
+- **CNPJ Validation** — Real-time company verification via Brasil API
+- **Role-based Access** — Buyer, Supplier, and Admin with granular permissions
+- **Quotation Engine** — Tier-based volume pricing with automated tax and shipping calculations
+- **Order Lifecycle** — Full status tracking from pending to delivered
+- **Bulk CSV Import** — Large product catalog ingestion for suppliers
+- **Admin Dashboard** — Company verification, analytics, and user management
+- **JWT Security** — Token-based auth with Helmet, rate limiting, and bcrypt
+
+---
+
+## Project Structure
+
+```
+crescebr-b2b-marketplace/
+├── frontend/          # React 19 + TypeScript + Vite + MUI
+├── backend/           # Node.js + Express 5 + TypeScript + Sequelize
+├── shared/            # Shared TypeScript types
+├── docs/              # Design prompts and assets
+├── docker-compose.yml
+└── package.json       # Workspace root
+```
+
+---
+
+## Architecture
+
+### Layered Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  ROUTES + MIDDLEWARE                        │
+│           (auth, rbac, validation, rate-limit)              │
+├─────────────────────────────────────────────────────────────┤
+│                     CONTROLLERS                             │
+│              HTTP request/response handling                 │
+├─────────────────────────────────────────────────────────────┤
+│                      SERVICES                               │
+│              Business logic and orchestration               │
+├─────────────────────────────────────────────────────────────┤
+│                    REPOSITORIES                             │
+│              Data access patterns and queries               │
+├─────────────────────────────────────────────────────────────┤
+│                  MODELS (Sequelize ORM)                     │
+│              Schema definitions and associations            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### System Diagram
+
+```
+┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
+│  React Frontend  │    │ Express Backend  │    │   PostgreSQL     │
+│   (Port 5173)    │◄──►│   (Port 3001)    │◄──►│   (Port 5432)    │
+└──────────────────┘    └──────────────────┘    └──────────────────┘
+                                │
+                                ▼
+                        ┌──────────────────┐
+                        │   Brasil API     │
+                        │ CNPJ Validation  │
+                        └──────────────────┘
+```
+
+---
+
+## Tech Stack
+
+| Layer         | Technology                        |
+| ------------- | --------------------------------- |
+| Frontend      | React 19, TypeScript, MUI, Vite   |
+| Backend       | Node.js, Express 5, TypeScript    |
+| Database      | PostgreSQL 15, Sequelize ORM      |
+| Auth          | JWT, bcrypt, Helmet               |
+| File handling | Multer (CSV import, file uploads) |
+| External API  | Brasil API (CNPJ validation)      |
+| DevOps        | Docker, Docker Compose            |
+
+---
+
+## Getting Started
+
+### Docker (recommended)
+
+```bash
+git clone https://github.com/oguarni/CresceBR.git crescebr-b2b-marketplace
+cd crescebr-b2b-marketplace
+
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+
+docker-compose up --build
+```
+
+Access: `http://localhost:5173` (frontend) | `http://localhost:3001` (API)
+
+### Local development
+
+```bash
+npm run setup   # install all dependencies
+npm run dev     # start frontend (5173) + backend (3001) concurrently
+```
+
+Prerequisites: Node.js 20+, PostgreSQL 15 running locally.
+
+---
+
+## Demo Credentials
+
+| Role     | Email                | Password    | CNPJ               |
+| -------- | -------------------- | ----------- | ------------------ |
+| Admin    | admin@crescebr.com   | admin123    | 11.222.333/0001-81 |
+| Supplier | supplier@example.com | supplier123 | 12.345.678/0001-90 |
+| Buyer    | buyer@example.com    | buyer123    | 98.765.432/0001-10 |
+
+---
+
+## API Reference
+
+### Auth
+
+```
+POST /api/auth/register            Register buyer company
+POST /api/auth/register-supplier   Register supplier company
+POST /api/auth/login               Login
+GET  /api/auth/profile             Current user profile
+```
+
+### Companies
+
+```
+GET  /api/companies                List companies (admin)
+PUT  /api/companies/:id/verify     Verify company (admin)
+GET  /api/companies/stats          Company statistics (admin)
+```
+
+### Products
+
+```
+GET    /api/products               List with filters
+POST   /api/products               Create (supplier)
+PUT    /api/products/:id           Update (supplier)
+DELETE /api/products/:id           Delete (supplier)
+POST   /api/products/import-csv    Bulk import (supplier)
+GET    /api/products/sample-csv    Download CSV template
+```
+
+### Quotations
+
+```
+POST /api/quotations               Create request (buyer)
+GET  /api/quotations               List user quotations
+GET  /api/quotations/:id           Quotation details
+PUT  /api/quotations/:id           Update status (supplier)
+POST /api/quotations/:id/process   Process quotation (supplier)
+```
+
+### Orders
+
+```
+POST /api/orders                   Create from quotation
+GET  /api/orders                   List user orders
+GET  /api/orders/:id/history       Order status history
+PUT  /api/orders/:id/status        Update status (supplier/admin)
+GET  /api/orders/stats             Order statistics (admin)
+```
+
+### Admin
+
+```
+GET /api/admin/analytics           Dashboard analytics
+GET /api/admin/companies           Company management
+PUT /api/admin/companies/:id       Update company status
+```
+
+---
+
+## Architecture Assessment
+
+| Area            | Status     | Notes                                                 |
+| --------------- | ---------- | ----------------------------------------------------- |
+| Stack Modernity | Strong     | React 19, Express 5, TypeScript full-stack            |
+| Data Layer      | Strong     | PostgreSQL 15 + Sequelize with repository pattern     |
+| Security        | Good       | JWT + RBAC + CNPJ validation + rate limiting + Helmet |
+| Testing         | Moderate   | 25+ test files; needs E2E expansion                   |
+| DevOps          | Needs Work | Docker ready, no CI/CD pipeline                       |
+| Observability   | Needs Work | No structured logging or monitoring                   |
+
+**Verdict:** Architecture is solid for MVP and early production. Express 5 + Sequelize + React 19 is modern and viable. PostgreSQL 15 is an excellent fit for the B2B domain.
+
+Recommended next steps:
+
+1. CI/CD pipeline (GitHub Actions)
+2. PostgreSQL connection pooling
+3. Structured logging (Winston or Pino)
+4. Auth middleware consolidation
+5. E2E test suite
+
+---
+
+## Development
+
+```bash
+npm run dev      # Start frontend + backend
+npm run build    # Production build (all)
+npm run test     # Run tests in all subprojects
+npm run lint     # Lint all subprojects
+npm run clean    # Remove node_modules and dist
+```
+
+**Backend only:**
+
+```bash
+cd backend
+npm run dev      # Hot reload dev server
+npm run test     # Jest test suite
+npm run lint     # ESLint
+```
+
+**Frontend only:**
+
+```bash
+cd frontend
+npm run dev      # Vite dev server
+npm run build    # Production build
+npm run test     # Vitest suite
+```
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Commit your changes (`git commit -m 'Add my feature'`)
+4. Push to the branch (`git push origin feature/my-feature`)
+5. Open a Pull Request
+
+---
+
+## License
+
+Licensed under **CC BY-NC-SA 4.0**. See [LICENSE](LICENSE) for details.
+
+---
+
+<h2 id="visao-geral">🇧🇷 Visão Geral</h2>
+
+**CresceBR** é uma plataforma de marketplace B2B para o mercado industrial brasileiro. Conecta empresas compradoras e fornecedoras por meio de um fluxo estruturado de cotações, gestão de pedidos e verificação de CNPJ em tempo real.
+
+### Como executar
+
+```bash
+git clone https://github.com/oguarni/CresceBR.git crescebr-b2b-marketplace
+cd crescebr-b2b-marketplace
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+docker-compose up --build
+```
+
+Acesse: `http://localhost:5173`
+
+### Tecnologias principais
+
+- React 19 + TypeScript (frontend)
+- Node.js + Express 5 (backend)
+- PostgreSQL 15 + Sequelize (banco de dados)
+- JWT + RBAC (autenticação e permissões)
+- Docker (containerização)
+
+### Contas de teste
+
+| Perfil     | E-mail               | Senha       |
+| ---------- | -------------------- | ----------- |
+| Admin      | admin@crescebr.com   | admin123    |
+| Fornecedor | supplier@example.com | supplier123 |
+| Comprador  | buyer@example.com    | buyer123    |
+
+### Funcionalidades principais
+
+- Validação de CNPJ via Brasil API
+- Cotações com precificação por volume
+- Catálogo de produtos com importação CSV
+- Rastreamento completo do ciclo de pedidos
+- Painel administrativo com analytics
+
+---
+
+_CresceBR — Conectando empresas brasileiras._
