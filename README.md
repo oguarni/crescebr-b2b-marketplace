@@ -1,8 +1,9 @@
 <div align="center">
   <img src="frontend/public/logo.png" alt="CresceBR Logo" width="350" />
-  <div>
+  <br />
   <a href="#key-features">🌐 English</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="#visao-geral">🇧🇷 Português</a>
 </div>
+
 <h1 align="center">B2B Marketplace</h1>
 <p align="center">
   Structured procurement platform for the Brazilian industrial market — verified companies, volume-based quotations, and complete order lifecycle management.
@@ -64,7 +65,7 @@ cp frontend/.env.example frontend/.env
 docker-compose up --build
 ```
 
-Access: `http://localhost:5173` (frontend) | `http://localhost:3001` (API)
+**Access:** `http://localhost:5173` (frontend) | `http://localhost:3001` (API)
 
 ### Local development
 
@@ -73,13 +74,13 @@ npm run setup   # install all dependencies
 npm run dev     # start frontend (5173) + backend (3001) concurrently
 ```
 
-Prerequisites: Node.js 20+, PostgreSQL 15 running locally.
+**Prerequisites:** Node.js 20+, PostgreSQL 15 running locally.
 
 ---
 
 ## Project Structure
 
-```
+```text
 crescebr-b2b-marketplace/
 ├── frontend/          # React 19 + TypeScript + Vite + MUI
 ├── backend/           # Node.js + Express 5 + TypeScript + Sequelize
@@ -95,7 +96,7 @@ crescebr-b2b-marketplace/
 
 ### Layered Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                  ROUTES + MIDDLEWARE                        │
 │           (auth, rbac, validation, rate-limit)              │
@@ -116,7 +117,7 @@ crescebr-b2b-marketplace/
 
 ### System Diagram
 
-```
+```text
 ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
 │  React Frontend  │    │ Express Backend  │    │   PostgreSQL     │
 │   (Port 5173)    │◄──►│   (Port 3001)    │◄──►│   (Port 5432)    │
@@ -135,14 +136,14 @@ crescebr-b2b-marketplace/
 
 | Domain     | Endpoints | Description                                         |
 | ---------- | --------- | --------------------------------------------------- |
-| Auth       | 4         | Register (buyer/supplier), login, profile           |
-| Companies  | 3         | List, verify, and stats (admin-only)                |
-| Products   | 6         | CRUD, bulk CSV import, template download            |
-| Quotations | 5         | Create, list, detail, update status, process        |
-| Orders     | 5         | Create from quotation, list, history, status, stats |
-| Admin      | 3         | Analytics dashboard, company management             |
+| Auth       | `4`       | Register (buyer/supplier), login, profile           |
+| Companies  | `3`       | List, verify, and stats (admin-only)                |
+| Products   | `6`       | CRUD, bulk CSV import, template download            |
+| Quotations | `5`       | Create, list, detail, update status, process        |
+| Orders     | `5`       | Create from quotation, list, history, status, stats |
+| Admin      | `3`       | Analytics dashboard, company management             |
 
-Base URL: `http://localhost:3001/api`
+**Base URL:** `http://localhost:3001/api`
 
 ---
 
@@ -178,11 +179,11 @@ npm run test     # Vitest suite
 
 ## Demo Credentials
 
-| Role     | Email                | Password    | CNPJ               |
-| -------- | -------------------- | ----------- | ------------------ |
-| Admin    | admin@crescebr.com   | admin123    | 11.222.333/0001-81 |
-| Supplier | supplier@example.com | supplier123 | 12.345.678/0001-90 |
-| Buyer    | buyer@example.com    | buyer123    | 98.765.432/0001-10 |
+| Role     | Email                  | Password      | CNPJ                 |
+| -------- | ---------------------- | ------------- | -------------------- |
+| Admin    | `admin@crescebr.com`   | `admin123`    | `11.222.333/0001-81` |
+| Supplier | `supplier@example.com` | `supplier123` | `12.345.678/0001-90` |
+| Buyer    | `buyer@example.com`    | `buyer123`    | `98.765.432/0001-10` |
 
 ---
 
@@ -198,7 +199,7 @@ npm run test     # Vitest suite
 
 ## License
 
-Licensed under **CC BY-NC-SA 4.0**. See [LICENSE](LICENSE) for details.
+Licensed under **CC BY-NC-SA 4.0**. See [`LICENSE`](LICENSE) for details.
 
 ---
 
@@ -206,24 +207,33 @@ Licensed under **CC BY-NC-SA 4.0**. See [LICENSE](LICENSE) for details.
 
 **CresceBR** é uma plataforma de marketplace B2B para o mercado industrial brasileiro. Conecta empresas compradoras e fornecedoras por meio de cotações estruturadas com precificação por volume, verificação de CNPJ em tempo real, e rastreamento completo do ciclo de pedidos.
 
-### Stack
+### Tech Stack
 
-- React 19 + TypeScript + MUI (frontend)
-- Node.js + Express 5 + TypeScript (backend)
-- PostgreSQL 15 + Sequelize ORM (banco de dados)
-- JWT + RBAC + Helmet (autenticação e segurança)
-- Docker + Docker Compose (infraestrutura)
+| Camada         | Tecnologia                      |
+| -------------- | ------------------------------- |
+| Frontend       | React 19, TypeScript, MUI, Vite |
+| Backend        | Node.js, Express 5, TypeScript  |
+| Banco de dados | PostgreSQL 15, Sequelize ORM    |
+| Segurança      | JWT, RBAC, Helmet               |
+| Infraestrutura | Docker, Docker Compose          |
 
-### Executar com Docker
+### Começando
+
+#### Docker (recomendado)
 
 ```bash
 git clone https://github.com/oguarni/CresceBR.git crescebr-b2b-marketplace
 cd crescebr-b2b-marketplace
-cp backend/.env.example backend/.env && cp frontend/.env.example frontend/.env
+
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+
 docker-compose up --build
 ```
 
-Acesse `http://localhost:5173`. Para instruções detalhadas, consulte as seções em inglês acima.
+**Acesso:** `http://localhost:5173` (frontend) | `http://localhost:3001` (API)
+
+Para instruções detalhadas de desenvolvimento local, consulte as seções em inglês acima.
 
 ---
 
