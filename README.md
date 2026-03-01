@@ -19,7 +19,7 @@
 ---
 
 <div align="center">
-  <img src="docs/screenshot.png" alt="CresceBR Dashboard" width="900" />
+  <img src="frontend/public/dashboard.png" alt="CresceBR Dashboard" width="900" />
 </div>
 
 ---
