@@ -11,12 +11,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   IconButton,
   Chip,
   Alert,
@@ -27,7 +21,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Badge,
+  InputAdornment,
 } from '@mui/material';
 import {
   Verified,
@@ -43,6 +37,15 @@ import {
   Phone,
   LocationOn,
   Category,
+  Menu as MenuIcon,
+  Notifications,
+  People,
+  Analytics,
+  Settings,
+  Search,
+  FilterList,
+  Close,
+  Check,
 } from '@mui/icons-material';
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
@@ -267,15 +270,13 @@ const AdminCompanyVerificationPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Statistics Cards */}
+      {/* Statistics Chart area replaced with simple cards for now due to library limits */}
       {verificationQueue && (
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={4}>
-            <Card>
+            <Card sx={{ boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)' }}>
               <CardContent sx={{ textAlign: 'center' }}>
-                <Badge badgeContent={verificationQueue.totalCount} color='warning' max={999}>
-                  <Pending sx={{ fontSize: 40, color: 'warning.main' }} />
-                </Badge>
+                <Pending sx={{ fontSize: 40, color: 'warning.main' }} />
                 <Typography variant='h6' sx={{ mt: 1 }}>
                   Total na Fila
                 </Typography>
@@ -286,7 +287,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
             </Card>
           </Grid>
           <Grid item xs={12} sm={4}>
-            <Card>
+            <Card sx={{ boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)' }}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Verified sx={{ fontSize: 40, color: 'success.main' }} />
                 <Typography variant='h6' sx={{ mt: 1 }}>
@@ -299,14 +300,14 @@ const AdminCompanyVerificationPage: React.FC = () => {
             </Card>
           </Grid>
           <Grid item xs={12} sm={4}>
-            <Card>
+            <Card sx={{ boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)' }}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Warning sx={{ fontSize: 40, color: 'error.main' }} />
                 <Typography variant='h6' sx={{ mt: 1 }}>
-                  CNPJ Pendentes
+                  Pendências
                 </Typography>
                 <Typography variant='body2' color='text.secondary'>
-                  Requerem validação de CNPJ
+                  CNPJs não validados
                 </Typography>
               </CardContent>
             </Card>
@@ -314,134 +315,147 @@ const AdminCompanyVerificationPage: React.FC = () => {
         </Grid>
       )}
 
-      {/* Filter Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs
-          value={currentTab}
-          onChange={(_, newValue) => {
-            setCurrentTab(newValue);
-            const filters: Array<'all' | 'pending' | 'unvalidated_cnpj'> = ['pending', 'all', 'unvalidated_cnpj'];
-            setFilter(filters[newValue]);
-            setPage(1);
-          }}
-        >
-          <Tab label='Pendentes' />
-          <Tab label='Todas' />
-          <Tab label='CNPJ Inválidos' />
-        </Tabs>
+      {/* Main Queue Section */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+            Verification Queue
+            <Chip label={`${verificationQueue?.totalCount || 0} Pending`} size="small" sx={{ bgcolor: 'primary.light', color: 'primary.main', fontWeight: 'bold', height: 20, fontSize: '0.75rem' }} />
+          </Typography>
+          <Button variant="text" size="small" sx={{ fontWeight: 'medium' }}>View All</Button>
+        </Box>
+
+        {/* Filter Tabs */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}>
+          <Tabs
+            value={currentTab}
+            onChange={(_, newValue) => {
+              setCurrentTab(newValue);
+              const filters: Array<'all' | 'pending' | 'unvalidated_cnpj'> = ['pending', 'all', 'unvalidated_cnpj'];
+              setFilter(filters[newValue]);
+              setPage(1);
+            }}
+          >
+            <Tab label='Pendentes' />
+            <Tab label='Todas' />
+            <Tab label='CNPJ Inválidos' />
+          </Tabs>
+        </Box>
+
+        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search by CNPJ or Name"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search fontSize="small" />
+                  </InputAdornment>
+                ),
+              }
+            }}
+          />
+          <Button variant="outlined" color="inherit" sx={{ minWidth: 'auto', px: 2, borderColor: 'divider' }}>
+            <FilterList />
+          </Button>
+        </Box>
+
+        {/* Queue Items */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {loading && !verificationQueue?.companies.length ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={30} /></Box>
+          ) : verificationQueue?.companies.length === 0 ? (
+            <Typography sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>Nenhuma empresa encontrada.</Typography>
+          ) : (
+            verificationQueue?.companies.map((company, idx) => (
+              <Box
+                key={company.id}
+                sx={{
+                  bgcolor: 'background.paper',
+                  borderRadius: 1,
+                  p: 2,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  border: 1,
+                  borderColor: 'divider',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  opacity: company.status !== 'pending' ? 0.75 : 1
+                }}
+              >
+                <Box sx={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', bgcolor: company.status === 'pending' ? 'warning.main' : company.status === 'approved' ? 'success.main' : 'error.main' }} />
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1, pl: 1 }}>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{company.companyName}</Typography>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      CNPJ: {company.cnpj}
+                      {company.cnpjValidated ? <CheckCircle sx={{ fontSize: 12, color: 'success.main' }} /> : <Warning sx={{ fontSize: 12, color: 'warning.main' }} />}
+                    </Typography>
+                  </Box>
+                  <Chip label={formatDate(company.createdAt).split(',')[0]} size="small" sx={{ bgcolor: 'action.hover', color: 'text.secondary', height: 20, fontSize: '0.65rem' }} />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1.5, pl: 1 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="caption" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.6rem', color: 'text.secondary' }}>Location</Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 'medium' }}>{company.city || 'N/A'}, {company.state || 'N/A'}</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    {company.status === 'pending' ? (
+                      <>
+                        <IconButton
+                          size="small"
+                          sx={{ bgcolor: 'error.light', color: 'error.main', '&:hover': { bgcolor: 'error.main', color: 'white' }, width: 32, height: 32, borderRadius: 1 }}
+                          onClick={() => {
+                            setSelectedCompany(company);
+                            handleVerifyCompany(company.id, 'rejected');
+                          }}
+                        >
+                          <Close fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          sx={{ bgcolor: 'success.light', color: 'success.main', '&:hover': { bgcolor: 'success.main', color: 'white' }, width: 32, height: 32, borderRadius: 1 }}
+                          onClick={() => {
+                            setSelectedCompany(company);
+                            handleVerifyCompany(company.id, 'approved');
+                          }}
+                        >
+                          <Check fontSize="small" />
+                        </IconButton>
+                      </>
+                    ) : (
+                      <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', fontStyle: 'italic', mr: 1 }}>
+                        {company.status === 'approved' ? 'Approved' : 'Rejected'}
+                      </Typography>
+                    )}
+                    <IconButton
+                      size="small"
+                      sx={{ bgcolor: 'action.hover', color: 'text.secondary', width: 32, height: 32, borderRadius: 1 }}
+                      onClick={() => {
+                        setSelectedCompany(company);
+                        setDetailsDialog(true);
+                      }}
+                    >
+                      <Visibility fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              </Box>
+            ))
+          )}
+        </Box>
       </Box>
 
-      {/* Companies Table */}
-      {verificationQueue?.companies.length === 0 ? (
-        <Card>
-          <CardContent sx={{ textAlign: 'center', py: 8 }}>
-            <Business sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant='h6' color='text.secondary' gutterBottom>
-              Nenhuma empresa encontrada
-            </Typography>
-            <Typography variant='body2' color='text.secondary'>
-              Todas as empresas foram processadas ou não há novas solicitações
-            </Typography>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Empresa</TableCell>
-                    <TableCell>CNPJ</TableCell>
-                    <TableCell>Setor</TableCell>
-                    <TableCell>Tipo</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Data</TableCell>
-                    <TableCell align='center'>Ações</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {verificationQueue?.companies.map(company => (
-                    <TableRow key={company.id} hover>
-                      <TableCell>
-                        <Box>
-                          <Typography variant='subtitle2'>{company.companyName}</Typography>
-                          <Typography variant='body2' color='text.secondary'>
-                            {company.corporateName}
-                          </Typography>
-                          <Typography variant='caption' color='text.secondary'>
-                            {company.email}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant='body2'>{company.cnpj}</Typography>
-                          {company.cnpjValidated ? (
-                            <CheckCircle sx={{ fontSize: 16, color: 'success.main' }} />
-                          ) : (
-                            <Warning sx={{ fontSize: 16, color: 'warning.main' }} />
-                          )}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getSectorLabel(company.industrySector)}
-                          size='small'
-                          variant='outlined'
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getCompanyTypeLabel(company.companyType)}
-                          size='small'
-                          color={company.companyType === 'supplier' ? 'primary' : 'default'}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          icon={getStatusIcon(company.status)}
-                          label={company.status}
-                          size='small'
-                          color={getStatusColor(company.status) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant='body2'>{formatDate(company.createdAt)}</Typography>
-                      </TableCell>
-                      <TableCell align='center'>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          <IconButton
-                            size='small'
-                            onClick={() => {
-                              setSelectedCompany(company);
-                              setDetailsDialog(true);
-                            }}
-                            title='Ver detalhes'
-                          >
-                            <Visibility />
-                          </IconButton>
-                          {company.status === 'pending' && (
-                            <Button
-                              size='small'
-                              variant='outlined'
-                              onClick={() => {
-                                setSelectedCompany(company);
-                                setVerificationDialog(true);
-                              }}
-                            >
-                              Verificar
-                            </Button>
-                          )}
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
+      {/* Pagination placeholder if needed */}
+      {verificationQueue && verificationQueue.totalPages > 1 && (
+        <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+          <Typography variant='body2' color='text.secondary'>
+            Página {verificationQueue.currentPage} de {verificationQueue.totalPages}
+          </Typography>
+        </Box>
       )}
 
       {/* Company Details Dialog */}
