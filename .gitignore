@@ -83,6 +83,7 @@ next-env.d.ts
 
 # Local Sequelize configuration files
 config/config.local.json
+backend/config/config.json
 
 # Git filter-repo backup files
 .git-rewrite/

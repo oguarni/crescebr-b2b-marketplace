@@ -56,9 +56,8 @@ const models = {
 
 export const syncDatabase = async (): Promise<void> => {
   try {
-    await sequelize.authenticate();
-    console.log('Database connection established successfully.');
-    console.log('Use migrations to manage database schema changes: npx sequelize-cli db:migrate');
+    await sequelize.sync({ alter: true });
+    console.log('Database synced successfully via Sequelize auto-sync.');
   } catch (error) {
     console.error('Unable to connect to the database:', error);
     throw error;
