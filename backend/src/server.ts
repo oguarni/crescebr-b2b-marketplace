@@ -18,7 +18,7 @@ const API_PREFIX = process.env.API_PREFIX || '/api/v1';
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: true,
     credentials: true,
   })
 );
