@@ -15,7 +15,10 @@ export const productValidation = [
       if (value <= 0) throw new Error('Price must be greater than 0');
       return true;
     }),
-  body('imageUrl').isURL().withMessage('Image URL must be a valid URL'),
+  body('imageUrl')
+    .optional({ checkFalsy: true })
+    .isURL()
+    .withMessage('Image URL must be a valid URL'),
   body('category').notEmpty().withMessage('Category is required'),
   body('specifications').optional().isString().withMessage('Specifications must be a string'),
   body('minimumOrderQuantity')

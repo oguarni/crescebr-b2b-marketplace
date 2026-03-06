@@ -245,7 +245,7 @@ export class OrderStatusService {
   }
 
   static async getOrdersByStatus(
-    status: OrderStatus,
+    status: OrderStatus | undefined,
     filters: {
       companyId?: number;
       startDate?: Date;
@@ -254,7 +254,11 @@ export class OrderStatusService {
       offset?: number;
     } = {}
   ): Promise<{ orders: Order[]; total: number }> {
-    const whereClause: any = { status };
+    const whereClause: any = {};
+
+    if (status) {
+      whereClause.status = status;
+    }
 
     if (filters.companyId) {
       whereClause.companyId = filters.companyId;

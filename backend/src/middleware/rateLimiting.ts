@@ -111,10 +111,10 @@ export const generalRateLimit = rateLimiter.createLimiter({
   message: 'Too many API requests. Please try again in an hour.',
 });
 
-// Strict rate limiter for auth endpoints - 5 requests per 15 minutes
+// Strict rate limiter for auth endpoints - 5 requests per 15 minutes (relaxed in development)
 export const authRateLimit = rateLimiter.createLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5,
+  maxRequests: process.env.NODE_ENV === 'development' ? 100 : 5,
   message: 'Too many authentication attempts. Please try again in 15 minutes.',
   keyGenerator: (req: Request) => {
     const ip = req.ip || req.connection.remoteAddress || 'unknown';

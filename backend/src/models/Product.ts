@@ -29,11 +29,12 @@ export interface ProductCreationAttributes
   extends Optional<
     ProductAttributes,
     'id' | 'tierPricing' | 'availability' | 'leadTime' | 'createdAt' | 'updatedAt'
-  > { }
+  > {}
 
 class Product
   extends Model<ProductAttributes, ProductCreationAttributes>
-  implements ProductAttributes {
+  implements ProductAttributes
+{
   public id!: number;
   public name!: string;
   public description!: string;
@@ -83,9 +84,17 @@ Product.init(
     },
     imageUrl: {
       type: DataTypes.STRING(500),
-      allowNull: false,
+      allowNull: true,
+      defaultValue: null,
       validate: {
-        isUrl: true,
+        isUrlOrEmpty(value: string | null) {
+          if (value && value.length > 0) {
+            const urlRegex = /^https?:\/\/.+/i;
+            if (!urlRegex.test(value)) {
+              throw new Error('Image URL must be a valid URL');
+            }
+          }
+        },
       },
     },
     category: {
@@ -146,7 +155,6 @@ Product.init(
       type: DataTypes.ENUM('in_stock', 'out_of_stock', 'limited', 'custom_order'),
       allowNull: false,
       defaultValue: 'in_stock',
-      comment: 'Product availability status',
     },
   },
   {
