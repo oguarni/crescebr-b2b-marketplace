@@ -261,10 +261,14 @@ export const productsService = {
       name: data.name,
       description: data.description,
       price: parseFloat(String(data.price)),
-      imageUrl: data.imageUrl,
+      imageUrl: data.imageUrl || null,
       category: data.category,
       supplierId: data.supplierId,
-      specifications: (data.specifications || null) as any,
+      specifications: (data.specifications
+        ? typeof data.specifications === 'string'
+          ? JSON.parse(data.specifications)
+          : data.specifications
+        : {}) as any,
       unitPrice: parseFloat(String(data.price)),
       minimumOrderQuantity: data.minimumOrderQuantity || 1,
     });
@@ -286,7 +290,7 @@ export const productsService = {
       name: data.name,
       description: data.description,
       price: parseFloat(String(data.price)),
-      imageUrl: data.imageUrl,
+      imageUrl: data.imageUrl || null,
       category: data.category,
       specifications: (data.specifications !== undefined
         ? data.specifications

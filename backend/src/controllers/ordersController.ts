@@ -151,11 +151,6 @@ export const getUserOrders = asyncHandler(async (req: AuthenticatedRequest, res:
   const companyId = req.user?.id!;
   const { status, page = 1, limit = 20 } = req.query;
 
-  const filters: any = { companyId };
-  if (status) {
-    filters.status = status;
-  }
-
   try {
     const result = await OrderStatusService.getOrdersByStatus((status as any) || undefined, {
       companyId,
@@ -165,12 +160,14 @@ export const getUserOrders = asyncHandler(async (req: AuthenticatedRequest, res:
 
     res.status(200).json({
       success: true,
-      data: result.orders,
-      pagination: {
-        total: result.total,
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
-        totalPages: Math.ceil(result.total / parseInt(limit as string)),
+      data: {
+        orders: result.orders,
+        pagination: {
+          total: result.total,
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          totalPages: Math.ceil(result.total / parseInt(limit as string)),
+        },
       },
     });
   } catch (error) {
@@ -221,7 +218,7 @@ export const getAllOrders = asyncHandler(async (req: AuthenticatedRequest, res: 
   const { status, startDate, endDate, page = 1, limit = 50 } = req.query;
 
   try {
-    const result = await OrderStatusService.getOrdersByStatus(status as any, {
+    const result = await OrderStatusService.getOrdersByStatus((status as any) || undefined, {
       startDate: startDate ? new Date(startDate as string) : undefined,
       endDate: endDate ? new Date(endDate as string) : undefined,
       limit: parseInt(limit as string),
@@ -230,12 +227,14 @@ export const getAllOrders = asyncHandler(async (req: AuthenticatedRequest, res: 
 
     res.status(200).json({
       success: true,
-      data: result.orders,
-      pagination: {
-        total: result.total,
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
-        totalPages: Math.ceil(result.total / parseInt(limit as string)),
+      data: {
+        orders: result.orders,
+        pagination: {
+          total: result.total,
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          totalPages: Math.ceil(result.total / parseInt(limit as string)),
+        },
       },
     });
   } catch (error) {

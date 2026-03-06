@@ -10,7 +10,7 @@ export const orderRepository = {
     Order.findByPk(id, {
       include: [
         { model: Quotation, as: 'quotation' },
-        { model: User, as: 'buyer', attributes: ['id', 'email', 'companyName'] },
+        { model: User, as: 'user', attributes: ['id', 'email', 'companyName'] },
         { model: OrderStatusHistory, as: 'statusHistory' },
       ],
     }),
@@ -26,7 +26,7 @@ export const orderRepository = {
     Order.findAll({
       include: [
         { model: Quotation, as: 'quotation' },
-        { model: User, as: 'buyer', attributes: ['id', 'email', 'companyName'] },
+        { model: User, as: 'user', attributes: ['id', 'email', 'companyName'] },
       ],
       order: [['createdAt', 'DESC']],
     }),

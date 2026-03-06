@@ -10,8 +10,8 @@ import Rating from './Rating';
 // Set up associations
 
 // User <-> Quotation
-User.hasMany(Quotation, { foreignKey: 'userId', as: 'quotations' });
-Quotation.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+User.hasMany(Quotation, { foreignKey: 'companyId', as: 'quotations' });
+Quotation.belongsTo(User, { foreignKey: 'companyId', as: 'user' });
 
 // Quotation <-> QuotationItem
 Quotation.hasMany(QuotationItem, { foreignKey: 'quotationId', as: 'items' });
@@ -26,7 +26,7 @@ User.hasMany(Product, { foreignKey: 'supplierId', as: 'products' });
 Product.belongsTo(User, { foreignKey: 'supplierId', as: 'supplier' });
 
 // Order <-> User (buyer/company)
-Order.belongsTo(User, { foreignKey: 'companyId', as: 'buyer' });
+Order.belongsTo(User, { foreignKey: 'companyId', as: 'user' });
 User.hasMany(Order, { foreignKey: 'companyId', as: 'orders' });
 
 // Order <-> Quotation
@@ -56,8 +56,8 @@ const models = {
 
 export const syncDatabase = async (): Promise<void> => {
   try {
-    await sequelize.sync({ alter: true });
-    console.log('Database synced successfully via Sequelize auto-sync.');
+    await sequelize.authenticate();
+    console.log('Database connection established successfully.');
   } catch (error) {
     console.error('Unable to connect to the database:', error);
     throw error;

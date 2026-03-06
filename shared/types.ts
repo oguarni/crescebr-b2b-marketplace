@@ -74,6 +74,7 @@ export interface Quotation {
   id: number;
   companyId: number;
   company?: Omit<Company, 'password'>;
+  user?: Omit<Company, 'password'>;
   items: QuotationItem[];
   status: 'pending' | 'processed' | 'completed' | 'rejected';
   adminNotes: string | null;

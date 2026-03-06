@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -21,16 +21,20 @@ import {
   CheckCircle,
   Cancel,
   HourglassEmpty,
+  ShoppingCart,
 } from '@mui/icons-material';
 import { Quotation } from '@shared/types';
 import { quotationsService } from '../services/quotationsService';
+import { ordersService } from '../services/ordersService';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 const MyQuotationsPage: React.FC = () => {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creatingOrder, setCreatingOrder] = useState<number | null>(null);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchQuotations = async () => {
@@ -52,7 +56,9 @@ const MyQuotationsPage: React.FC = () => {
     }
   }, [user]);
 
-  const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+  const getStatusColor = (
+    status: string
+  ): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status) {
       case 'pending':
         return 'warning';
@@ -106,19 +112,28 @@ const MyQuotationsPage: React.FC = () => {
     });
   };
 
+  const handleCreateOrder = async (quotationId: number) => {
+    setCreatingOrder(quotationId);
+    try {
+      await ordersService.createOrderFromQuotation({ quotationId });
+      toast.success('Order created successfully!');
+      navigate('/my-orders');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create order';
+      toast.error(errorMessage);
+    } finally {
+      setCreatingOrder(null);
+    }
+  };
+
   if (user?.role !== 'customer') {
     return (
-      <Container maxWidth="md">
+      <Container maxWidth='md'>
         <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Alert severity="error" sx={{ mb: 4 }}>
+          <Alert severity='error' sx={{ mb: 4 }}>
             Acesso negado. Apenas clientes podem visualizar cotações.
           </Alert>
-          <Button
-            variant="contained"
-            component={Link}
-            to="/"
-            startIcon={<ArrowBack />}
-          >
+          <Button variant='contained' component={Link} to='/' startIcon={<ArrowBack />}>
             Voltar ao Início
           </Button>
         </Box>
@@ -128,7 +143,7 @@ const MyQuotationsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="md">
+      <Container maxWidth='md'>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress />
         </Box>
@@ -138,20 +153,15 @@ const MyQuotationsPage: React.FC = () => {
 
   if (quotations.length === 0) {
     return (
-      <Container maxWidth="md">
+      <Container maxWidth='md'>
         <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h4" gutterBottom>
+          <Typography variant='h4' gutterBottom>
             Nenhuma cotação encontrada
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+          <Typography variant='body1' color='text.secondary' sx={{ mb: 4 }}>
             Você ainda não possui cotações solicitadas
           </Typography>
-          <Button
-            variant="contained"
-            component={Link}
-            to="/"
-            startIcon={<ArrowBack />}
-          >
+          <Button variant='contained' component={Link} to='/' startIcon={<ArrowBack />}>
             Navegar Produtos
           </Button>
         </Box>
@@ -160,27 +170,35 @@ const MyQuotationsPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth='lg'>
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant='h4' gutterBottom>
           Minhas Cotações
         </Typography>
-        <Typography variant="body1" color="text.secondary">
-          {quotations.length} cotação{quotations.length !== 1 ? 'ões' : ''} encontrada{quotations.length !== 1 ? 's' : ''}
+        <Typography variant='body1' color='text.secondary'>
+          {quotations.length} cotação{quotations.length !== 1 ? 'ões' : ''} encontrada
+          {quotations.length !== 1 ? 's' : ''}
         </Typography>
       </Box>
 
       <Grid container spacing={3}>
-        {quotations.map((quotation) => (
+        {quotations.map(quotation => (
           <Grid item xs={12} key={quotation.id}>
             <Card>
               <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    mb: 2,
+                  }}
+                >
                   <Box>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant='h6' gutterBottom>
                       Cotação #{quotation.id}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant='body2' color='text.secondary'>
                       Solicitada em: {formatDate(quotation.createdAt)}
                     </Typography>
                   </Box>
@@ -193,7 +211,7 @@ const MyQuotationsPage: React.FC = () => {
 
                 <Divider sx={{ my: 2 }} />
 
-                <Typography variant="subtitle2" gutterBottom>
+                <Typography variant='subtitle2' gutterBottom>
                   Itens da cotação:
                 </Typography>
                 <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -203,19 +221,20 @@ const MyQuotationsPage: React.FC = () => {
                         <Avatar
                           src={item.product.imageUrl}
                           alt={item.product.name}
-                          variant="rounded"
+                          variant='rounded'
                           sx={{ width: 40, height: 40, mr: 1 }}
                           imgProps={{
                             onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
-                              e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0yMCAxMkwyOCAyMEgyNFYyOEgxNlYyMEgxMkwyMCAxMloiIGZpbGw9IiM5MDkwOTAiLz4KPHN2Zz4K';
-                            }
+                              e.currentTarget.src =
+                                'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0yMCAxMkwyOCAyMEgyNFYyOEgxNlYyMEgxMkwyMCAxMloiIGZpbGw9IiM5MDkwOTAiLz4KPHN2Zz4K';
+                            },
                           }}
                         />
                         <Box>
-                          <Typography variant="body2" fontWeight="medium">
+                          <Typography variant='body2' fontWeight='medium'>
                             {item.product.name}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant='caption' color='text.secondary'>
                             Qtd: {item.quantity}
                           </Typography>
                         </Box>
@@ -224,8 +243,10 @@ const MyQuotationsPage: React.FC = () => {
                   ))}
                   {quotation.items.length > 3 && (
                     <Grid item xs={12} sm={4}>
-                      <Typography variant="body2" color="text.secondary">
-                        +{quotation.items.length - 3} item{quotation.items.length - 3 !== 1 ? 's' : ''} adicionai{quotation.items.length - 3 !== 1 ? 's' : ''}
+                      <Typography variant='body2' color='text.secondary'>
+                        +{quotation.items.length - 3} item
+                        {quotation.items.length - 3 !== 1 ? 's' : ''} adicionai
+                        {quotation.items.length - 3 !== 1 ? 's' : ''}
                       </Typography>
                     </Grid>
                   )}
@@ -233,24 +254,41 @@ const MyQuotationsPage: React.FC = () => {
 
                 {quotation.adminNotes && (
                   <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                    <Typography variant="subtitle2" gutterBottom>
+                    <Typography variant='subtitle2' gutterBottom>
                       Observações do administrador:
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant='body2' color='text.secondary'>
                       {quotation.adminNotes}
                     </Typography>
                   </Box>
                 )}
 
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                   <Button
-                    variant="outlined"
+                    variant='outlined'
                     startIcon={<Visibility />}
                     component={Link}
                     to={`/quotations/${quotation.id}`}
                   >
                     Ver Detalhes
                   </Button>
+                  {quotation.status === 'processed' && (
+                    <Button
+                      variant='contained'
+                      color='success'
+                      startIcon={
+                        creatingOrder === quotation.id ? (
+                          <CircularProgress size={20} color='inherit' />
+                        ) : (
+                          <ShoppingCart />
+                        )
+                      }
+                      onClick={() => handleCreateOrder(quotation.id)}
+                      disabled={creatingOrder !== null}
+                    >
+                      {creatingOrder === quotation.id ? 'Creating...' : 'Create Order'}
+                    </Button>
+                  )}
                 </Box>
               </CardContent>
             </Card>
@@ -259,12 +297,7 @@ const MyQuotationsPage: React.FC = () => {
       </Grid>
 
       <Box sx={{ mt: 4, textAlign: 'center' }}>
-        <Button
-          variant="outlined"
-          component={Link}
-          to="/"
-          startIcon={<ArrowBack />}
-        >
+        <Button variant='outlined' component={Link} to='/' startIcon={<ArrowBack />}>
           Continuar Navegando
         </Button>
       </Box>

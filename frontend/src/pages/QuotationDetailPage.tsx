@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Typography,
   Box,
@@ -29,6 +29,7 @@ import {
 } from '@mui/icons-material';
 import { Quotation } from '@shared/types';
 import { quotationsService } from '../services/quotationsService';
+import { ordersService } from '../services/ordersService';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -37,7 +38,9 @@ const QuotationDetailPage: React.FC = () => {
   const [quotation, setQuotation] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [creatingOrder, setCreatingOrder] = useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchQuotation = async () => {
@@ -71,6 +74,23 @@ const QuotationDetailPage: React.FC = () => {
   };
 
   const isAdmin = user?.role === 'admin';
+  const isCustomer = user?.role === 'customer';
+  const canCreateOrder = isCustomer && quotation?.status === 'processed';
+
+  const handleCreateOrder = async () => {
+    if (!quotation) return;
+    setCreatingOrder(true);
+    try {
+      await ordersService.createOrderFromQuotation({ quotationId: quotation.id });
+      toast.success('Order created successfully!');
+      navigate('/my-orders');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create order';
+      toast.error(errorMessage);
+    } finally {
+      setCreatingOrder(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -309,7 +329,7 @@ const QuotationDetailPage: React.FC = () => {
                   noWrap
                   sx={{ fontWeight: 500, color: 'text.primary' }}
                 >
-                  {quotation.company?.companyName || 'Empresa Desconhecida'}
+                  {(quotation.company || quotation.user)?.companyName || 'Empresa Desconhecida'}
                 </Typography>
                 <Chip
                   label='Verified'
@@ -329,13 +349,15 @@ const QuotationDetailPage: React.FC = () => {
                 color='text.secondary'
                 sx={{ display: 'block', mb: 0.5 }}
               >
-                CNPJ: {quotation.company?.cnpj || 'N/A'}
+                CNPJ: {(quotation.company || quotation.user)?.cnpj || 'N/A'}
               </Typography>
               <Box
                 sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}
               >
                 <LocationOn sx={{ fontSize: 14 }} />
-                <Typography variant='caption'>{quotation.company?.address || 'N/A'}</Typography>
+                <Typography variant='caption'>
+                  {(quotation.company || quotation.user)?.address || 'N/A'}
+                </Typography>
               </Box>
             </Box>
           </CardContent>
@@ -627,7 +649,7 @@ const QuotationDetailPage: React.FC = () => {
             </Box>
           </Box>
           <Grid container spacing={1.5}>
-            <Grid item xs={isAdmin ? 4 : 12}>
+            <Grid item xs={isAdmin || canCreateOrder ? 4 : 12}>
               <Button
                 fullWidth
                 variant='outlined'
@@ -663,6 +685,34 @@ const QuotationDetailPage: React.FC = () => {
                   }}
                 >
                   Edit Quotation
+                </Button>
+              </Grid>
+            )}
+            {canCreateOrder && (
+              <Grid item xs={8}>
+                <Button
+                  fullWidth
+                  variant='contained'
+                  color='success'
+                  onClick={handleCreateOrder}
+                  disabled={creatingOrder}
+                  endIcon={
+                    creatingOrder ? (
+                      <CircularProgress size={20} color='inherit' />
+                    ) : (
+                      <ArrowForward />
+                    )
+                  }
+                  sx={{
+                    py: 1.5,
+                    borderRadius: 2,
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    boxShadow: 2,
+                    '&:hover': { boxShadow: 4 },
+                  }}
+                >
+                  {creatingOrder ? 'Creating Order...' : 'Create Order'}
                 </Button>
               </Grid>
             )}
