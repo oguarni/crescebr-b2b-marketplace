@@ -8,42 +8,43 @@ import {
 import { apiService } from './api';
 
 class AuthService {
+  private normalizeAuthResponse(data: any): AuthResponse {
+    return {
+      token: data.token || data.accessToken,
+      user: data.user,
+    };
+  }
+
   async login(cnpj: string, password: string): Promise<AuthResponse> {
     const loginData: LoginRequest = { cnpj, password };
-    const response = await apiService.post<ApiResponse<AuthResponse>>('/auth/login', loginData);
+    const response = await apiService.post<ApiResponse<any>>('/auth/login', loginData);
 
     if (!response.success || !response.data) {
       throw new Error(response.error || 'Login failed');
     }
 
-    return response.data;
+    return this.normalizeAuthResponse(response.data);
   }
 
   async loginWithEmail(email: string, password: string): Promise<AuthResponse> {
     const loginData: LoginEmailRequest = { email, password };
-    const response = await apiService.post<ApiResponse<AuthResponse>>(
-      '/auth/login-email',
-      loginData
-    );
+    const response = await apiService.post<ApiResponse<any>>('/auth/login-email', loginData);
 
     if (!response.success || !response.data) {
       throw new Error(response.error || 'Login with email failed');
     }
 
-    return response.data;
+    return this.normalizeAuthResponse(response.data);
   }
 
   async register(registerData: RegisterRequest): Promise<AuthResponse> {
-    const response = await apiService.post<ApiResponse<AuthResponse>>(
-      '/auth/register',
-      registerData
-    );
+    const response = await apiService.post<ApiResponse<any>>('/auth/register', registerData);
 
     if (!response.success || !response.data) {
       throw new Error(response.error || 'Registration failed');
     }
 
-    return response.data;
+    return this.normalizeAuthResponse(response.data);
   }
 
   async logout(): Promise<void> {

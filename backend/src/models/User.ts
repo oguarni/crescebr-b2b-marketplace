@@ -204,7 +204,6 @@ User.init(
           ],
         ],
       },
-      comment: 'Industry sector (machinery, raw_materials, components, etc.)',
     },
     companyType: {
       type: DataTypes.ENUM('buyer', 'supplier', 'both'),
@@ -212,7 +211,6 @@ User.init(
       validate: {
         notEmpty: true,
       },
-      comment: 'Type of company in the B2B marketplace',
     },
     street: {
       type: DataTypes.STRING(255),
@@ -276,12 +274,10 @@ User.init(
     companySize: {
       type: DataTypes.ENUM('micro', 'small', 'medium', 'large', 'enterprise'),
       allowNull: true,
-      comment: 'Company size classification',
     },
     annualRevenue: {
       type: DataTypes.ENUM('under_500k', '500k_2m', '2m_10m', '10m_50m', '50m_200m', 'over_200m'),
       allowNull: true,
-      comment: 'Annual revenue range in BRL',
     },
     certifications: {
       type: DataTypes.JSON,

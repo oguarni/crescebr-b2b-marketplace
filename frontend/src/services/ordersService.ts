@@ -73,7 +73,7 @@ class OrdersService {
         orders: Order[];
         pagination: PaginationInfo;
       }>
-    >(`/orders/user?${queryParams.toString()}`);
+    >(`/orders?${queryParams.toString()}`);
 
     if (!response.success || !response.data) {
       throw new Error(response.error || 'Failed to fetch orders');

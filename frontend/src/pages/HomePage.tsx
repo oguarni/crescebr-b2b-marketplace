@@ -704,7 +704,7 @@ const HomePage: React.FC = () => {
                       >
                         SKU-{product.id || Math.floor(Math.random() * 9000) + 1000}
                       </Box>
-                      {product.stockQuantity > 0 && (
+                      {(product as any).stockQuantity > 0 && (
                         <Box
                           sx={{
                             position: 'absolute',
