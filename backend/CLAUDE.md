@@ -3,6 +3,7 @@
 ## Language Configuration
 
 **Always use English** for:
+
 - Code comments and documentation
 - Commit messages
 - Variable and function names
@@ -11,6 +12,7 @@
 ---
 
 ## Tech Stack
+
 - Node.js 16+ with Express 5.1.0
 - TypeScript 5.8.3
 - PostgreSQL 15 + Sequelize ORM 6.37.7
@@ -42,6 +44,7 @@ src/
 ## Code Patterns (Target State)
 
 ### Controllers (THIN - HTTP only)
+
 ```typescript
 // CORRECT: Controller delegates everything to service
 export const createQuotation = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -58,6 +61,7 @@ export const createQuotation = asyncHandler(async (req: AuthenticatedRequest, re
 ```
 
 ### Services (ALL business logic)
+
 ```typescript
 // Services contain:
 // - Input validation orchestration
@@ -75,6 +79,7 @@ class QuotationService {
 ```
 
 ### Repositories (Data access patterns)
+
 ```typescript
 // Repositories contain:
 // - Sequelize queries with includes
@@ -95,6 +100,7 @@ export const quotationRepository = {
 ```
 
 ### Validators (Extracted validation rules)
+
 ```typescript
 // validators/quotation.validators.ts
 export const createQuotationValidation = [
@@ -192,11 +198,9 @@ export const productRepository = {
       include: [{ model: User, as: 'supplier', attributes: ['id', 'companyName'] }],
     }),
 
-  findBySupplier: (supplierId: number) =>
-    Product.findAll({ where: { supplierId } }),
+  findBySupplier: (supplierId: number) => Product.findAll({ where: { supplierId } }),
 
-  findByIds: (ids: number[]) =>
-    Product.findAll({ where: { id: ids } }),
+  findByIds: (ids: number[]) => Product.findAll({ where: { id: ids } }),
 };
 ```
 
@@ -332,6 +336,7 @@ import { createQuotationValidation } from '../validators/quotation.validators';
 **Why**: Controllers have inline role checks that duplicate what `middleware/rbac.ts` already provides. This creates 80+ lines of redundant code.
 
 **Current Problem** (in `quotationsController.ts`):
+
 ```typescript
 // Line 40-45 - Redundant check
 if (userRole !== 'customer') {
@@ -358,7 +363,7 @@ export const requireRole = (...allowedRoles: string[]) => {
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        error: `Access denied. Required role: ${allowedRoles.join(' or ')}`
+        error: `Access denied. Required role: ${allowedRoles.join(' or ')}`,
       });
     }
 
@@ -374,17 +379,30 @@ import { requireRole } from '../middleware/rbac';
 import { createQuotationValidation, updateQuotationValidation } from '../validators';
 
 // Customer routes
-router.post('/', authenticateJWT, requireRole('customer'), createQuotationValidation, createQuotation);
+router.post(
+  '/',
+  authenticateJWT,
+  requireRole('customer'),
+  createQuotationValidation,
+  createQuotation
+);
 router.get('/', authenticateJWT, requireRole('customer'), getCustomerQuotations);
 
 // Admin routes
 router.get('/admin/all', authenticateJWT, requireRole('admin'), getAllQuotations);
-router.put('/admin/:id', authenticateJWT, requireRole('admin'), updateQuotationValidation, updateQuotation);
+router.put(
+  '/admin/:id',
+  authenticateJWT,
+  requireRole('admin'),
+  updateQuotationValidation,
+  updateQuotation
+);
 ```
 
 **Task 3.3: Remove inline role checks from controllers**
 
 After adding middleware, remove ALL inline checks like:
+
 ```typescript
 // DELETE these blocks from controllers:
 if (userRole !== 'customer') {
@@ -397,6 +415,7 @@ if (userRole !== 'admin') {
 ```
 
 **Files to update:**
+
 - `src/controllers/quotationsController.ts` - Remove ~6 inline checks
 - `src/controllers/productsController.ts` - Remove supplier/admin checks
 - `src/controllers/ordersController.ts` - Remove buyer/admin checks
@@ -504,7 +523,9 @@ import { quotationService } from '../services/quotation.service';
 export const createQuotation = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, error: 'Validation failed', details: errors.array() });
+    return res
+      .status(400)
+      .json({ success: false, error: 'Validation failed', details: errors.array() });
   }
 
   try {
@@ -513,16 +534,25 @@ export const createQuotation = asyncHandler(async (req: AuthenticatedRequest, re
       companyId: req.user!.id,
     });
 
-    res.status(201).json({ success: true, message: 'Quotation created successfully', data: quotation });
+    res
+      .status(201)
+      .json({ success: true, message: 'Quotation created successfully', data: quotation });
   } catch (error) {
-    res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed to create quotation' });
+    res
+      .status(400)
+      .json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create quotation',
+      });
   }
 });
 
-export const getCustomerQuotations = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const quotations = await quotationService.getForCustomer(req.user!.id);
-  res.status(200).json({ success: true, data: quotations });
-});
+export const getCustomerQuotations = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const quotations = await quotationService.getForCustomer(req.user!.id);
+    res.status(200).json({ success: true, data: quotations });
+  }
+);
 
 // Continue for all other controller methods...
 ```
@@ -599,6 +629,7 @@ npm run lint         # Lint code
 ```
 
 ## Environment Variables
+
 - DATABASE_URL: PostgreSQL connection string
 - JWT_SECRET: Secret key for tokens
 - JWT_EXPIRES_IN: Token expiration (e.g., 24h)
@@ -606,6 +637,20 @@ npm run lint         # Lint code
 - PORT: Server port (default: 3001)
 
 ## System Roles
+
 - `admin`: Full access, company verification
 - `supplier`: Product and quotation management
 - `buyer/customer`: Request quotations and place orders
+
+---
+
+## Specialized Guides
+
+- **Security & Middleware**: See `src/middleware/CLAUDE.md` for RBAC engine, auth patterns, rate limiting profiles, and security rules
+- **Testing**: See `src/__tests__/CLAUDE.md` for coverage data, test patterns, and priority test targets
+
+---
+
+## Known Build Issue
+
+`src/services/productsService.ts` lines 264, 293: `imageUrl: data.imageUrl || null` assigns null to a non-nullable string field. Fix by making `imageUrl` optional in the Product model or using a fallback string.

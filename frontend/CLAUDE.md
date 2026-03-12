@@ -3,6 +3,7 @@
 ## Language Configuration
 
 **Always use English** for:
+
 - Code comments and documentation
 - Commit messages
 - Variable and function names
@@ -11,6 +12,7 @@
 ---
 
 ## Tech Stack
+
 - React 19.1.0 + TypeScript 5.8.3
 - Vite 7.0 (build and dev server)
 - Material-UI (MUI) 7.1.2 + Emotion
@@ -39,12 +41,14 @@ src/
 ## Code Patterns (Target State)
 
 ### Components
+
 - Use arrow functions with TypeScript: `const Component: React.FC<Props> = () => {}`
 - Type props with interface: `interface ComponentProps { ... }`
 - One component per file, filename matches component name
 - Page components in `pages/`, UI components in `components/`
 
 ### Custom Hooks (Extract Business Logic)
+
 ```typescript
 // CORRECT: Extract logic into custom hooks
 const useQuotationCalculation = (items: CartItem[]) => {
@@ -52,17 +56,20 @@ const useQuotationCalculation = (items: CartItem[]) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const calculate = useCallback(async (options?: CalculationOptions) => {
-    setLoading(true);
-    try {
-      const result = await quotationsService.calculateQuote(items, options);
-      setCalculation(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Calculation failed');
-    } finally {
-      setLoading(false);
-    }
-  }, [items]);
+  const calculate = useCallback(
+    async (options?: CalculationOptions) => {
+      setLoading(true);
+      try {
+        const result = await quotationsService.calculateQuote(items, options);
+        setCalculation(result);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Calculation failed');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [items]
+  );
 
   return { calculation, loading, error, calculate };
 };
@@ -75,16 +82,19 @@ const QuotationPage = () => {
 ```
 
 ### State and Context
+
 - Global state via Context API (not Redux)
 - Custom hooks for reusable logic
 - useState for local state, useContext for global
 
 ### Styling
+
 - MUI sx prop for inline styles
 - theme.ts for consistent colors and typography
 - Avoid plain CSS, prefer MUI styled-components
 
 ### HTTP Services
+
 - All API calls through `services/api.ts`
 - Use axios with configured interceptors
 - Handle errors with try/catch and toast notifications
@@ -619,4 +629,33 @@ npm run lint         # Lint code
 ```
 
 ## Environment Variables
+
 - VITE_API_URL: Base API URL (default: http://localhost:3001/api)
+
+---
+
+## Test Coverage (2026-03-12)
+
+**Framework**: Vitest 3.2 + React Testing Library
+
+**7 test files**, 106 tests (105 pass, 1 fail)
+
+### Zero-Coverage Pages
+
+Most pages have 0% coverage: HomePage, LoginPage, RegisterPage, CartPage, CheckoutPage, MyOrdersPage, MyQuotationsPage, QuoteComparisonPage, SupplierDashboardPage, SupplierOrdersPage, SupplierProductsPage, SupplierQuotationsPage, AdminMonitoringPage, AdminQuotationsPage.
+
+### Tested Components
+
+- AuthContext (98.7%)
+- AdminProductsPage (97.1%)
+- CartContext (86.5%)
+- Navbar (83.1%)
+- QuotationRequestPage (64.1%)
+- ProtectedRoute (70.3%)
+
+### Priority Test Targets
+
+1. Services layer (api.ts, authService, viaCepService) - 0% coverage
+2. Custom hooks (useProducts, useQuotations) - 0% coverage
+3. QuotationRequestContext - 0% coverage
+4. Core pages (Login, Register, Home) - 0% coverage
