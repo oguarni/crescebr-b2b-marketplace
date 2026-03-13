@@ -3,7 +3,6 @@ import { body, validationResult } from 'express-validator';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { productsService } from '../services/productsService';
-import Product from '../models/Product';
 
 export const productValidation = [
   body('name').notEmpty().withMessage('Product name is required'),

@@ -12,7 +12,8 @@ import {
   getImportStats,
   productValidation,
 } from '../controllers/productsController';
-import { authenticateJWT, isSupplier, isAdmin, canModifyProduct } from '../middleware/auth';
+import { authenticateJWT, canModifyProduct } from '../middleware/auth';
+import { requireRole } from '../middleware/rbac';
 import { searchRateLimit, generalRateLimit, uploadRateLimit } from '../middleware/rateLimiting';
 
 const router = Router();
@@ -26,19 +27,32 @@ router.get('/import/sample', generateSampleCSV);
 router.get('/:id', searchRateLimit, getProductById);
 
 // Supplier-only routes (protected)
-router.post('/', authenticateJWT, isSupplier, generalRateLimit, productValidation, createProduct);
+router.post(
+  '/',
+  authenticateJWT,
+  requireRole('supplier'),
+  generalRateLimit,
+  productValidation,
+  createProduct
+);
 router.put(
   '/:id',
   authenticateJWT,
-  isSupplier,
+  requireRole('supplier'),
   canModifyProduct,
   generalRateLimit,
   productValidation,
   updateProduct
 );
-router.post('/import/csv', authenticateJWT, isSupplier, uploadRateLimit, importProductsFromCSV);
+router.post(
+  '/import/csv',
+  authenticateJWT,
+  requireRole('supplier'),
+  uploadRateLimit,
+  importProductsFromCSV
+);
 
 // Admin-only routes (protected)
-router.delete('/:id', authenticateJWT, isAdmin, generalRateLimit, deleteProduct);
+router.delete('/:id', authenticateJWT, requireRole('admin'), generalRateLimit, deleteProduct);
 
 export default router;

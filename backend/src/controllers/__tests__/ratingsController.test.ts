@@ -134,7 +134,7 @@ describe('Ratings Controller', () => {
       expect(MockRating.create).toHaveBeenCalledWith({
         supplierId: 2,
         buyerId: 1,
-        orderId: null,
+        orderId: undefined,
         score: 4,
         comment: 'Good service',
       });

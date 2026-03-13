@@ -11,6 +11,7 @@ import {
   updateOrderStatusValidation,
 } from '../ordersController';
 import { authenticateJWT } from '../../middleware/auth';
+import { requireRole } from '../../middleware/rbac';
 import { errorHandler } from '../../middleware/errorHandler';
 import { OrderStatusService } from '../../services/orderStatusService';
 import { QuoteService } from '../../services/quoteService';
@@ -51,13 +52,14 @@ app.post('/api/orders', authenticateJWT, createOrderValidation, createOrderFromQ
 app.put(
   '/api/orders/:orderId/status',
   authenticateJWT,
+  requireRole('admin', 'supplier'),
   updateOrderStatusValidation,
   updateOrderStatus
 );
 app.get('/api/orders', authenticateJWT, getUserOrders);
 app.get('/api/orders/:orderId/history', authenticateJWT, getOrderHistory);
-app.get('/api/admin/orders', authenticateJWT, getAllOrders);
-app.get('/api/admin/orders/stats', authenticateJWT, getOrderStats);
+app.get('/api/admin/orders', authenticateJWT, requireRole('admin'), getAllOrders);
+app.get('/api/admin/orders/stats', authenticateJWT, requireRole('admin'), getOrderStats);
 
 app.use(errorHandler);
 
@@ -234,7 +236,6 @@ describe('Orders Controller', () => {
         .expect(403);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Only admins and suppliers can update order status');
     });
 
     it('should return 400 for invalid status', async () => {
@@ -280,8 +281,8 @@ describe('Orders Controller', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveLength(2);
-      expect(response.body.pagination).toEqual({
+      expect(response.body.data.orders).toHaveLength(2);
+      expect(response.body.data.pagination).toEqual({
         total: 2,
         page: 1,
         limit: 20,
@@ -410,7 +411,7 @@ describe('Orders Controller', () => {
       const response = await request(app).get('/api/admin/orders').expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveLength(2);
+      expect(response.body.data.orders).toHaveLength(2);
     });
 
     it('should return 403 for non-admin', async () => {
@@ -422,7 +423,6 @@ describe('Orders Controller', () => {
       const response = await request(app).get('/api/admin/orders').expect(403);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Admin access required');
     });
 
     it('should filter by date range', async () => {
@@ -487,7 +487,6 @@ describe('Orders Controller', () => {
       const response = await request(app).get('/api/admin/orders/stats').expect(403);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Admin access required');
     });
   });
 });

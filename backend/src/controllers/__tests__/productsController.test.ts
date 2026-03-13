@@ -223,7 +223,7 @@ describe('Products Controller', () => {
         imageUrl: 'https://example.com/image.jpg',
         category: 'Electronics',
         minimumOrderQuantity: 1,
-        specifications: null,
+        specifications: {},
         supplierId: 1,
         unitPrice: 100.0,
       });

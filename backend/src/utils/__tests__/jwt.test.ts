@@ -74,9 +74,13 @@ describe('JWT Utilities', () => {
 
       // Assert
       expect(result).toBe(expectedToken);
-      expect(mockJwt.sign).toHaveBeenCalledWith(payload, 'fallback-secret-key', {
-        expiresIn: '15m',
-      });
+      expect(mockJwt.sign).toHaveBeenCalledWith(
+        payload,
+        'dev-only-insecure-secret-do-not-use-in-production',
+        {
+          expiresIn: '15m',
+        }
+      );
     });
 
     it('should handle different user roles', () => {
@@ -194,7 +198,10 @@ describe('JWT Utilities', () => {
 
       // Assert
       expect(result).toEqual(expectedPayload);
-      expect(mockJwt.verify).toHaveBeenCalledWith(token, 'fallback-secret-key');
+      expect(mockJwt.verify).toHaveBeenCalledWith(
+        token,
+        'dev-only-insecure-secret-do-not-use-in-production'
+      );
     });
 
     it('should throw error when token is invalid', () => {

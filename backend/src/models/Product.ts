@@ -12,7 +12,7 @@ export interface ProductAttributes {
   name: string;
   description: string;
   price: number;
-  imageUrl: string;
+  imageUrl: string | null;
   category: string;
   supplierId: number;
   tierPricing: PricingTier[];
@@ -28,7 +28,7 @@ export interface ProductAttributes {
 export interface ProductCreationAttributes
   extends Optional<
     ProductAttributes,
-    'id' | 'tierPricing' | 'availability' | 'leadTime' | 'createdAt' | 'updatedAt'
+    'id' | 'imageUrl' | 'tierPricing' | 'availability' | 'leadTime' | 'createdAt' | 'updatedAt'
   > {}
 
 class Product
@@ -39,7 +39,7 @@ class Product
   public name!: string;
   public description!: string;
   public price!: number;
-  public imageUrl!: string;
+  public imageUrl!: string | null;
   public category!: string;
   public supplierId!: number;
   public tierPricing!: PricingTier[];

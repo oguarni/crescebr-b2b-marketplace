@@ -9,17 +9,18 @@ import {
   getBuyerRatings,
 } from '../controllers/ratingsController';
 import { authenticateJWT } from '../middleware/auth';
+import { generalRateLimit } from '../middleware/rateLimiting';
 
 const router = Router();
 
 // Public routes
-router.get('/top-suppliers', getTopSuppliers);
-router.get('/supplier/:supplierId', getSupplierRatings);
+router.get('/top-suppliers', generalRateLimit, getTopSuppliers);
+router.get('/supplier/:supplierId', generalRateLimit, getSupplierRatings);
 
 // Protected routes (authenticated users only)
-router.post('/', authenticateJWT, createRatingValidation, createRating);
-router.get('/buyer', authenticateJWT, getBuyerRatings);
-router.put('/:ratingId', authenticateJWT, updateRating);
-router.delete('/:ratingId', authenticateJWT, deleteRating);
+router.post('/', authenticateJWT, generalRateLimit, createRatingValidation, createRating);
+router.get('/buyer', authenticateJWT, generalRateLimit, getBuyerRatings);
+router.put('/:ratingId', authenticateJWT, generalRateLimit, updateRating);
+router.delete('/:ratingId', authenticateJWT, generalRateLimit, deleteRating);
 
 export default router;

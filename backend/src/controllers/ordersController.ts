@@ -111,14 +111,6 @@ export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, 
   const { orderId } = req.params;
   const { status, trackingNumber, estimatedDeliveryDate, notes, nfeAccessKey, nfeUrl } = req.body;
   const companyId = req.user?.id!;
-  const userRole = req.user?.role;
-
-  if (userRole !== 'admin' && userRole !== 'supplier') {
-    return res.status(403).json({
-      success: false,
-      error: 'Only admins and suppliers can update order status',
-    });
-  }
 
   try {
     const updatedOrder = await OrderStatusService.updateOrderStatus(
@@ -206,15 +198,6 @@ export const getOrderHistory = asyncHandler(async (req: AuthenticatedRequest, re
 });
 
 export const getAllOrders = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const userRole = req.user?.role;
-
-  if (userRole !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      error: 'Admin access required',
-    });
-  }
-
   const { status, startDate, endDate, page = 1, limit = 50 } = req.query;
 
   try {
@@ -246,15 +229,6 @@ export const getAllOrders = asyncHandler(async (req: AuthenticatedRequest, res: 
 });
 
 export const getOrderStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const userRole = req.user?.role;
-
-  if (userRole !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      error: 'Admin access required',
-    });
-  }
-
   try {
     const stats = await OrderStatusService.getOrderStatusStats();
     res.status(200).json({
@@ -283,13 +257,6 @@ export const updateOrderNfe = asyncHandler(async (req: AuthenticatedRequest, res
   const { nfeAccessKey, nfeUrl } = req.body;
   const requesterId = req.user?.id!;
   const requesterRole = req.user?.role!;
-
-  if (requesterRole !== 'admin' && requesterRole !== 'supplier') {
-    return res.status(403).json({
-      success: false,
-      error: 'Only admins and suppliers can update NF-e data',
-    });
-  }
 
   try {
     const updatedOrder = await OrderStatusService.updateOrderNfe(

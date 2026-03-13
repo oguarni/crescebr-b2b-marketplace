@@ -2,7 +2,16 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
 import { AuthTokenPayload } from '../types';
 
-const getJwtSecret = () => process.env.JWT_SECRET || 'fallback-secret-key';
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET environment variable is required in production');
+    }
+    return 'dev-only-insecure-secret-do-not-use-in-production';
+  }
+  return secret;
+};
 
 const getJwtExpiresIn = () => process.env.JWT_EXPIRES_IN || '15m';
 const getRefreshTokenExpiresIn = () => process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
@@ -204,8 +213,8 @@ class TokenManager {
     const oldestToken =
       activeTokens.length > 0
         ? activeTokens.reduce((oldest, current) =>
-          current.createdAt < oldest.createdAt ? current : oldest
-        ).createdAt
+            current.createdAt < oldest.createdAt ? current : oldest
+          ).createdAt
         : null;
 
     return {
@@ -227,7 +236,9 @@ const tokenManager = new TokenManager();
 
 // Legacy functions for backward compatibility
 export const generateToken = (payload: AuthTokenPayload): string => {
-  return jwt.sign(payload as object, getJwtSecret(), { expiresIn: getJwtExpiresIn() } as SignOptions);
+  return jwt.sign(payload as object, getJwtSecret(), {
+    expiresIn: getJwtExpiresIn(),
+  } as SignOptions);
 };
 
 export const verifyToken = (token: string): AuthTokenPayload => {

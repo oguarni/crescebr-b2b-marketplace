@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import User from '../models/User';
 import {
-  generateToken,
   generateTokenPair,
   refreshAccessToken,
   revokeRefreshToken,
@@ -12,6 +11,47 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { RegisterRequest, LoginRequest, AuthResponse as _AuthResponse } from '../types';
 import { CNPJService } from '../services/cnpjService';
+
+const serializeUserResponse = (
+  user: User,
+  tokens: { accessToken: string; refreshToken: string; expiresIn: number }
+) => ({
+  accessToken: tokens.accessToken,
+  refreshToken: tokens.refreshToken,
+  expiresIn: tokens.expiresIn,
+  tokenType: 'Bearer',
+  user: {
+    id: user.id,
+    email: user.email,
+    cpf: user.cpf,
+    address: user.address,
+    street: user.street,
+    number: user.number,
+    complement: user.complement,
+    neighborhood: user.neighborhood,
+    city: user.city,
+    state: user.state,
+    zipCode: user.zipCode,
+    country: user.country,
+    phone: user.phone,
+    contactPerson: user.contactPerson,
+    contactTitle: user.contactTitle,
+    companySize: user.companySize,
+    annualRevenue: user.annualRevenue,
+    certifications: user.certifications,
+    website: user.website,
+    role: user.role,
+    status: user.status,
+    companyName: user.companyName,
+    corporateName: user.corporateName,
+    cnpj: user.cnpj,
+    cnpjValidated: user.cnpjValidated,
+    industrySector: user.industrySector,
+    companyType: user.companyType,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  },
+});
 
 export const registerValidation = [
   body('email').trim().isEmail().normalizeEmail().withMessage('Please provide a valid email'),
@@ -155,48 +195,10 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     deviceInfo
   );
 
-  const response = {
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-    expiresIn: tokens.expiresIn,
-    tokenType: 'Bearer',
-    user: {
-      id: user.id,
-      email: user.email,
-      cpf: user.cpf,
-      address: user.address,
-      street: user.street,
-      number: user.number,
-      complement: user.complement,
-      neighborhood: user.neighborhood,
-      city: user.city,
-      state: user.state,
-      zipCode: user.zipCode,
-      country: user.country,
-      phone: user.phone,
-      contactPerson: user.contactPerson,
-      contactTitle: user.contactTitle,
-      companySize: user.companySize,
-      annualRevenue: user.annualRevenue,
-      certifications: user.certifications,
-      website: user.website,
-      role: user.role,
-      status: user.status,
-      companyName: user.companyName,
-      corporateName: user.corporateName,
-      cnpj: user.cnpj,
-      cnpjValidated: user.cnpjValidated,
-      industrySector: user.industrySector,
-      companyType: user.companyType,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    },
-  };
-
   res.status(201).json({
     success: true,
     message: 'Company registered successfully',
-    data: response,
+    data: serializeUserResponse(user, tokens),
   });
 });
 
@@ -248,48 +250,10 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     deviceInfo
   );
 
-  const response = {
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-    expiresIn: tokens.expiresIn,
-    tokenType: 'Bearer',
-    user: {
-      id: user.id,
-      email: user.email,
-      cpf: user.cpf,
-      address: user.address,
-      street: user.street,
-      number: user.number,
-      complement: user.complement,
-      neighborhood: user.neighborhood,
-      city: user.city,
-      state: user.state,
-      zipCode: user.zipCode,
-      country: user.country,
-      phone: user.phone,
-      contactPerson: user.contactPerson,
-      contactTitle: user.contactTitle,
-      companySize: user.companySize,
-      annualRevenue: user.annualRevenue,
-      certifications: user.certifications,
-      website: user.website,
-      role: user.role,
-      status: user.status,
-      companyName: user.companyName,
-      corporateName: user.corporateName,
-      cnpj: user.cnpj,
-      cnpjValidated: user.cnpjValidated,
-      industrySector: user.industrySector,
-      companyType: user.companyType,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    },
-  };
-
   res.status(200).json({
     success: true,
     message: 'Login successful',
-    data: response,
+    data: serializeUserResponse(user, tokens),
   });
 });
 
@@ -341,48 +305,10 @@ export const loginWithEmail = asyncHandler(async (req: Request, res: Response) =
     deviceInfo
   );
 
-  const response = {
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-    expiresIn: tokens.expiresIn,
-    tokenType: 'Bearer',
-    user: {
-      id: user.id,
-      email: user.email,
-      cpf: user.cpf,
-      address: user.address,
-      street: user.street,
-      number: user.number,
-      complement: user.complement,
-      neighborhood: user.neighborhood,
-      city: user.city,
-      state: user.state,
-      zipCode: user.zipCode,
-      country: user.country,
-      phone: user.phone,
-      contactPerson: user.contactPerson,
-      contactTitle: user.contactTitle,
-      companySize: user.companySize,
-      annualRevenue: user.annualRevenue,
-      certifications: user.certifications,
-      website: user.website,
-      role: user.role,
-      status: user.status,
-      companyName: user.companyName,
-      corporateName: user.corporateName,
-      cnpj: user.cnpj,
-      cnpjValidated: user.cnpjValidated,
-      industrySector: user.industrySector,
-      companyType: user.companyType,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    },
-  };
-
   res.status(200).json({
     success: true,
     message: 'Email login successful',
-    data: response,
+    data: serializeUserResponse(user, tokens),
   });
 });
 
@@ -502,56 +428,22 @@ export const registerSupplier = asyncHandler(async (req: Request, res: Response)
     status: 'pending',
   });
 
-  const token = generateToken({
-    id: user.id,
-    email: user.email,
-    cnpj: user.cnpj,
-    role: user.role,
-    companyType: user.companyType,
-  });
-
-  const response = {
-    accessToken: token,
-    refreshToken: token,
-    expiresIn: '24h',
-    tokenType: 'Bearer',
-    user: {
+  const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
+  const tokens = generateTokenPair(
+    {
       id: user.id,
       email: user.email,
-      cpf: user.cpf,
-      address: user.address,
-      street: user.street,
-      number: user.number,
-      complement: user.complement,
-      neighborhood: user.neighborhood,
-      city: user.city,
-      state: user.state,
-      zipCode: user.zipCode,
-      country: user.country,
-      phone: user.phone,
-      contactPerson: user.contactPerson,
-      contactTitle: user.contactTitle,
-      companySize: user.companySize,
-      annualRevenue: user.annualRevenue,
-      certifications: user.certifications,
-      website: user.website,
-      role: user.role,
-      status: user.status,
-      companyName: user.companyName,
-      corporateName: user.corporateName,
       cnpj: user.cnpj,
-      cnpjValidated: user.cnpjValidated,
-      industrySector: user.industrySector,
+      role: user.role,
       companyType: user.companyType,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
     },
-  };
+    deviceInfo
+  );
 
   res.status(201).json({
     success: true,
     message: 'Supplier registered successfully. Account pending approval.',
-    data: response,
+    data: serializeUserResponse(user, tokens),
     cnpjValidation: {
       companyName: cnpjValidation.companyName,
       fantasyName: cnpjValidation.fantasyName,

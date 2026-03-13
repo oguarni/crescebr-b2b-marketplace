@@ -16,9 +16,15 @@ const API_PREFIX = process.env.API_PREFIX || '/api/v1';
 
 // Middleware
 app.use(helmet());
+
+const corsOrigin =
+  process.env.NODE_ENV === 'production'
+    ? (process.env.CORS_ORIGINS || '').split(',').filter(Boolean)
+    : true;
+
 app.use(
   cors({
-    origin: true,
+    origin: corsOrigin,
     credentials: true,
   })
 );
@@ -39,13 +45,13 @@ app.get('/', (req, res) => {
   });
 });
 
-// 404 handler - temporarily commented out
-// app.use('*', (req, res) => {
-//   res.status(404).json({
-//     success: false,
-//     error: 'Route not found',
-//   });
-// });
+// 404 handler
+app.use((_req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Route not found',
+  });
+});
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

@@ -3,13 +3,13 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
-        // Helper: check if a column already exists (SQLite-compatible via PRAGMA)
+        // Helper: check if a column already exists (PostgreSQL-compatible)
         const columnExists = async (tableName, columnName) => {
             const tableInfo = await queryInterface.sequelize.query(
-                `PRAGMA table_info(${tableName})`,
+                `SELECT column_name FROM information_schema.columns WHERE table_name = '${tableName}' AND column_name = '${columnName}'`,
                 { type: Sequelize.QueryTypes.SELECT }
             );
-            return tableInfo.some(column => column.name === columnName);
+            return tableInfo.length > 0;
         };
 
         // Add nfeAccessKey — Brazilian NF-e access key (exactly 44 numeric digits)

@@ -43,9 +43,7 @@ describe('OrderRepository', () => {
         companyId: 1,
         quotation: { id: 1, status: 'processed' },
         buyer: { id: 1, email: 'buyer@test.com', companyName: 'Test Company' },
-        statusHistory: [
-          { id: 1, status: 'pending', createdAt: new Date() }
-        ]
+        statusHistory: [{ id: 1, status: 'pending', createdAt: new Date() }],
       };
       (Order.findByPk as jest.Mock).mockResolvedValue(mockOrder);
 
@@ -55,7 +53,7 @@ describe('OrderRepository', () => {
       expect(Order.findByPk).toHaveBeenCalledWith('order-uuid-1', {
         include: [
           { model: Quotation, as: 'quotation' },
-          { model: User, as: 'buyer', attributes: ['id', 'email', 'companyName'] },
+          { model: User, as: 'user', attributes: ['id', 'email', 'companyName'] },
           { model: OrderStatusHistory, as: 'statusHistory' },
         ],
       });
@@ -77,13 +75,13 @@ describe('OrderRepository', () => {
           id: 'order-uuid-1',
           companyId: 1,
           status: 'pending',
-          quotation: { id: 1 }
+          quotation: { id: 1 },
         },
         {
           id: 'order-uuid-2',
           companyId: 1,
           status: 'shipped',
-          quotation: { id: 2 }
+          quotation: { id: 2 },
         },
       ];
       (Order.findAll as jest.Mock).mockResolvedValue(mockOrders);
@@ -131,14 +129,14 @@ describe('OrderRepository', () => {
           companyId: 1,
           status: 'pending',
           quotation: { id: 1 },
-          buyer: { id: 1, email: 'buyer1@test.com', companyName: 'Company 1' }
+          buyer: { id: 1, email: 'buyer1@test.com', companyName: 'Company 1' },
         },
         {
           id: 'order-uuid-2',
           companyId: 2,
           status: 'shipped',
           quotation: { id: 2 },
-          buyer: { id: 2, email: 'buyer2@test.com', companyName: 'Company 2' }
+          buyer: { id: 2, email: 'buyer2@test.com', companyName: 'Company 2' },
         },
       ];
       (Order.findAll as jest.Mock).mockResolvedValue(mockOrders);
@@ -149,7 +147,7 @@ describe('OrderRepository', () => {
       expect(Order.findAll).toHaveBeenCalledWith({
         include: [
           { model: Quotation, as: 'quotation' },
-          { model: User, as: 'buyer', attributes: ['id', 'email', 'companyName'] },
+          { model: User, as: 'user', attributes: ['id', 'email', 'companyName'] },
         ],
         order: [['createdAt', 'DESC']],
       });
