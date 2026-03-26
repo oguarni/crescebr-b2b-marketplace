@@ -125,21 +125,25 @@ Also exports `asyncHandler` wrapper for async route handlers.
 
 ---
 
-## Known Issues (Diagnostic: 2026-03-12)
+## Known Issues (Diagnostic: 2026-03-26)
 
-### Critical
+### Test Coverage: ✅ EXCELLENT
 
-1. **0% test coverage** on `rbac.ts`, `rateLimiting.ts`, `validation.ts`
-2. **Auth middleware** only 29.78% statement coverage
+All middleware files at 100% statement coverage (auth.ts, rbac.ts, rateLimiting.ts, errorHandler.ts).
 
-### Warnings
+### Fixed Since Last Audit
 
-- **Duplicate role guards**: `auth.ts` has `isAdmin`/`isSupplier`/`isCustomer`/`hasRole` AND `rbac.ts` has `requireRole`. Both do the same thing. Consolidate to `requireRole` from `rbac.ts`.
-- **DB hits in middleware**: `requirePermission`, `isApprovedSupplier`, `canModifyProduct`, `canAccessOrder` all hit DB. Consider caching user permissions in JWT payload or request-level cache.
-- **In-memory rate limiter**: Won't work across multiple server instances. Replace with Redis-backed solution before horizontal scaling.
-- **CORS open**: `origin: true` allows all origins. Restrict to known frontend URLs in production.
-- **Permission header leak**: `addPermissionsToResponse` sends permissions via `X-User-Permissions` header.
-- **404 handler commented out** in `server.ts`
+- ~~0% test coverage on rbac.ts, rateLimiting.ts~~ → 100% coverage
+- ~~Auth middleware only 29.78%~~ → 100% coverage
+- ~~CORS `origin: true`~~ → Now environment-aware (`server.ts:20-30`)
+- ~~404 handler commented out~~ → Active (`server.ts:48-54`)
+
+### Remaining Warnings
+
+- **Duplicate role guards**: `auth.ts` exports `isAdmin`/`isSupplier`/`isCustomer`/`hasRole` (lines 36-158) AND `rbac.ts` exports `requireRole` (lines 255-275). Consolidate to `requireRole` only.
+- **Permission header leak**: `rbac.ts:310` sends `X-User-Permissions` header to client — remove or restrict to dev mode.
+- **In-memory rate limiter**: `rateLimiting.ts:18-103` uses in-memory store. Replace with Redis before horizontal scaling.
+- **DB hits in middleware**: `requirePermission`, `isApprovedSupplier`, `canModifyProduct`, `canAccessOrder` all hit DB. Consider request-level caching.
 
 ---
 

@@ -27,58 +27,64 @@ src/
 │   └── ratingsController.test.ts          # Rating endpoints
 ├── middleware/__tests__/
 │   ├── auth.test.ts                       # JWT auth middleware
-│   └── errorHandler.test.ts              # Error handler
+│   ├── errorHandler.test.ts              # Error handler
+│   ├── rateLimiting.test.ts              # Rate limiting
+│   └── rbac.test.ts                      # RBAC permission engine
 ├── models/__tests__/
 │   ├── OrderStatusHistory.test.ts         # Order status model
+│   ├── Product.test.ts                    # Product model
 │   └── User.test.ts                       # User model
 ├── repositories/__tests__/
 │   ├── order.repository.test.ts           # Order repo
 │   ├── product.repository.test.ts         # Product repo
 │   └── quotation.repository.test.ts       # Quotation repo
 ├── services/__tests__/
+│   ├── adminService.test.ts               # Admin service
 │   ├── cnpjService.test.ts                # CNPJ verification
 │   ├── orderStatusService.test.ts         # Order status logic
-│   └── quoteService.test.ts              # Quote calculation
+│   ├── productsService.test.ts            # Products service
+│   ├── quotationService.test.ts           # Quotation service
+│   ├── quoteService.test.ts               # Quote calculation
+│   └── ratingsService.test.ts             # Ratings service
 ├── utils/__tests__/
 │   ├── csvImporter.test.ts                # CSV import utility
 │   └── jwt.test.ts                        # JWT utility
 └── validators/__tests__/
-    └── order.validators.test.ts           # Order validators
+    ├── auth.validators.test.ts            # Auth validators
+    ├── index.test.ts                      # Validator barrel exports
+    ├── order.validators.test.ts           # Order validators
+    └── product.validators.test.ts         # Product validators
 ```
 
 ---
 
-## Coverage Report (2026-03-12)
+## Coverage Report (2026-03-26)
 
-**Overall**: 52.57% statements | 48.72% branches | 48.38% functions | 52.44% lines
+**Overall**: 94.16% statements | 89.53% branches | 93.93% functions | 94.15% lines
 
 ### By Layer
 
-| Layer        | Stmts | Branch | Funcs | Lines | Status       |
-| ------------ | ----- | ------ | ----- | ----- | ------------ |
-| Repositories | 100%  | 100%   | 94.7% | 100%  | GOOD         |
-| Models       | 83.7% | 0%     | 40%   | 83.7% | OK           |
-| Services     | 74.3% | 68%    | 65.7% | 75.1% | NEEDS WORK   |
-| Controllers  | 64%   | 53.1%  | 56.2% | 64.4% | NEEDS WORK   |
-| Utils        | 67.3% | 67%    | 43.9% | 66.5% | NEEDS WORK   |
-| Validators   | 56.1% | 44.4%  | 50%   | 53.8% | NEEDS WORK   |
-| Middleware   | 17.7% | 13.8%  | 12.7% | 15.5% | CRITICAL     |
-| Routes       | 0%    | 100%   | 0%    | 0%    | N/A (wiring) |
+| Layer        | Stmts  | Branch | Funcs  | Lines  | Status       |
+| ------------ | ------ | ------ | ------ | ------ | ------------ |
+| Middleware   | 100%   | 99.4%  | 100%   | 100%   | EXCELLENT    |
+| Models       | 100%   | 100%   | 100%   | 100%   | EXCELLENT    |
+| Validators   | 100%   | 88.9%  | 100%   | 100%   | EXCELLENT    |
+| Services     | 98.75% | 95.2%  | 100%   | 98.9%  | EXCELLENT    |
+| Utils        | 98.59% | 94.6%  | 97.6%  | 98.5%  | EXCELLENT    |
+| Controllers  | 84.16% | 74.1%  | 80.3%  | 84.1%  | GOOD         |
+| Repositories | 83.33% | 100%   | 84.2%  | 90.9%  | GOOD         |
+| Routes       | 0%     | 100%   | 0%     | 0%     | N/A (wiring) |
 
-### Zero-Coverage Files (Priority Order)
+### Zero-Coverage Files
 
-1. **middleware/rbac.ts** - CRITICAL: Permission engine untested
-2. **middleware/rateLimiting.ts** - CRITICAL: Rate limiter untested
-3. **middleware/validation.ts** - HIGH: Input validation untested
-4. **controllers/productsController.ts** - HIGH: Entire controller untested
-5. **services/adminService.ts** - HIGH: 14% coverage
-6. **validators/auth.validators.ts** - MEDIUM
-7. **validators/product.validators.ts** - MEDIUM
-8. **utils/jwt.ts** - MEDIUM: 41% coverage (refresh/session logic untested)
+1. **controllers/quotationsController.ts** - 0% (test suite fails to compile — TS2345 type mismatch in mock at line 1066)
+2. **repositories/index.ts** - 0% (re-export barrel, low priority)
 
-### Failing Tests (4 failures in 3 suites)
+### Failing Tests (1 suite, 0 test failures)
 
-Check current status by running: `cd backend && NODE_ENV=test npx jest --runInBand --forceExit`
+`quotationsController.test.ts` fails to compile due to a TypeScript error: mock for `getMultipleSupplierQuotes` returns an incomplete `QuoteCalculationResult` type. All 936 individual tests pass.
+
+Check current status: `cd backend && NODE_ENV=test npx jest --runInBand --forceExit`
 
 ---
 

@@ -7,6 +7,7 @@ import {
   getOrderHistory,
   getAllOrders,
   getOrderStats,
+  updateOrderNfe,
   createOrderValidation,
   updateOrderStatusValidation,
 } from '../ordersController';
@@ -60,6 +61,7 @@ app.get('/api/orders', authenticateJWT, getUserOrders);
 app.get('/api/orders/:orderId/history', authenticateJWT, getOrderHistory);
 app.get('/api/admin/orders', authenticateJWT, requireRole('admin'), getAllOrders);
 app.get('/api/admin/orders/stats', authenticateJWT, requireRole('admin'), getOrderStats);
+app.put('/api/orders/:orderId/nfe', authenticateJWT, updateOrderNfe);
 
 app.use(errorHandler);
 
@@ -487,6 +489,166 @@ describe('Orders Controller', () => {
       const response = await request(app).get('/api/admin/orders/stats').expect(403);
 
       expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('POST /api/orders - quotation expiry', () => {
+    it('should return 400 when quotation has expired', async () => {
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 1);
+      const mockQuotation = {
+        ...createMockQuotation({ id: 1, companyId: 1, status: 'processed' }),
+        validUntil: pastDate.toISOString(),
+      };
+      (MockQuotation.findOne as jest.Mock).mockResolvedValue(mockQuotation);
+
+      const response = await request(app).post('/api/orders').send({ quotationId: 1 }).expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('expired');
+    });
+  });
+
+  describe('GET /api/orders - error handling', () => {
+    it('should return 400 when getUserOrders throws', async () => {
+      (MockOrderStatusService.getOrdersByStatus as jest.Mock).mockRejectedValue(
+        new Error('DB error')
+      );
+
+      const response = await request(app).get('/api/orders').expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('DB error');
+    });
+
+    it('should return generic error message for non-Error throws', async () => {
+      (MockOrderStatusService.getOrdersByStatus as jest.Mock).mockRejectedValue('string error');
+
+      const response = await request(app).get('/api/orders').expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to get orders');
+    });
+  });
+
+  describe('GET /api/orders/:orderId/history - error handling', () => {
+    it('should return 400 when getOrderHistory throws', async () => {
+      (MockOrderStatusService.getOrderHistory as jest.Mock).mockRejectedValue(
+        new Error('Not found')
+      );
+
+      const response = await request(app).get('/api/orders/order-123/history').expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('GET /api/admin/orders - error handling', () => {
+    it('should return 400 when getAllOrders throws', async () => {
+      (authenticateJWT as jest.Mock).mockImplementation((req, res, next) => {
+        req.user = { id: 1, role: 'admin', email: 'admin@test.com' };
+        next();
+      });
+      (MockOrderStatusService.getOrdersByStatus as jest.Mock).mockRejectedValue(
+        new Error('DB error')
+      );
+
+      const response = await request(app).get('/api/admin/orders').expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('GET /api/admin/orders/stats - error handling', () => {
+    it('should return 400 when getOrderStats throws', async () => {
+      (authenticateJWT as jest.Mock).mockImplementation((req, res, next) => {
+        req.user = { id: 1, role: 'admin', email: 'admin@test.com' };
+        next();
+      });
+      (MockOrderStatusService.getOrderStatusStats as jest.Mock).mockRejectedValue(
+        new Error('DB error')
+      );
+
+      const response = await request(app).get('/api/admin/orders/stats').expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('PUT /api/orders/:orderId/nfe', () => {
+    it('should update NF-e data successfully', async () => {
+      (authenticateJWT as jest.Mock).mockImplementation((req, res, next) => {
+        req.user = { id: 1, role: 'supplier', email: 'supplier@test.com' };
+        next();
+      });
+      (MockOrderStatusService.updateOrderNfe as jest.Mock).mockResolvedValue({
+        id: 'order-123',
+        nfeAccessKey: '12345678901234567890123456789012345678901234',
+        nfeUrl: 'https://nfe.example.com/123',
+      });
+
+      const response = await request(app)
+        .put('/api/orders/order-123/nfe')
+        .send({
+          nfeAccessKey: '12345678901234567890123456789012345678901234',
+          nfeUrl: 'https://nfe.example.com/123',
+        })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toBe('NF-e data updated successfully');
+    });
+
+    it('should return 403 when access denied', async () => {
+      (MockOrderStatusService.updateOrderNfe as jest.Mock).mockRejectedValue(
+        new Error('Access denied')
+      );
+
+      const response = await request(app)
+        .put('/api/orders/order-123/nfe')
+        .send({ nfeAccessKey: '123', nfeUrl: 'https://example.com' })
+        .expect(403);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Access denied');
+    });
+
+    it('should return 404 when order not found', async () => {
+      (MockOrderStatusService.updateOrderNfe as jest.Mock).mockRejectedValue(
+        new Error('Order not found')
+      );
+
+      const response = await request(app)
+        .put('/api/orders/order-999/nfe')
+        .send({ nfeAccessKey: '123', nfeUrl: 'https://example.com' })
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Order not found');
+    });
+
+    it('should return 400 for other errors', async () => {
+      (MockOrderStatusService.updateOrderNfe as jest.Mock).mockRejectedValue(
+        new Error('Invalid data')
+      );
+
+      const response = await request(app)
+        .put('/api/orders/order-123/nfe')
+        .send({ nfeAccessKey: '123', nfeUrl: 'https://example.com' })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should return 400 for non-Error throws', async () => {
+      (MockOrderStatusService.updateOrderNfe as jest.Mock).mockRejectedValue('unexpected');
+
+      const response = await request(app)
+        .put('/api/orders/order-123/nfe')
+        .send({ nfeAccessKey: '123', nfeUrl: 'https://example.com' })
+        .expect(400);
+
+      expect(response.body.error).toBe('Failed to update NF-e data');
     });
   });
 });

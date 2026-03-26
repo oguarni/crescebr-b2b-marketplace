@@ -103,9 +103,9 @@ const QuotationPage = () => {
 
 ## Refactoring Tasks
 
-### Phase 1: Extract Custom Hooks from Pages [PRIORITY: MEDIUM]
+### Phase 1: Extract Custom Hooks from Pages [STATUS: ✅ DONE]
 
-**Why**: Page components have too much inline logic (data fetching, state management, calculations). Custom hooks improve reusability and testability.
+**Completed**: `src/hooks/` contains `useOrders.ts`, `useProducts.ts`, `useQuotations.ts`, `useQuoteCalculation.ts`, `useCart.test.tsx`, and `index.ts`.
 
 **Task 1.1: Create `src/hooks/useQuotations.ts`**
 
@@ -345,7 +345,7 @@ export { useQuoteCalculation } from './useQuoteCalculation';
 
 ---
 
-### Phase 2: Refactor Page Components to Use Hooks [PRIORITY: MEDIUM]
+### Phase 2: Refactor Page Components to Use Hooks [STATUS: 🔲 NEEDS VERIFICATION]
 
 **Task 2.1: Refactor `MyQuotationsPage.tsx`**
 
@@ -391,9 +391,9 @@ Use `useQuoteCalculation` hook for calculation logic.
 
 ---
 
-### Phase 3: Create Reusable UI Components [PRIORITY: LOW]
+### Phase 3: Create Reusable UI Components [STATUS: ✅ DONE]
 
-**Why**: Some UI patterns repeat across pages (loading states, error messages, empty states).
+**Completed**: `LoadingSpinner.tsx`, `ErrorMessage.tsx`, `EmptyState.tsx` exist in `src/components/` and are exported from `index.ts`.
 
 **Task 3.1: Create `src/components/LoadingSpinner.tsx`**
 
@@ -490,7 +490,7 @@ export { EmptyState } from './EmptyState';
 
 ---
 
-### Phase 4: Improve Type Safety [PRIORITY: LOW]
+### Phase 4: Improve Type Safety [STATUS: 🔲 NOT STARTED]
 
 **Task 4.1: Create `src/types/index.ts`**
 
@@ -536,7 +536,7 @@ export * from '@shared/types';
 
 ---
 
-### Phase 5: Error Handling Improvements [PRIORITY: LOW]
+### Phase 5: Error Handling Improvements [STATUS: 🔲 NOT STARTED]
 
 **Task 5.1: Create `src/utils/errorHandler.ts`**
 
@@ -634,28 +634,27 @@ npm run lint         # Lint code
 
 ---
 
-## Test Coverage (2026-03-12)
+## Test Coverage (2026-03-26)
 
 **Framework**: Vitest 3.2 + React Testing Library
 
-**7 test files**, 106 tests (105 pass, 1 fail)
+**36 test files**, 483 tests (471 pass, 12 fail across 6 suites)
 
-### Zero-Coverage Pages
+### Failing Test Suites
 
-Most pages have 0% coverage: HomePage, LoginPage, RegisterPage, CartPage, CheckoutPage, MyOrdersPage, MyQuotationsPage, QuoteComparisonPage, SupplierDashboardPage, SupplierOrdersPage, SupplierProductsPage, SupplierQuotationsPage, AdminMonitoringPage, AdminQuotationsPage.
+- `SupplierProductsPage` — 3 fails (dialog label mismatch + timeout)
+- `RegisterPage` — 3 fails (timeouts in form submission tests)
+- `QuoteComparisonPage` — 3 fails (dropdown interaction + result display)
+- `CheckoutPage` — 1 fail (shipping validation)
+- `SupplierDashboardPage` — 1 fail (error handling timeout)
+- `HomePage` — 1 fail (category filter buttons)
 
-### Tested Components
+### Coverage Status
 
-- AuthContext (98.7%)
-- AdminProductsPage (97.1%)
-- CartContext (86.5%)
-- Navbar (83.1%)
-- QuotationRequestPage (64.1%)
-- ProtectedRoute (70.3%)
+Previously most pages had 0% coverage. Now 36 test files cover pages, services, hooks, components, and contexts. Specific coverage percentages require `--coverage` with c8/istanbul reporter configured.
 
 ### Priority Test Targets
 
-1. Services layer (api.ts, authService, viaCepService) - 0% coverage
-2. Custom hooks (useProducts, useQuotations) - 0% coverage
-3. QuotationRequestContext - 0% coverage
-4. Core pages (Login, Register, Home) - 0% coverage
+1. Fix 12 failing tests (mostly timeout and label mismatch issues)
+2. Hooks layer — ensure useProducts, useOrders, useQuotations have dedicated tests
+3. QuotationContext — verify coverage

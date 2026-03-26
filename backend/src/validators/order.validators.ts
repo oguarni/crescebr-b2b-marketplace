@@ -53,13 +53,20 @@ export const updateOrderStatusValidation = [
     .withMessage('Invalid status'),
   body('trackingNumber')
     .optional({ checkFalsy: true })
+    .trim()
+    .escape()
     .isString()
     .withMessage('Tracking number must be a string'),
   body('estimatedDeliveryDate')
     .optional({ checkFalsy: true })
     .isISO8601()
     .withMessage('Invalid date format'),
-  body('notes').optional({ checkFalsy: true }).isString().withMessage('Notes must be a string'),
+  body('notes')
+    .optional({ checkFalsy: true })
+    .trim()
+    .escape()
+    .isString()
+    .withMessage('Notes must be a string'),
   nfeAccessKeyChain('nfeAccessKey'),
   body('nfeUrl').optional({ checkFalsy: true }).isURL().withMessage('nfeUrl must be a valid URL'),
 ];

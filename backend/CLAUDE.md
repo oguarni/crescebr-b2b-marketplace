@@ -114,9 +114,9 @@ export const createQuotationValidation = [
 
 ## Refactoring Tasks
 
-### Phase 1: Create Repository Layer [PRIORITY: HIGH]
+### Phase 1: Create Repository Layer [STATUS: ✅ DONE]
 
-**Why**: The same Sequelize include patterns repeat 5+ times across controllers. Centralizing them improves maintainability and testability.
+**Completed**: `src/repositories/` contains `quotation.repository.ts`, `product.repository.ts`, `order.repository.ts`, and `index.ts`. All at 100% test coverage (except barrel index).
 
 **Task 1.1: Create `src/repositories/quotation.repository.ts`**
 
@@ -252,9 +252,9 @@ export { orderRepository } from './order.repository';
 
 ---
 
-### Phase 2: Extract Validators [PRIORITY: MEDIUM]
+### Phase 2: Extract Validators [STATUS: ✅ DONE]
 
-**Why**: Validation arrays bloat controller files (50+ lines each). Extracting them improves readability.
+**Completed**: `src/validators/` contains `auth.validators.ts`, `quotation.validators.ts`, `product.validators.ts`, `order.validators.ts`, and `index.ts`. All at 100% test coverage.
 
 **Task 2.1: Create `src/validators/quotation.validators.ts`**
 
@@ -331,7 +331,7 @@ import { createQuotationValidation } from '../validators/quotation.validators';
 
 ---
 
-### Phase 3: Remove Redundant Authorization Checks [PRIORITY: HIGH]
+### Phase 3: Remove Redundant Authorization Checks [STATUS: 🔲 NOT STARTED]
 
 **Why**: Controllers have inline role checks that duplicate what `middleware/rbac.ts` already provides. This creates 80+ lines of redundant code.
 
@@ -423,9 +423,12 @@ if (userRole !== 'admin') {
 
 ---
 
-### Phase 4: Move Data Access from Controllers to Services [PRIORITY: HIGH]
+### Phase 4: Move Data Access from Controllers to Services [STATUS: ⚠️ PARTIAL]
 
 **Why**: Controllers should not contain `Model.findByPk()` or `Model.create()` calls. This violates separation of concerns.
+
+**Done**: `quotationsController.ts` now delegates to `quotation.service.ts`.
+**Remaining**: `authController.ts` has ~10 direct `User.findOne/create` calls. `ordersController.ts` has direct `Quotation.findOne`, `Order.create` calls.
 
 **Task 4.1: Create `src/services/quotation.service.ts`**
 
@@ -565,7 +568,7 @@ export const getCustomerQuotations = asyncHandler(
 
 ---
 
-### Phase 5: Convert Static Services to Injectable Classes [PRIORITY: LOW]
+### Phase 5: Convert Static Services to Injectable Classes [STATUS: 🔲 NOT STARTED]
 
 **Why**: Static methods are harder to mock in tests. Instance-based services with constructor injection are more testable.
 
@@ -651,6 +654,8 @@ npm run lint         # Lint code
 
 ---
 
-## Known Build Issue
+## Known Issues
 
-`src/services/productsService.ts` lines 264, 293: `imageUrl: data.imageUrl || null` assigns null to a non-nullable string field. Fix by making `imageUrl` optional in the Product model or using a fallback string.
+1. **Build**: `src/services/productsService.ts` lines 264, 293 — `imageUrl: data.imageUrl || null` assigns null to a non-nullable string field
+2. **Test compile**: `src/controllers/__tests__/quotationsController.test.ts:1066` — TS2345 type mismatch in `getMultipleSupplierQuotes` mock (incomplete `QuoteCalculationResult`)
+3. **Security**: `validator` npm package has HIGH severity URL bypass CVE — run `npm audit fix`

@@ -21,8 +21,6 @@ jest.mock('../../models/Order');
 jest.mock('../../models/User');
 jest.mock('../../middleware/auth', () => ({
   authenticateJWT: jest.fn((req: any, res: any, next: any) => next()),
-  isSupplier: jest.fn((req: any, res: any, next: any) => next()),
-  isAdmin: jest.fn((req: any, res: any, next: any) => next()),
 }));
 jest.mock('../../middleware/errorHandler', () => ({
   errorHandler: jest.fn(),

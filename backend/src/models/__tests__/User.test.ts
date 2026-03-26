@@ -258,7 +258,9 @@ describe('User Model', () => {
       const hashedPassword1 = 'hashed1';
       const hashedPassword2 = 'hashed2';
 
-      (mockBcrypt.hash as jest.Mock).mockResolvedValueOnce(hashedPassword1).mockResolvedValueOnce(hashedPassword2);
+      (mockBcrypt.hash as jest.Mock)
+        .mockResolvedValueOnce(hashedPassword1)
+        .mockResolvedValueOnce(hashedPassword2);
 
       // Act
       const result1 = await User.hashPassword(password1);
@@ -461,6 +463,89 @@ describe('User Model', () => {
       expect(oldPasswordValid).toBe(true);
       expect(newHashedPassword).toBe(newHash);
       expect(user.password).toBe(newHash);
+    });
+  });
+
+  describe('beforeCreate hook', () => {
+    it('should hash password when user is created with a password', async () => {
+      // Arrange
+      const hashedPassword = '$2a$10$hashedbeforecreate';
+      (mockBcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
+
+      // Access the hooks from the model options
+      const hooks = (User as any).options.hooks;
+      const beforeCreateHook = hooks.beforeCreate[0];
+
+      const mockUser = {
+        password: 'plain-text-password',
+      } as User;
+
+      // Act
+      await beforeCreateHook(mockUser);
+
+      // Assert
+      expect(mockBcrypt.hash).toHaveBeenCalledWith('plain-text-password', 10);
+      expect(mockUser.password).toBe(hashedPassword);
+    });
+
+    it('should not hash password when password is falsy', async () => {
+      // Arrange
+      const hooks = (User as any).options.hooks;
+      const beforeCreateHook = hooks.beforeCreate[0];
+
+      const mockUser = {
+        password: '',
+      } as User;
+
+      // Act
+      await beforeCreateHook(mockUser);
+
+      // Assert
+      expect(mockBcrypt.hash).not.toHaveBeenCalled();
+      expect(mockUser.password).toBe('');
+    });
+  });
+
+  describe('beforeUpdate hook', () => {
+    it('should hash password when password field has changed', async () => {
+      // Arrange
+      const hashedPassword = '$2a$10$hashedbeforeupdate';
+      (mockBcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
+
+      const hooks = (User as any).options.hooks;
+      const beforeUpdateHook = hooks.beforeUpdate[0];
+
+      const mockUser = {
+        password: 'new-plain-password',
+        changed: jest.fn().mockReturnValue(true),
+      } as unknown as User;
+
+      // Act
+      await beforeUpdateHook(mockUser);
+
+      // Assert
+      expect((mockUser as any).changed).toHaveBeenCalledWith('password');
+      expect(mockBcrypt.hash).toHaveBeenCalledWith('new-plain-password', 10);
+      expect(mockUser.password).toBe(hashedPassword);
+    });
+
+    it('should not hash password when password field has not changed', async () => {
+      // Arrange
+      const hooks = (User as any).options.hooks;
+      const beforeUpdateHook = hooks.beforeUpdate[0];
+
+      const mockUser = {
+        password: 'existing-hash',
+        changed: jest.fn().mockReturnValue(false),
+      } as unknown as User;
+
+      // Act
+      await beforeUpdateHook(mockUser);
+
+      // Assert
+      expect((mockUser as any).changed).toHaveBeenCalledWith('password');
+      expect(mockBcrypt.hash).not.toHaveBeenCalled();
+      expect(mockUser.password).toBe('existing-hash');
     });
   });
 });

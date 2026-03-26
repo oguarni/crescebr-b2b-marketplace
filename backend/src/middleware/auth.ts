@@ -33,66 +33,6 @@ export const authenticateJWT = (
   }
 };
 
-export const isAdmin = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-  if (!req.user) {
-    res.status(401).json({
-      success: false,
-      error: 'Authentication required',
-    });
-    return;
-  }
-
-  if (req.user.role !== 'admin') {
-    res.status(403).json({
-      success: false,
-      error: 'Admin access required',
-    });
-    return;
-  }
-
-  next();
-};
-
-export const isSupplier = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-  if (!req.user) {
-    res.status(401).json({
-      success: false,
-      error: 'Authentication required',
-    });
-    return;
-  }
-
-  if (req.user.role !== 'supplier') {
-    res.status(403).json({
-      success: false,
-      error: 'Supplier access required',
-    });
-    return;
-  }
-
-  next();
-};
-
-export const isCustomer = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-  if (!req.user) {
-    res.status(401).json({
-      success: false,
-      error: 'Authentication required',
-    });
-    return;
-  }
-
-  if (req.user.role !== 'customer') {
-    res.status(403).json({
-      success: false,
-      error: 'Customer access required',
-    });
-    return;
-  }
-
-  next();
-};
-
 export const isApprovedSupplier = async (
   req: AuthenticatedRequest,
   res: Response,
@@ -133,28 +73,6 @@ export const isApprovedSupplier = async (
       error: 'Failed to verify supplier status',
     });
   }
-};
-
-export const hasRole = (allowedRoles: string[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      res.status(401).json({
-        success: false,
-        error: 'Authentication required',
-      });
-      return;
-    }
-
-    if (!allowedRoles.includes(req.user.role)) {
-      res.status(403).json({
-        success: false,
-        error: `Access denied. Required roles: ${allowedRoles.join(', ')}`,
-      });
-      return;
-    }
-
-    next();
-  };
 };
 
 export const isResourceOwner = (resourceUserIdField: string = 'companyId') => {

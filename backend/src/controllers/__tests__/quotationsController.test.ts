@@ -9,9 +9,11 @@ import {
   calculateQuote,
   getQuotationCalculations,
   processQuotationWithCalculations,
+  getMultipleSupplierQuotes,
   createQuotationValidation,
   updateQuotationValidation,
   calculateQuoteValidation,
+  getMultipleSupplierQuotesValidation,
 } from '../quotationsController';
 import { authenticateJWT } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
@@ -64,7 +66,12 @@ app.post(
   createQuotationValidation,
   createQuotation
 );
-app.get('/api/quotations/customer', authenticateJWT, requireRole('customer'), getCustomerQuotations);
+app.get(
+  '/api/quotations/customer',
+  authenticateJWT,
+  requireRole('customer'),
+  getCustomerQuotations
+);
 app.get('/api/quotations/:id', authenticateJWT, getQuotationById);
 app.get('/api/admin/quotations', authenticateJWT, requireRole('admin'), getAllQuotations);
 app.put(
@@ -81,6 +88,12 @@ app.post(
   authenticateJWT,
   requireRole('admin'),
   processQuotationWithCalculations
+);
+app.post(
+  '/api/quotations/compare',
+  authenticateJWT,
+  getMultipleSupplierQuotesValidation,
+  getMultipleSupplierQuotes
 );
 
 app.use(errorHandler);
@@ -1033,6 +1046,119 @@ describe('Quotations Controller', () => {
       responses.forEach(response => {
         expect([201, 400, 500]).toContain(response.status);
       });
+    });
+  });
+
+  describe('POST /api/quotations/compare (getMultipleSupplierQuotes)', () => {
+    const validCompareData = {
+      productId: 1,
+      quantity: 10,
+      buyerLocation: 'São Paulo',
+      supplierIds: [1, 2],
+      shippingMethod: 'standard',
+    };
+
+    it('should return quotes from multiple suppliers', async () => {
+      const mockQuotes = [
+        {
+          supplier: { id: 1, companyName: 'Supplier 1' },
+          quote: {
+            productId: 1,
+            basePrice: 100,
+            quantity: 10,
+            tierDiscount: 0,
+            unitPriceAfterDiscount: 100,
+            subtotal: 1000,
+            shippingCost: 50,
+            tax: 180,
+            total: 1000,
+            savings: 0,
+            appliedTier: null,
+          },
+        },
+        {
+          supplier: { id: 2, companyName: 'Supplier 2' },
+          quote: {
+            productId: 1,
+            basePrice: 90,
+            quantity: 10,
+            tierDiscount: 0,
+            unitPriceAfterDiscount: 90,
+            subtotal: 900,
+            shippingCost: 50,
+            tax: 162,
+            total: 900,
+            savings: 0,
+            appliedTier: null,
+          },
+        },
+      ];
+
+      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
+        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+        next();
+      });
+      mockQuoteService.getMultipleSupplierQuotes.mockResolvedValue(mockQuotes);
+
+      const response = await request(app)
+        .post('/api/quotations/compare')
+        .send(validCompareData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.quotes).toEqual(mockQuotes);
+      expect(response.body.data.productId).toBe(1);
+      expect(response.body.data.quantity).toBe(10);
+      expect(response.body.data.shippingMethod).toBe('standard');
+    });
+
+    it('should default shippingMethod to standard when not provided', async () => {
+      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
+        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+        next();
+      });
+      mockQuoteService.getMultipleSupplierQuotes.mockResolvedValue([]);
+
+      const response = await request(app)
+        .post('/api/quotations/compare')
+        .send({ productId: 1, quantity: 5 })
+        .expect(200);
+
+      expect(response.body.data.shippingMethod).toBe('standard');
+    });
+
+    it('should return 400 when QuoteService throws', async () => {
+      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
+        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+        next();
+      });
+      mockQuoteService.getMultipleSupplierQuotes.mockRejectedValue(new Error('Product not found'));
+
+      const response = await request(app)
+        .post('/api/quotations/compare')
+        .send(validCompareData)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Product not found');
+    });
+
+    it('should pass optional parameters through', async () => {
+      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
+        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+        next();
+      });
+      mockQuoteService.getMultipleSupplierQuotes.mockResolvedValue([]);
+
+      await request(app).post('/api/quotations/compare').send(validCompareData).expect(200);
+
+      expect(mockQuoteService.getMultipleSupplierQuotes).toHaveBeenCalledWith(
+        1,
+        10,
+        'São Paulo',
+        [1, 2],
+        'standard'
+      );
     });
   });
 });

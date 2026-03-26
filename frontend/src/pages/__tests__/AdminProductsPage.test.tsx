@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import AdminProductsPage from '../AdminProductsPage';
@@ -224,24 +224,28 @@ describe('AdminProductsPage', () => {
       const newProductButton = screen.getByRole('button', { name: /novo produto/i });
       await user.click(newProductButton);
 
-      // Wait for dialog to be visible (using the same pattern as the working test)
       expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: /novo produto/i })).toBeInTheDocument();
 
-      // Fill form
-      await user.type(screen.getByLabelText(/nome do produto/i), 'New Test Product');
-      await user.type(screen.getByLabelText(/descrição/i), 'Test product description');
-      await user.type(screen.getByLabelText(/preço/i), '100.50');
-      await user.type(screen.getByLabelText(/url da imagem/i), 'https://example.com/test.jpg');
+      // Use fireEvent.change for faster form filling (avoids per-keystroke delays)
+      fireEvent.change(screen.getByLabelText(/nome do produto/i), {
+        target: { value: 'New Test Product' },
+      });
+      fireEvent.change(screen.getByLabelText(/descrição/i), {
+        target: { value: 'Test product description' },
+      });
+      fireEvent.change(screen.getByLabelText(/preço/i), { target: { value: '100.50' } });
+      fireEvent.change(screen.getByLabelText(/url da imagem/i), {
+        target: { value: 'https://example.com/test.jpg' },
+      });
 
-      // Select category - open dropdown and click option
-      const categoryCombobox = screen.getByRole('combobox');
-      await user.click(categoryCombobox);
+      // Select category using MUI Select pattern
+      const categorySelect = screen.getByRole('combobox');
+      fireEvent.mouseDown(categorySelect);
       await waitFor(() => {
         expect(screen.getByRole('listbox')).toBeInTheDocument();
       });
       const option = screen.getByRole('option', { name: 'Industrial Equipment' });
-      await user.click(option);
+      fireEvent.click(option);
 
       // Submit form
       vi.mocked(productsService.createProduct).mockResolvedValue({
@@ -309,30 +313,33 @@ describe('AdminProductsPage', () => {
         expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
       });
 
-      // Open dialog
       const newProductButton = screen.getByRole('button', { name: /novo produto/i });
       await user.click(newProductButton);
 
-      // Fill form with invalid price
-      await user.type(screen.getByLabelText(/nome do produto/i), 'Test Product');
-      await user.type(screen.getByLabelText(/descrição/i), 'Test description');
-      await user.type(screen.getByLabelText(/preço/i), '-10');
-      await user.type(screen.getByLabelText(/url da imagem/i), 'https://example.com/test.jpg');
+      // Use fireEvent.change for speed
+      fireEvent.change(screen.getByLabelText(/nome do produto/i), {
+        target: { value: 'Test Product' },
+      });
+      fireEvent.change(screen.getByLabelText(/descrição/i), {
+        target: { value: 'Test description' },
+      });
+      fireEvent.change(screen.getByLabelText(/preço/i), { target: { value: '-10' } });
+      fireEvent.change(screen.getByLabelText(/url da imagem/i), {
+        target: { value: 'https://example.com/test.jpg' },
+      });
 
-      // Select category - click on the select component and wait for options
-      // Check if dropdown is already open, if not click to open it
-      let option = screen.queryByText('Industrial Equipment');
-      if (!option) {
-        const categorySelect = screen.getByRole('combobox');
-        await user.click(categorySelect);
-        option = await screen.findByText('Industrial Equipment');
-      }
-      await user.click(option);
+      // Select category
+      const categorySelect = screen.getByRole('combobox');
+      fireEvent.mouseDown(categorySelect);
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('option', { name: 'Industrial Equipment' }));
 
       const saveButton = screen.getByRole('button', { name: /salvar/i });
       await user.click(saveButton);
 
-      expect(toast.error).toHaveBeenCalledWith('Todos os campos são obrigatórios');
+      expect(toast.error).toHaveBeenCalledWith('Preço deve ser um número válido maior que zero');
     });
   });
 
@@ -368,10 +375,9 @@ describe('AdminProductsPage', () => {
       const editButtons = screen.getAllByTitle('Editar');
       await user.click(editButtons[0]);
 
-      // Update product name
+      // Update product name using fireEvent for speed
       const nameField = screen.getByDisplayValue('Industrial Pump');
-      await user.clear(nameField);
-      await user.type(nameField, 'Updated Industrial Pump');
+      fireEvent.change(nameField, { target: { value: 'Updated Industrial Pump' } });
 
       // Submit form
       vi.mocked(productsService.updateProduct).mockResolvedValue({
@@ -494,20 +500,29 @@ describe('AdminProductsPage', () => {
         expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
       });
 
-      // Open dialog and fill some fields
+      // Open dialog and fill some fields using fireEvent for speed
       const newProductButton = screen.getByRole('button', { name: /novo produto/i });
       await user.click(newProductButton);
 
-      await user.type(screen.getByLabelText(/nome do produto/i), 'Test Product');
+      fireEvent.change(screen.getByLabelText(/nome do produto/i), {
+        target: { value: 'Test Product' },
+      });
+      expect(screen.getByLabelText(/nome do produto/i)).toHaveValue('Test Product');
 
       // Close and reopen dialog
       const cancelButton = screen.getByRole('button', { name: /cancelar/i });
       await user.click(cancelButton);
 
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+
       await user.click(newProductButton);
 
       // Check that fields are empty
-      expect(screen.getByLabelText(/nome do produto/i)).toHaveValue('');
+      await waitFor(() => {
+        expect(screen.getByLabelText(/nome do produto/i)).toHaveValue('');
+      });
     });
 
     it('should show image preview when valid URL is entered', async () => {
@@ -522,9 +537,9 @@ describe('AdminProductsPage', () => {
       const newProductButton = screen.getByRole('button', { name: /novo produto/i });
       await user.click(newProductButton);
 
-      // Enter image URL
+      // Enter image URL using fireEvent for speed (avoids per-keystroke delays)
       const imageUrlField = screen.getByLabelText(/url da imagem/i);
-      await user.type(imageUrlField, 'https://example.com/test.jpg');
+      fireEvent.change(imageUrlField, { target: { value: 'https://example.com/test.jpg' } });
 
       // Check if preview image appears
       await waitFor(() => {

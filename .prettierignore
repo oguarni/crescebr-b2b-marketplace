@@ -1,33 +1,30 @@
+# Prettier Ignore
+
 # Dependencies
-node_modules/
-*/node_modules/
+**/node_modules/
 
 # Build outputs
-dist/
-build/
-*/dist/
-*/build/
+**/dist/
+**/build/
 
-# Environment files
-.env
-.env.*
+# Coverage
+**/coverage/
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# Coverage reports
-coverage/
-*/coverage/
-
-# Package files
-package-lock.json
-yarn.lock
+# Environment
+.env
+.env.*
 
 # Git
 .git/
+.git-rewrite/
 
 # IDE
 .vscode/
@@ -42,11 +39,28 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 
-# Migrations and seeders
+# Sequelize generated
 backend/migrations/
 backend/seeders/
 backend/config/
 
-# Generated files
+# TypeScript generated
 *.d.ts
 *.tsbuildinfo
+
+# Docker
+Dockerfile*
+docker-compose.yml
+docker-data/
+
+# Husky
+.husky/
+
+# Claude
+.claude/
+
+# Markdown (optional — remove if you want Prettier to format .md)
+*.md
+
+# Shell scripts
+*.sh

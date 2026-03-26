@@ -1,78 +1,118 @@
-# Claude Code Ignore File
-# These patterns tell Claude to skip certain files/folders when exploring the codebase
+# Claude Code — Context Ignore
+# Skip files that add noise without useful code context
 
-# Dependencies (large, not needed for context)
-node_modules/
+# ──────────────────────────────────────────────
+# Dependencies (massive, not code context)
+# ──────────────────────────────────────────────
 **/node_modules/
 
+# ──────────────────────────────────────────────
+# Lock files (large, generated)
+# ──────────────────────────────────────────────
+package-lock.json
+**/package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ──────────────────────────────────────────────
 # Build outputs
-dist/
-build/
-coverage/
+# ──────────────────────────────────────────────
+**/dist/
+**/build/
 .next/
 out/
 
-# Generated assets
-frontend/dist/
-backend/dist/
-shared/dist/
-
-# Logs
-*.log
-logs/
-npm-debug.log*
-yarn-debug.log*
-
-# Lock files (large, not needed for code context)
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-**/package-lock.json
-
-# Test databases
+# ──────────────────────────────────────────────
+# Test & Coverage reports
+# ──────────────────────────────────────────────
+**/coverage/
+.nyc_output/
 *.test.db
 *.db
 *.sqlite
-test.sqlite
 
-# Cache and temporary files
+# ──────────────────────────────────────────────
+# Logs
+# ──────────────────────────────────────────────
+*.log
+logs/
+
+# ──────────────────────────────────────────────
+# Caches & generated
+# ──────────────────────────────────────────────
 .cache/
 .parcel-cache/
-*.tmp
-*.temp
+.vitest/
 .eslintcache
 .prettiercache
 *.tsbuildinfo
 .tscache/
+*.tmp
+*.temp
 
-# IDE configuration (not needed for code context)
+# ──────────────────────────────────────────────
+# IDE / OS
+# ──────────────────────────────────────────────
 .idea/
 .vscode/
 *.sublime-workspace
-
-# Operating system files
 .DS_Store
 Thumbs.db
 
-# Uploads and user-generated content
-uploads/
-backend/uploads/
-
-# Environment files (may contain secrets)
+# ──────────────────────────────────────────────
+# Environment & secrets
+# ──────────────────────────────────────────────
 .env
 .env.local
 .env.*.local
 
-# Git internal files
+# ──────────────────────────────────────────────
+# Uploads & user content
+# ──────────────────────────────────────────────
+uploads/
+backend/uploads/
+
+# ──────────────────────────────────────────────
+# Git internals & git artifacts
+# ──────────────────────────────────────────────
 .git/
 .git-rewrite/
 filter-repo/
+*.orig
 
-# Coverage reports (large HTML files)
-coverage/
-.nyc_output/
-
+# ──────────────────────────────────────────────
 # Database backups
+# ──────────────────────────────────────────────
 *.db.backup
 *.db.bak
 *.sqlite.backup
+
+# ──────────────────────────────────────────────
+# Binary / media assets (no code context)
+# ──────────────────────────────────────────────
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.woff
+*.woff2
+*.ttf
+*.eot
+
+# ──────────────────────────────────────────────
+# Husky internals (boilerplate scripts)
+# ──────────────────────────────────────────────
+.husky/_/
+
+# ──────────────────────────────────────────────
+# Docker
+# ──────────────────────────────────────────────
+docker-data/
+.docker/
+
+# ──────────────────────────────────────────────
+# GitHub workflows (CI config, not code logic)
+# ──────────────────────────────────────────────
+.github/workflows/

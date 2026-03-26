@@ -1,8 +1,8 @@
 import { body } from 'express-validator';
 
 export const productValidation = [
-  body('name').notEmpty().withMessage('Product name is required'),
-  body('description').notEmpty().withMessage('Product description is required'),
+  body('name').trim().escape().notEmpty().withMessage('Product name is required'),
+  body('description').trim().escape().notEmpty().withMessage('Product description is required'),
   body('price')
     .isNumeric()
     .withMessage('Price must be a number')
@@ -13,8 +13,13 @@ export const productValidation = [
       return true;
     }),
   body('imageUrl').isURL().withMessage('Image URL must be a valid URL'),
-  body('category').notEmpty().withMessage('Category is required'),
-  body('specifications').optional().isString().withMessage('Specifications must be a string'),
+  body('category').trim().escape().notEmpty().withMessage('Category is required'),
+  body('specifications')
+    .optional()
+    .isString()
+    .withMessage('Specifications must be a string')
+    .trim()
+    .escape(),
   body('minimumOrderQuantity')
     .optional()
     .isInt({ min: 1 })

@@ -7,6 +7,10 @@ import QuotationItem from '../../models/QuotationItem';
 jest.mock('../../models/Product');
 jest.mock('../../models/Quotation');
 jest.mock('../../models/QuotationItem');
+jest.mock('../../models/User', () => ({
+  __esModule: true,
+  default: { findAll: jest.fn(), findByPk: jest.fn() },
+}));
 
 const MockProduct = Product as jest.Mocked<typeof Product>;
 const MockQuotation = Quotation as jest.Mocked<typeof Quotation>;
@@ -494,6 +498,729 @@ describe('QuoteService', () => {
       const result = QuoteService.formatQuoteResponse(calculations);
 
       expect(result.items[0].appliedTier).toBe('No tier applied');
+    });
+
+    it('should format multiple items correctly', () => {
+      const calculations = {
+        items: [
+          {
+            productId: 1,
+            basePrice: 50,
+            quantity: 5,
+            tierDiscount: 0,
+            unitPriceAfterDiscount: 50,
+            subtotal: 250,
+            shippingCost: 30,
+            tax: 45,
+            total: 325,
+            savings: 0,
+            appliedTier: { minQuantity: 1, maxQuantity: 10, discount: 0 },
+          },
+          {
+            productId: 2,
+            basePrice: 200,
+            quantity: 100,
+            tierDiscount: 0.1,
+            unitPriceAfterDiscount: 180,
+            subtotal: 18000,
+            shippingCost: 500,
+            tax: 3240,
+            total: 21740,
+            savings: 2000,
+            appliedTier: { minQuantity: 51, maxQuantity: 100, discount: 0.1 },
+          },
+        ],
+        totalSubtotal: 18250,
+        totalShipping: 530,
+        totalTax: 3285,
+        grandTotal: 22065,
+        totalSavings: 2000,
+      };
+
+      const result = QuoteService.formatQuoteResponse(calculations);
+
+      expect(result.summary.totalItems).toBe(2);
+      expect(result.summary.subtotal).toBe('R$ 18250.00');
+      expect(result.summary.total).toBe('R$ 22065.00');
+      expect(result.items).toHaveLength(2);
+      expect(result.items[1].discount).toBe('10.0%');
+      expect(result.items[1].appliedTier).toBe('51-100 units');
+    });
+  });
+
+  describe('calculateQuoteForItem - minimum order quantity', () => {
+    it('should throw error when quantity is below minimum order quantity', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        unitPrice: 100,
+        minimumOrderQuantity: 10,
+        tierPricing: null,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const input = {
+        productId: 1,
+        quantity: 5,
+        shippingMethod: 'standard' as const,
+      };
+
+      await expect(QuoteService.calculateQuoteForItem(input)).rejects.toThrow(
+        'Minimum order quantity is 10 units'
+      );
+    });
+
+    it('should accept quantity equal to minimum order quantity', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        unitPrice: 100,
+        minimumOrderQuantity: 10,
+        tierPricing: null,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const input = {
+        productId: 1,
+        quantity: 10,
+        shippingMethod: 'standard' as const,
+      };
+
+      const result = await QuoteService.calculateQuoteForItem(input);
+      expect(result.quantity).toBe(10);
+    });
+
+    it('should use unitPrice when available instead of price', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 200 }),
+        unitPrice: 150,
+        minimumOrderQuantity: 1,
+        tierPricing: null,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const input = {
+        productId: 1,
+        quantity: 5,
+        shippingMethod: 'standard' as const,
+      };
+
+      const result = await QuoteService.calculateQuoteForItem(input);
+      expect(result.basePrice).toBe(150);
+    });
+
+    it('should fall back to price when unitPrice is not set', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 200 }),
+        unitPrice: 0,
+        minimumOrderQuantity: 1,
+        tierPricing: null,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const input = {
+        productId: 1,
+        quantity: 5,
+        shippingMethod: 'standard' as const,
+      };
+
+      const result = await QuoteService.calculateQuoteForItem(input);
+      expect(result.basePrice).toBe(200);
+    });
+
+    it('should use custom tier pricing from product when available', async () => {
+      const customTiers = [
+        { minQuantity: 1, maxQuantity: 20, discount: 0.1 },
+        { minQuantity: 21, maxQuantity: null, discount: 0.3 },
+      ];
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        unitPrice: 100,
+        minimumOrderQuantity: 1,
+        tierPricing: customTiers,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const input = {
+        productId: 1,
+        quantity: 5,
+        shippingMethod: 'standard' as const,
+      };
+
+      const result = await QuoteService.calculateQuoteForItem(input);
+      expect(result.tierDiscount).toBe(0.1);
+      expect(result.appliedTier).toEqual(customTiers[0]);
+    });
+
+    it('should handle product with no minimumOrderQuantity', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        unitPrice: 100,
+        minimumOrderQuantity: 0,
+        tierPricing: null,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const input = {
+        productId: 1,
+        quantity: 1,
+        shippingMethod: 'standard' as const,
+      };
+
+      const result = await QuoteService.calculateQuoteForItem(input);
+      expect(result.quantity).toBe(1);
+    });
+  });
+
+  describe('getQuotationWithCalculations', () => {
+    it('should retrieve quotation and calculate quotes for all items', async () => {
+      const mockItems = [
+        { productId: 1, quantity: 10, product: createMockProduct({ id: 1, price: 100 }) },
+        { productId: 2, quantity: 5, product: createMockProduct({ id: 2, price: 200 }) },
+      ];
+
+      const mockQuotation = {
+        id: 1,
+        companyId: 1,
+        status: 'pending',
+        items: mockItems,
+      };
+
+      MockQuotation.findByPk.mockResolvedValue(mockQuotation as any);
+
+      // Mock Product.findByPk for each item calculation
+      const mockProduct1 = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        unitPrice: 100,
+        minimumOrderQuantity: 1,
+        tierPricing: null,
+      };
+      const mockProduct2 = {
+        ...createMockProduct({ id: 2, price: 200 }),
+        unitPrice: 200,
+        minimumOrderQuantity: 1,
+        tierPricing: null,
+      };
+
+      MockProduct.findByPk
+        .mockResolvedValueOnce(mockProduct1 as any)
+        .mockResolvedValueOnce(mockProduct2 as any);
+
+      const result = await QuoteService.getQuotationWithCalculations(1);
+
+      expect(result.quotation).toBe(mockQuotation);
+      expect(result.calculations.items).toHaveLength(2);
+      expect(result.calculations.totalSubtotal).toBeGreaterThan(0);
+      expect(result.calculations.totalShipping).toBeGreaterThan(0);
+      expect(result.calculations.totalTax).toBeGreaterThan(0);
+      expect(result.calculations.grandTotal).toBeGreaterThan(0);
+      expect(MockQuotation.findByPk).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          include: expect.any(Array),
+        })
+      );
+    });
+
+    it('should throw error when quotation is not found', async () => {
+      MockQuotation.findByPk.mockResolvedValue(null);
+
+      await expect(QuoteService.getQuotationWithCalculations(999)).rejects.toThrow(
+        'Quotation not found'
+      );
+    });
+
+    it('should handle quotation with no items', async () => {
+      const mockQuotation = {
+        id: 1,
+        companyId: 1,
+        status: 'pending',
+        items: [],
+      };
+
+      MockQuotation.findByPk.mockResolvedValue(mockQuotation as any);
+
+      const result = await QuoteService.getQuotationWithCalculations(1);
+
+      expect(result.quotation).toBe(mockQuotation);
+      expect(result.calculations.items).toHaveLength(0);
+      expect(result.calculations.totalSubtotal).toBe(0);
+      expect(result.calculations.grandTotal).toBe(0);
+    });
+
+    it('should handle quotation with undefined items', async () => {
+      const mockQuotation = {
+        id: 1,
+        companyId: 1,
+        status: 'pending',
+        // items not present
+      };
+
+      MockQuotation.findByPk.mockResolvedValue(mockQuotation as any);
+
+      const result = await QuoteService.getQuotationWithCalculations(1);
+
+      expect(result.calculations.items).toHaveLength(0);
+      expect(result.calculations.grandTotal).toBe(0);
+    });
+  });
+
+  describe('getMultipleSupplierQuotes', () => {
+    const setupUserMock = async (mockSuppliers: any[]) => {
+      const UserModule = await import('../../models/User');
+      (UserModule.default.findAll as jest.Mock).mockResolvedValue(mockSuppliers);
+    };
+
+    it('should get quotes from specified supplier IDs', async () => {
+      const mockSuppliers = [
+        {
+          id: 10,
+          companyName: 'Supplier A',
+          corporateName: 'Supplier A LTDA',
+          averageRating: 4.5,
+          totalRatings: 20,
+          industrySector: 'electronics',
+          address: 'Curitiba',
+          role: 'supplier',
+          status: 'approved',
+        },
+      ];
+
+      await setupUserMock(mockSuppliers);
+
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        unitPrice: 100,
+        minimumOrderQuantity: 1,
+        tierPricing: null,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const result = await QuoteService.getMultipleSupplierQuotes(
+        1,
+        10,
+        'Londrina',
+        [10],
+        'standard'
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].supplier.id).toBe(10);
+      expect(result[0].supplier.companyName).toBe('Supplier A');
+      expect(result[0].quote).not.toBeNull();
+      expect(result[0].quote!.productId).toBe(1);
+      expect(result[0].error).toBeUndefined();
+    });
+
+    it('should find suppliers by product supplierId when no IDs provided', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100, supplierId: 5 }),
+        unitPrice: 100,
+        minimumOrderQuantity: 1,
+        tierPricing: null,
+      };
+
+      // First call for getMultipleSupplierQuotes to find the product
+      MockProduct.findByPk.mockResolvedValueOnce(mockProduct as any);
+      // Second call for calculateQuoteForItem
+      MockProduct.findByPk.mockResolvedValueOnce(mockProduct as any);
+
+      const mockSuppliers = [
+        {
+          id: 5,
+          companyName: 'Product Supplier',
+          corporateName: 'Product Supplier LTDA',
+          averageRating: 4.0,
+          totalRatings: 10,
+          industrySector: 'machinery',
+          address: 'Maringá',
+          role: 'supplier',
+          status: 'approved',
+        },
+      ];
+
+      await setupUserMock(mockSuppliers);
+
+      const result = await QuoteService.getMultipleSupplierQuotes(1, 10, 'Curitiba');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].supplier.id).toBe(5);
+      expect(result[0].quote).not.toBeNull();
+    });
+
+    it('should throw error when product not found and no supplier IDs provided', async () => {
+      MockProduct.findByPk.mockResolvedValue(null);
+
+      await expect(QuoteService.getMultipleSupplierQuotes(999, 10, 'Curitiba')).rejects.toThrow(
+        'Product not found'
+      );
+    });
+
+    it('should find all approved suppliers when product has no supplierId', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        supplierId: 0, // falsy supplierId
+        unitPrice: 100,
+        minimumOrderQuantity: 1,
+        tierPricing: null,
+      };
+
+      MockProduct.findByPk
+        .mockResolvedValueOnce(mockProduct as any) // for getMultipleSupplierQuotes
+        .mockResolvedValue(mockProduct as any); // for calculateQuoteForItem calls
+
+      const mockSuppliers = [
+        {
+          id: 1,
+          companyName: 'Supplier 1',
+          corporateName: 'Supplier 1 LTDA',
+          averageRating: 3.5,
+          totalRatings: 5,
+          industrySector: 'raw_materials',
+          address: 'Cascavel',
+          role: 'supplier',
+          status: 'approved',
+        },
+        {
+          id: 2,
+          companyName: 'Supplier 2',
+          corporateName: 'Supplier 2 LTDA',
+          averageRating: 4.8,
+          totalRatings: 50,
+          industrySector: 'chemicals',
+          address: 'Londrina',
+          role: 'supplier',
+          status: 'approved',
+        },
+      ];
+
+      await setupUserMock(mockSuppliers);
+
+      const result = await QuoteService.getMultipleSupplierQuotes(1, 10, 'Curitiba');
+
+      expect(result).toHaveLength(2);
+    });
+
+    it('should handle calculation errors for individual suppliers gracefully', async () => {
+      const mockSuppliers = [
+        {
+          id: 10,
+          companyName: 'Good Supplier',
+          corporateName: 'Good Supplier LTDA',
+          averageRating: 4.5,
+          totalRatings: 20,
+          industrySector: 'electronics',
+          address: 'Curitiba',
+        },
+        {
+          id: 11,
+          companyName: 'Bad Supplier',
+          corporateName: 'Bad Supplier LTDA',
+          address: 'Londrina',
+        },
+      ];
+
+      await setupUserMock(mockSuppliers);
+
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        unitPrice: 100,
+        minimumOrderQuantity: 1,
+        tierPricing: null,
+      };
+
+      // First call succeeds, second call fails
+      MockProduct.findByPk.mockResolvedValueOnce(mockProduct as any).mockResolvedValueOnce(null); // This will cause "Product not found" error
+
+      const result = await QuoteService.getMultipleSupplierQuotes(
+        1,
+        10,
+        'Curitiba',
+        [10, 11],
+        'standard'
+      );
+
+      expect(result).toHaveLength(2);
+      // Successful quote should come first (sorted by price)
+      const successEntry = result.find(r => r.quote !== null);
+      const errorEntry = result.find(r => r.quote === null);
+      expect(successEntry).toBeDefined();
+      expect(errorEntry).toBeDefined();
+      expect(errorEntry!.error).toBe('Product not found');
+    });
+
+    it('should sort results by total price (best deals first)', async () => {
+      const mockSuppliers = [
+        {
+          id: 10,
+          companyName: 'Expensive Supplier',
+          corporateName: 'Expensive LTDA',
+          averageRating: 4.0,
+          totalRatings: 10,
+          industrySector: 'electronics',
+          address: 'Foz do Iguaçu', // farther = more expensive shipping
+        },
+        {
+          id: 11,
+          companyName: 'Cheap Supplier',
+          corporateName: 'Cheap LTDA',
+          averageRating: 4.5,
+          totalRatings: 20,
+          industrySector: 'electronics',
+          address: 'Curitiba', // same city = cheaper shipping
+        },
+      ];
+
+      await setupUserMock(mockSuppliers);
+
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        unitPrice: 100,
+        minimumOrderQuantity: 1,
+        tierPricing: null,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const result = await QuoteService.getMultipleSupplierQuotes(
+        1,
+        10,
+        'Curitiba',
+        [10, 11],
+        'standard'
+      );
+
+      expect(result).toHaveLength(2);
+      // Both should have quotes
+      expect(result[0].quote).not.toBeNull();
+      expect(result[1].quote).not.toBeNull();
+      // First result should have lower or equal total
+      expect(result[0].quote!.total).toBeLessThanOrEqual(result[1].quote!.total);
+    });
+
+    it('should sort null quotes to the end', async () => {
+      const mockSuppliers = [
+        {
+          id: 10,
+          companyName: 'Failed Supplier',
+          corporateName: 'Failed LTDA',
+          address: 'Curitiba',
+        },
+        {
+          id: 11,
+          companyName: 'Good Supplier',
+          corporateName: 'Good LTDA',
+          averageRating: 4.0,
+          totalRatings: 5,
+          industrySector: 'machinery',
+          address: 'Londrina',
+        },
+      ];
+
+      await setupUserMock(mockSuppliers);
+
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        unitPrice: 100,
+        minimumOrderQuantity: 1,
+        tierPricing: null,
+      };
+
+      // First supplier fails, second succeeds
+      MockProduct.findByPk.mockResolvedValueOnce(null).mockResolvedValueOnce(mockProduct as any);
+
+      const result = await QuoteService.getMultipleSupplierQuotes(
+        1,
+        10,
+        'Curitiba',
+        [10, 11],
+        'standard'
+      );
+
+      // Successful quote should be first, failed should be last
+      expect(result[0].quote).not.toBeNull();
+      expect(result[1].quote).toBeNull();
+    });
+
+    it('should handle non-Error thrown during quote calculation', async () => {
+      const mockSuppliers = [
+        {
+          id: 10,
+          companyName: 'Failing Supplier',
+          corporateName: 'Failing LTDA',
+          address: 'Curitiba',
+        },
+      ];
+
+      await setupUserMock(mockSuppliers);
+
+      MockProduct.findByPk.mockRejectedValueOnce('string error');
+
+      const result = await QuoteService.getMultipleSupplierQuotes(
+        1,
+        10,
+        'Curitiba',
+        [10],
+        'standard'
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].quote).toBeNull();
+      expect(result[0].error).toBe('Failed to calculate quote');
+    });
+  });
+
+  describe('validateMinimumOrderQuantity', () => {
+    it('should return valid when quantity meets minimum', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        minimumOrderQuantity: 10,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const result = await QuoteService.validateMinimumOrderQuantity(1, 10);
+
+      expect(result.valid).toBe(true);
+      expect(result.message).toBe('Order quantity meets requirements');
+      expect(result.minimumRequired).toBeUndefined();
+    });
+
+    it('should return valid when quantity exceeds minimum', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        minimumOrderQuantity: 5,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const result = await QuoteService.validateMinimumOrderQuantity(1, 20);
+
+      expect(result.valid).toBe(true);
+      expect(result.message).toBe('Order quantity meets requirements');
+    });
+
+    it('should return invalid when quantity is below minimum', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        minimumOrderQuantity: 50,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const result = await QuoteService.validateMinimumOrderQuantity(1, 10);
+
+      expect(result.valid).toBe(false);
+      expect(result.minimumRequired).toBe(50);
+      expect(result.message).toBe('Minimum order quantity is 50 units. Requested: 10 units.');
+    });
+
+    it('should throw error when product not found', async () => {
+      MockProduct.findByPk.mockResolvedValue(null);
+
+      await expect(QuoteService.validateMinimumOrderQuantity(999, 10)).rejects.toThrow(
+        'Product not found'
+      );
+    });
+
+    it('should return valid when product has no minimumOrderQuantity set', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        minimumOrderQuantity: 0,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const result = await QuoteService.validateMinimumOrderQuantity(1, 1);
+
+      expect(result.valid).toBe(true);
+      expect(result.message).toBe('Order quantity meets requirements');
+    });
+
+    it('should return invalid when requesting quantity of 1 with high minimum', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        minimumOrderQuantity: 100,
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const result = await QuoteService.validateMinimumOrderQuantity(1, 1);
+
+      expect(result.valid).toBe(false);
+      expect(result.minimumRequired).toBe(100);
+      expect(result.message).toBe('Minimum order quantity is 100 units. Requested: 1 units.');
+    });
+  });
+
+  describe('getPricingTier - additional edge cases', () => {
+    it('should use custom tiers with null maxQuantity', () => {
+      const customTiers = [{ minQuantity: 1, maxQuantity: null, discount: 0.15 }];
+
+      const tier = QuoteService.getPricingTier(1, customTiers);
+      expect(tier).toEqual({ minQuantity: 1, maxQuantity: null, discount: 0.15 });
+
+      const tier1000 = QuoteService.getPricingTier(1000, customTiers);
+      expect(tier1000).toEqual({ minQuantity: 1, maxQuantity: null, discount: 0.15 });
+    });
+
+    it('should return null for negative quantity', () => {
+      const tier = QuoteService.getPricingTier(-1);
+      expect(tier).toBeNull();
+    });
+
+    it('should return null when custom tiers have gaps', () => {
+      const customTiers = [
+        { minQuantity: 10, maxQuantity: 20, discount: 0.05 },
+        { minQuantity: 30, maxQuantity: 50, discount: 0.1 },
+      ];
+
+      const tier = QuoteService.getPricingTier(25, customTiers);
+      expect(tier).toBeNull();
+    });
+
+    it('should return null for empty custom tiers array', () => {
+      const tier = QuoteService.getPricingTier(10, []);
+      expect(tier).toBeNull();
+    });
+  });
+
+  describe('calculateShippingCost - additional edge cases', () => {
+    it('should handle very large distances', () => {
+      const cost = QuoteService.calculateShippingCost(10, 'standard', 1000);
+      // distanceMultiplier = 1000/100 = 10
+      // (50 + 5*2.5) * 10 = 625
+      expect(cost).toBe(625);
+    });
+
+    it('should handle quantity of 1', () => {
+      const cost = QuoteService.calculateShippingCost(1, 'standard', 100);
+      // estimatedWeight = 1 * 0.5 = 0.5
+      // (50 + 0.5 * 2.5) * 1 = 51.25
+      expect(cost).toBe(51.25);
+    });
+
+    it('should handle very large quantities', () => {
+      const cost = QuoteService.calculateShippingCost(1000, 'economy', 100);
+      // estimatedWeight = 1000 * 0.5 = 500
+      // (25 + 500 * 1.5) * 1 = 775
+      expect(cost).toBe(775);
+    });
+
+    it('should use distance multiplier of 1 when distance is exactly 100', () => {
+      const cost = QuoteService.calculateShippingCost(10, 'standard', 100);
+      // distanceMultiplier = max(1, 100/100) = 1
+      // (50 + 5*2.5) * 1 = 62.5
+      expect(cost).toBe(62.5);
+    });
+  });
+
+  describe('calculateDistanceBetweenCities - additional cases', () => {
+    it('should return default for one known and one unknown city', () => {
+      const distance = QuoteService.calculateDistanceBetweenCities('Curitiba', 'Unknown');
+      expect(distance).toBe(100);
+    });
+
+    it('should handle null inputs', () => {
+      const distance = QuoteService.calculateDistanceBetweenCities(null as any, null as any);
+      expect(distance).toBe(100);
+    });
+
+    it('should return default for same unknown city', () => {
+      const distance = QuoteService.calculateDistanceBetweenCities('SameCity', 'SameCity');
+      expect(distance).toBe(100);
     });
   });
 });

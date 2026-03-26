@@ -1,15 +1,24 @@
-# CresceBR Project .gitignore
+# CresceBR B2B Marketplace — .gitignore
 
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-pnpm-debug.log*
+# ──────────────────────────────────────────────
+# Dependencies
+# ──────────────────────────────────────────────
+**/node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
 
-# Environment files
+# ──────────────────────────────────────────────
+# Build & Compilation
+# ──────────────────────────────────────────────
+**/dist/
+**/build/
+.next/
+out/
+
+# ──────────────────────────────────────────────
+# Environment & Secrets
+# ──────────────────────────────────────────────
 .env
 .env.local
 .env.development.local
@@ -17,28 +26,44 @@ pnpm-debug.log*
 .env.production.local
 .env.*.local
 
-# Dependencies and Modules
-# Ignore for all workspaces (root, backend, frontend, shared)
-**/node_modules
-node_modules/
-.pnp
-.pnp.js
-.yarn/install-state.gz
+# ──────────────────────────────────────────────
+# Logs
+# ──────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
 
-# Build and Compilation outputs
-**/dist
-**/build
-.next/
-out/
-coverage/
+# ──────────────────────────────────────────────
+# Test & Coverage
+# ──────────────────────────────────────────────
+**/coverage/
 .nyc_output/
+*.test.db
+test.sqlite
 
-# Production builds
-backend/dist/
-frontend/dist/
-shared/dist/
+# ──────────────────────────────────────────────
+# TypeScript Cache
+# ──────────────────────────────────────────────
+*.tsbuildinfo
+.tscache/
 
-# IDE and Editor configuration files
+# ──────────────────────────────────────────────
+# Tool & Linter Caches
+# ──────────────────────────────────────────────
+.npm
+.eslintcache
+.prettiercache
+.cache/
+.parcel-cache/
+.vitest/
+
+# ──────────────────────────────────────────────
+# IDE & Editors
+# ──────────────────────────────────────────────
 .idea/
 .vscode/*
 !.vscode/settings.json
@@ -46,69 +71,61 @@ shared/dist/
 !.vscode/launch.json
 !.vscode/extensions.json
 *.sublime-workspace
+*.sublime-project
 
-# Operating System files
+# ──────────────────────────────────────────────
+# Operating System
+# ──────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 ehthumbs.db
+Desktop.ini
 
-# Tool caches
-.npm
-.eslintcache
-.prettiercache
-.cache
-.parcel-cache
-
-# TypeScript cache
-*.tsbuildinfo
-.tscache/
-
-# Uploads directory
-backend/uploads/
-uploads/
-
-# Test databases
-*.test.db
-test.sqlite
-
-# Test coverage
-/coverage
-
-# Next.js specific files (if applicable in the future)
-.next
-next-env.d.ts
-
-# Docker volume data (if not to be committed)
-# docker-data/
-
-# Local Sequelize configuration files
-config/config.local.json
-backend/config/config.json
-
-# Git filter-repo backup files
-.git-rewrite/
-filter-repo/
-*.orig
-
-# Temporary files
-*.tmp
-*.temp
-*.swp
-*~
-
-# Claude Code configuration (local/personal settings)
-.claude/
-**/.claude/
-
-# Database files
+# ──────────────────────────────────────────────
+# Database
+# ──────────────────────────────────────────────
 *.db
 *.sqlite
-
-# Database backups
+*.sqlite3
 *.db.backup
 *.db.bak
 *.sqlite.backup
 
-# Package lock files (optional - uncomment if using yarn or pnpm exclusively)
-# package-lock.json
+# ──────────────────────────────────────────────
+# Uploads & User Content
+# ──────────────────────────────────────────────
+uploads/
+backend/uploads/
 
+# ──────────────────────────────────────────────
+# Docker
+# ──────────────────────────────────────────────
+docker-data/
+.docker/
+
+# ──────────────────────────────────────────────
+# Sequelize local config
+# ──────────────────────────────────────────────
+config/config.local.json
+backend/config/config.json
+
+# ──────────────────────────────────────────────
+# Git artifacts
+# ──────────────────────────────────────────────
+.git-rewrite/
+filter-repo/
+*.orig
+
+# ──────────────────────────────────────────────
+# Temporary files
+# ──────────────────────────────────────────────
+*.tmp
+*.temp
+*.swp
+*~
+\#*\#
+
+# ──────────────────────────────────────────────
+# Claude Code (keep commands, ignore local settings)
+# ──────────────────────────────────────────────
+.claude/settings.local.json

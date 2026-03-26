@@ -392,4 +392,91 @@ describe('CNPJService', () => {
       // Should not throw error when database update fails
     });
   });
+
+  describe('Cache behavior', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      CNPJService.clearCache();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    const validCNPJ = '11.222.333/0001-81';
+    const mockApiResponse = {
+      data: {
+        razao_social: 'Cached Company',
+        nome_fantasia: 'Cached',
+        logradouro: 'Street',
+        numero: '1',
+        bairro: 'District',
+        municipio: 'City',
+        uf: 'SP',
+        cep: '01000-000',
+        ddd_telefone_1: '11999999999',
+        email: 'cached@example.com',
+        descricao_situacao_cadastral: 'ATIVA',
+      },
+    };
+
+    it('should return cached result on second call (cache HIT)', async () => {
+      mockedAxios.get.mockResolvedValue(mockApiResponse);
+
+      const result1 = await CNPJService.validateCNPJWithAPI(validCNPJ);
+      const result2 = await CNPJService.validateCNPJWithAPI(validCNPJ);
+
+      expect(result1.valid).toBe(true);
+      expect(result2.valid).toBe(true);
+      expect(result2.companyName).toBe('Cached Company');
+      expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('should expire cache after CACHE_EXPIRATION_TIME', async () => {
+      jest.useFakeTimers();
+
+      mockedAxios.get.mockResolvedValue(mockApiResponse);
+
+      await CNPJService.validateCNPJWithAPI(validCNPJ);
+      expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+
+      // Advance time past expiration (1 hour = 3600000ms)
+      jest.advanceTimersByTime(3600001);
+
+      await CNPJService.validateCNPJWithAPI(validCNPJ);
+      expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('should overwrite existing cache entry on clear and re-fetch', async () => {
+      mockedAxios.get.mockResolvedValueOnce({
+        data: { ...mockApiResponse.data, razao_social: 'Company V1' },
+      });
+
+      const result1 = await CNPJService.validateCNPJWithAPI(validCNPJ);
+      expect(result1.companyName).toBe('Company V1');
+
+      CNPJService.clearCache();
+      mockedAxios.get.mockResolvedValueOnce({
+        data: { ...mockApiResponse.data, razao_social: 'Company V2' },
+      });
+
+      const result2 = await CNPJService.validateCNPJWithAPI(validCNPJ);
+      expect(result2.companyName).toBe('Company V2');
+    });
+
+    it('should auto-delete cache entry after timeout', async () => {
+      jest.useFakeTimers();
+
+      mockedAxios.get.mockResolvedValue(mockApiResponse);
+
+      await CNPJService.validateCNPJWithAPI(validCNPJ);
+      expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+
+      // Advance exactly to expiration time - setTimeout deletes the entry
+      jest.advanceTimersByTime(3600000);
+
+      await CNPJService.validateCNPJWithAPI(validCNPJ);
+      expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+    });
+  });
 });

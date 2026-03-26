@@ -306,8 +306,9 @@ export const addPermissionsToResponse = async (
         const userPermissions = RBACService.getUserPermissions(user.role, user.status);
         (req as any).userPermissions = userPermissions;
 
-        // Add to response headers for client-side use
-        res.setHeader('X-User-Permissions', JSON.stringify(userPermissions));
+        if (process.env.NODE_ENV === 'development') {
+          res.setHeader('X-User-Permissions', JSON.stringify(userPermissions));
+        }
       }
     } catch (error) {
       console.error('Error adding permissions to response:', error);
