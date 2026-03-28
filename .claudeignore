@@ -116,3 +116,24 @@ docker-data/
 # GitHub workflows (CI config, not code logic)
 # ──────────────────────────────────────────────
 .github/workflows/
+
+# ──────────────────────────────────────────────
+# Docs (design prompts, image prompts, logos — not code)
+# ──────────────────────────────────────────────
+docs/
+
+# ──────────────────────────────────────────────
+# Shared build output (generated from source)
+# ──────────────────────────────────────────────
+shared/dist/
+
+# ──────────────────────────────────────────────
+# Claude memory (private, not code context)
+# ──────────────────────────────────────────────
+.claude/projects/
+.claude/todos/
+
+# ──────────────────────────────────────────────
+# Husky hooks (boilerplate, not code context)
+# ──────────────────────────────────────────────
+.husky/

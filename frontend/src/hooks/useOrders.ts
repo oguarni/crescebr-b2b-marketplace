@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ordersService } from '../services/ordersService';
 import { Order } from '@shared/types';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface UseOrdersOptions {
   autoFetch?: boolean;
@@ -27,7 +28,7 @@ export const useOrders = (options: UseOrdersOptions = { autoFetch: true }) => {
       setOrders(data.orders);
       setPagination(data.pagination);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch orders');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -53,7 +54,7 @@ export const useOrder = (id: string) => {
         const data = await ordersService.getOrderById(id);
         setOrder(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch order');
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }

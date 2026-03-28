@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { quotationsService } from '../services/quotationsService';
 import { Quotation } from '@shared/types';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface UseQuotationsOptions {
   autoFetch?: boolean;
@@ -18,7 +19,7 @@ export const useQuotations = (options: UseQuotationsOptions = { autoFetch: true 
       const data = await quotationsService.getCustomerQuotations();
       setQuotations(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch quotations');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -49,7 +50,7 @@ export const useQuotation = (id: number) => {
         const data = await quotationsService.getQuotationById(id);
         setQuotation(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch quotation');
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }

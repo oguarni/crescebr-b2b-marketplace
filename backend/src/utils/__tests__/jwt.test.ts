@@ -9,6 +9,65 @@ jest.unmock('../jwt');
 jest.mock('jsonwebtoken');
 const mockJwt = jwt as jest.Mocked<typeof jwt>;
 
+// Stateful Redis mock for TokenManager integration tests
+let mockKVStore: Record<string, string> = {};
+let mockSetStore: Record<string, Set<string>> = {};
+
+jest.mock('../../config/redis', () => ({
+  getRedisClient: jest.fn(() => ({
+    set: jest.fn((key: string, value: string) => {
+      mockKVStore[key] = value;
+      return Promise.resolve('OK');
+    }),
+    get: jest.fn((key: string) => Promise.resolve(mockKVStore[key] ?? null)),
+    del: jest.fn((...keys: string[]) => {
+      keys.forEach(k => {
+        delete mockKVStore[k];
+        delete mockSetStore[k];
+      });
+      return Promise.resolve(keys.length);
+    }),
+    sadd: jest.fn((key: string, ...members: string[]) => {
+      if (!mockSetStore[key]) mockSetStore[key] = new Set();
+      members.forEach(m => mockSetStore[key].add(m));
+      return Promise.resolve(members.length);
+    }),
+    srem: jest.fn((key: string, ...members: string[]) => {
+      if (!mockSetStore[key]) return Promise.resolve(0);
+      members.forEach(m => mockSetStore[key].delete(m));
+      return Promise.resolve(members.length);
+    }),
+    smembers: jest.fn((key: string) =>
+      Promise.resolve(mockSetStore[key] ? Array.from(mockSetStore[key]) : [])
+    ),
+    expire: jest.fn(() => Promise.resolve(1)),
+    ttl: jest.fn(() => Promise.resolve(3600)),
+    keys: jest.fn((pattern: string) => {
+      const prefix = pattern.replace('*', '');
+      return Promise.resolve(Object.keys(mockKVStore).filter(k => k.startsWith(prefix)));
+    }),
+    pipeline: jest.fn(() => {
+      const keysToDelete: string[] = [];
+      const pipelineObj: { del: jest.Mock; exec: jest.Mock } = {
+        del: jest.fn((...ks: string[]) => {
+          keysToDelete.push(...ks);
+          return pipelineObj;
+        }),
+        exec: jest.fn(() => {
+          keysToDelete.forEach(k => {
+            delete mockKVStore[k];
+            delete mockSetStore[k];
+          });
+          return Promise.resolve([]);
+        }),
+      };
+      return pipelineObj;
+    }),
+    quit: jest.fn(() => Promise.resolve('OK')),
+  })),
+  closeRedisConnection: jest.fn().mockResolvedValue(undefined),
+}));
+
 describe('JWT Utilities', () => {
   // Store original environment variables
   const originalEnv = process.env;
@@ -49,7 +108,10 @@ describe('JWT Utilities', () => {
 
       // Assert
       expect(result).toBe(expectedToken);
-      expect(mockJwt.sign).toHaveBeenCalledWith(payload, 'test-secret', { expiresIn: '24h' });
+      expect(mockJwt.sign).toHaveBeenCalledWith(payload, 'test-secret', {
+        expiresIn: '24h',
+        algorithm: 'HS256',
+      });
     });
 
     it('should use fallback values when environment variables are not set', () => {
@@ -79,6 +141,7 @@ describe('JWT Utilities', () => {
         'dev-only-insecure-secret-do-not-use-in-production',
         {
           expiresIn: '15m',
+          algorithm: 'HS256',
         }
       );
     });
@@ -102,7 +165,10 @@ describe('JWT Utilities', () => {
 
       // Assert
       expect(result).toBe(expectedToken);
-      expect(mockJwt.sign).toHaveBeenCalledWith(adminPayload, 'admin-secret', { expiresIn: '24h' });
+      expect(mockJwt.sign).toHaveBeenCalledWith(adminPayload, 'admin-secret', {
+        expiresIn: '24h',
+        algorithm: 'HS256',
+      });
     });
 
     it('should use custom JWT expiration time', () => {
@@ -126,7 +192,10 @@ describe('JWT Utilities', () => {
 
       // Assert
       expect(result).toBe(expectedToken);
-      expect(mockJwt.sign).toHaveBeenCalledWith(payload, 'test-secret', { expiresIn: '1h' });
+      expect(mockJwt.sign).toHaveBeenCalledWith(payload, 'test-secret', {
+        expiresIn: '1h',
+        algorithm: 'HS256',
+      });
     });
 
     it('should handle payload with additional properties', () => {
@@ -152,6 +221,7 @@ describe('JWT Utilities', () => {
       expect(result).toBe(expectedToken);
       expect(mockJwt.sign).toHaveBeenCalledWith(extendedPayload, 'test-secret', {
         expiresIn: '24h',
+        algorithm: 'HS256',
       });
     });
   });
@@ -176,7 +246,7 @@ describe('JWT Utilities', () => {
 
       // Assert
       expect(result).toEqual(expectedPayload);
-      expect(mockJwt.verify).toHaveBeenCalledWith(token, 'test-secret');
+      expect(mockJwt.verify).toHaveBeenCalledWith(token, 'test-secret', { algorithms: ['HS256'] });
     });
 
     it('should use fallback secret when JWT_SECRET is not set', () => {
@@ -200,7 +270,8 @@ describe('JWT Utilities', () => {
       expect(result).toEqual(expectedPayload);
       expect(mockJwt.verify).toHaveBeenCalledWith(
         token,
-        'dev-only-insecure-secret-do-not-use-in-production'
+        'dev-only-insecure-secret-do-not-use-in-production',
+        { algorithms: ['HS256'] }
       );
     });
 
@@ -215,7 +286,9 @@ describe('JWT Utilities', () => {
 
       // Act & Assert
       expect(() => verifyToken(invalidToken)).toThrow('Token verification failed');
-      expect(mockJwt.verify).toHaveBeenCalledWith(invalidToken, 'test-secret');
+      expect(mockJwt.verify).toHaveBeenCalledWith(invalidToken, 'test-secret', {
+        algorithms: ['HS256'],
+      });
     });
 
     it('should throw error when token is expired', () => {
@@ -229,7 +302,9 @@ describe('JWT Utilities', () => {
 
       // Act & Assert
       expect(() => verifyToken(expiredToken)).toThrow('Token verification failed');
-      expect(mockJwt.verify).toHaveBeenCalledWith(expiredToken, 'test-secret');
+      expect(mockJwt.verify).toHaveBeenCalledWith(expiredToken, 'test-secret', {
+        algorithms: ['HS256'],
+      });
     });
 
     it('should throw error when token signature is invalid', () => {
@@ -243,7 +318,9 @@ describe('JWT Utilities', () => {
 
       // Act & Assert
       expect(() => verifyToken(maliciousToken)).toThrow('Token verification failed');
-      expect(mockJwt.verify).toHaveBeenCalledWith(maliciousToken, 'test-secret');
+      expect(mockJwt.verify).toHaveBeenCalledWith(maliciousToken, 'test-secret', {
+        algorithms: ['HS256'],
+      });
     });
 
     it('should handle JsonWebTokenError properly', () => {
@@ -519,7 +596,10 @@ describe('JWT Utilities', () => {
       const result = generateToken(null as any);
 
       // Assert
-      expect(mockJwt.sign).toHaveBeenCalledWith(null, 'test-secret', { expiresIn: '24h' });
+      expect(mockJwt.sign).toHaveBeenCalledWith(null, 'test-secret', {
+        expiresIn: '24h',
+        algorithm: 'HS256',
+      });
       expect(result).toBe('null-payload-token');
     });
 
@@ -548,16 +628,13 @@ describe('JWT Utilities', () => {
 });
 
 // ============================================================================
-// TokenManager Tests - uses real jsonwebtoken for in-memory token store testing
+// TokenManager Tests - uses real jwt module with Redis-backed token store
 // ============================================================================
 describe('TokenManager', () => {
   // Use the actual jwt module for TokenManager tests since generateTokenPair
   // calls jwt.sign internally. We access TokenManager via the exported wrappers.
   const realJwt = jest.requireActual<typeof import('jsonwebtoken')>('jsonwebtoken');
   const originalEnv = process.env;
-
-  // Create a fresh TokenManager for each test to avoid cross-test state
-  let testManager: InstanceType<any>;
 
   const TEST_SECRET = 'test-secret-key-for-token-manager-testing';
 
@@ -579,6 +656,10 @@ describe('TokenManager', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset Redis mock state
+    mockKVStore = {};
+    mockSetStore = {};
+
     process.env = { ...originalEnv };
     process.env.JWT_SECRET = TEST_SECRET;
     process.env.JWT_EXPIRES_IN = '15m';
@@ -599,9 +680,9 @@ describe('TokenManager', () => {
   });
 
   describe('generateTokenPair', () => {
-    it('should generate valid access and refresh tokens', () => {
+    it('should generate valid access and refresh tokens', async () => {
       const { generateTokenPair } = jest.requireActual<typeof import('../jwt')>('../jwt');
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
@@ -613,42 +694,42 @@ describe('TokenManager', () => {
       expect(result.refreshToken.length).toBe(80); // 40 bytes = 80 hex chars
     });
 
-    it('should return expiresIn in seconds matching JWT_EXPIRES_IN', () => {
+    it('should return expiresIn in seconds matching JWT_EXPIRES_IN', async () => {
       const { generateTokenPair } = jest.requireActual<typeof import('../jwt')>('../jwt');
       process.env.JWT_EXPIRES_IN = '15m';
 
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
       // 15 minutes = 900 seconds
       expect(result.expiresIn).toBe(900);
     });
 
-    it('should store refresh token with user info', () => {
+    it('should store refresh token with user info', async () => {
       const { generateTokenPair, verifyRefreshToken } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
-      const verification = verifyRefreshToken(result.refreshToken);
+      const verification = await verifyRefreshToken(result.refreshToken);
       expect(verification.valid).toBe(true);
       expect(verification.userId).toBe(testPayload.id);
     });
 
-    it('should include deviceInfo when provided', () => {
+    it('should include deviceInfo when provided', async () => {
       const { generateTokenPair, getUserActiveTokens } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
       const deviceInfo = 'Chrome/120 on Windows 11';
 
-      generateTokenPair(testPayload, deviceInfo);
+      await generateTokenPair(testPayload, deviceInfo);
 
-      const tokens = getUserActiveTokens(testPayload.id);
+      const tokens = await getUserActiveTokens(testPayload.id);
       expect(tokens.length).toBeGreaterThanOrEqual(1);
       const latestToken = tokens[0];
       expect(latestToken.deviceInfo).toBe(deviceInfo);
     });
 
-    it('should produce a verifiable JWT access token', () => {
+    it('should produce a verifiable JWT access token', async () => {
       const { generateTokenPair } = jest.requireActual<typeof import('../jwt')>('../jwt');
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
       const decoded = realJwt.verify(result.accessToken, TEST_SECRET) as any;
       expect(decoded.id).toBe(testPayload.id);
@@ -659,18 +740,11 @@ describe('TokenManager', () => {
 
   describe('verifyAccessToken', () => {
     it('should throw "Access token expired" for expired token', () => {
-      const { generateTokenPair } = jest.requireActual<typeof import('../jwt')>('../jwt');
-
-      // Create a token with 1 second expiry
-      process.env.JWT_EXPIRES_IN = '1s';
-      const result = generateTokenPair(testPayload);
-
-      // Manually create an expired token
+      // Manually create an expired token — no need to call generateTokenPair
       const expiredToken = realJwt.sign({ ...testPayload } as object, TEST_SECRET, {
         expiresIn: '0s',
       });
 
-      // Small delay is not needed: expiresIn: '0s' makes the token immediately expired
       const { tokenManager: tm } = jest.requireActual<typeof import('../jwt')>('../jwt');
       expect(() => tm.verifyAccessToken(expiredToken)).toThrow('Access token expired');
     });
@@ -691,10 +765,10 @@ describe('TokenManager', () => {
       expect(() => tm.verifyAccessToken(wrongSecretToken)).toThrow('Invalid access token');
     });
 
-    it('should return payload for valid token', () => {
+    it('should return payload for valid token', async () => {
       const { generateTokenPair, tokenManager: tm } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
       const payload = tm.verifyAccessToken(result.accessToken);
       expect(payload.id).toBe(testPayload.id);
@@ -703,53 +777,54 @@ describe('TokenManager', () => {
   });
 
   describe('verifyRefreshToken', () => {
-    it('should return valid:true for valid refresh token', () => {
+    it('should return valid:true for valid refresh token', async () => {
       const { generateTokenPair, verifyRefreshToken } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
-      const verification = verifyRefreshToken(result.refreshToken);
+      const verification = await verifyRefreshToken(result.refreshToken);
       expect(verification.valid).toBe(true);
       expect(verification.userId).toBe(testPayload.id);
       expect(verification.error).toBeUndefined();
     });
 
-    it('should return valid:false for unknown token', () => {
+    it('should return valid:false for unknown token', async () => {
       const { verifyRefreshToken } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const verification = verifyRefreshToken('nonexistent-token-that-was-never-issued');
+      const verification = await verifyRefreshToken('nonexistent-token-that-was-never-issued');
       expect(verification.valid).toBe(false);
       expect(verification.error).toBe('Refresh token not found');
     });
 
-    it('should return valid:false and clean up expired token', () => {
-      const { tokenManager: tm } = jest.requireActual<typeof import('../jwt')>('../jwt');
+    it('should return valid:false and clean up expired token', async () => {
+      const { verifyRefreshToken } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      // Directly inject an expired token into the store
+      // Inject an expired token directly into the Redis mock store
       const expiredRefreshToken = 'expired-test-refresh-token-abc123';
-      (tm as any).refreshTokenStore[expiredRefreshToken] = {
+      mockKVStore[`refresh:${expiredRefreshToken}`] = JSON.stringify({
         userId: 999,
-        expiresAt: new Date(Date.now() - 1000), // Expired 1 second ago
-        createdAt: new Date(Date.now() - 86400000),
-      };
+        expiresAt: new Date(Date.now() - 1000).toISOString(),
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+        deviceInfo: null,
+      });
 
-      const verification = tm.verifyRefreshToken(expiredRefreshToken);
+      const verification = await verifyRefreshToken(expiredRefreshToken);
       expect(verification.valid).toBe(false);
       expect(verification.error).toBe('Refresh token expired');
 
-      // Verify token was cleaned up
-      const secondCheck = tm.verifyRefreshToken(expiredRefreshToken);
+      // Verify token was cleaned up from Redis
+      const secondCheck = await verifyRefreshToken(expiredRefreshToken);
       expect(secondCheck.error).toBe('Refresh token not found');
     });
   });
 
   describe('refreshAccessToken', () => {
-    it('should generate new token pair from valid refresh token', () => {
+    it('should generate new token pair from valid refresh token', async () => {
       const { generateTokenPair, refreshAccessToken } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
-      const initial = generateTokenPair(testPayload);
+      const initial = await generateTokenPair(testPayload);
 
-      const refreshed = refreshAccessToken(initial.refreshToken, testPayload);
+      const refreshed = await refreshAccessToken(initial.refreshToken, testPayload);
       expect(refreshed).not.toBeNull();
       expect(refreshed!.accessToken).toBeDefined();
       expect(refreshed!.refreshToken).toBeDefined();
@@ -760,139 +835,139 @@ describe('TokenManager', () => {
       expect(refreshed!.expiresIn).toBeGreaterThan(0);
     });
 
-    it('should return null for invalid refresh token', () => {
+    it('should return null for invalid refresh token', async () => {
       const { refreshAccessToken } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const result = refreshAccessToken('invalid-token', testPayload);
+      const result = await refreshAccessToken('invalid-token', testPayload);
       expect(result).toBeNull();
     });
 
-    it('should return null when userId does not match', () => {
+    it('should return null when userId does not match', async () => {
       const { generateTokenPair, refreshAccessToken } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
-      const initial = generateTokenPair(testPayload); // userId = 1
+      const initial = await generateTokenPair(testPayload); // userId = 1
 
       const wrongUserPayload: AuthTokenPayload = {
         ...testPayload,
         id: 999, // Different user
       };
 
-      const result = refreshAccessToken(initial.refreshToken, wrongUserPayload);
+      const result = await refreshAccessToken(initial.refreshToken, wrongUserPayload);
       expect(result).toBeNull();
     });
 
-    it('should revoke old refresh token after rotation', () => {
+    it('should revoke old refresh token after rotation', async () => {
       const { generateTokenPair, refreshAccessToken, verifyRefreshToken } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
-      const initial = generateTokenPair(testPayload);
+      const initial = await generateTokenPair(testPayload);
       const oldRefreshToken = initial.refreshToken;
 
-      refreshAccessToken(oldRefreshToken, testPayload);
+      await refreshAccessToken(oldRefreshToken, testPayload);
 
       // Old token should no longer be valid
-      const verification = verifyRefreshToken(oldRefreshToken);
+      const verification = await verifyRefreshToken(oldRefreshToken);
       expect(verification.valid).toBe(false);
     });
 
-    it('should pass deviceInfo to new token pair', () => {
+    it('should pass deviceInfo to new token pair', async () => {
       const { generateTokenPair, refreshAccessToken, getUserActiveTokens } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
-      const initial = generateTokenPair(testPayload);
+      const initial = await generateTokenPair(testPayload);
       const deviceInfo = 'Firefox/121 on macOS';
 
-      refreshAccessToken(initial.refreshToken, testPayload, deviceInfo);
+      await refreshAccessToken(initial.refreshToken, testPayload, deviceInfo);
 
-      const tokens = getUserActiveTokens(testPayload.id);
+      const tokens = await getUserActiveTokens(testPayload.id);
       const hasDeviceInfo = tokens.some((t: any) => t.deviceInfo === deviceInfo);
       expect(hasDeviceInfo).toBe(true);
     });
   });
 
   describe('revokeRefreshToken', () => {
-    it('should return true when token exists and is revoked', () => {
+    it('should return true when token exists and is revoked', async () => {
       const { generateTokenPair, revokeRefreshToken } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
-      const revoked = revokeRefreshToken(result.refreshToken);
+      const revoked = await revokeRefreshToken(result.refreshToken);
       expect(revoked).toBe(true);
     });
 
-    it('should return false when token does not exist', () => {
+    it('should return false when token does not exist', async () => {
       const { revokeRefreshToken } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const revoked = revokeRefreshToken('nonexistent-token-xyz');
+      const revoked = await revokeRefreshToken('nonexistent-token-xyz');
       expect(revoked).toBe(false);
     });
 
-    it('should make token unverifiable after revocation', () => {
+    it('should make token unverifiable after revocation', async () => {
       const { generateTokenPair, revokeRefreshToken, verifyRefreshToken } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
-      revokeRefreshToken(result.refreshToken);
+      await revokeRefreshToken(result.refreshToken);
 
-      const verification = verifyRefreshToken(result.refreshToken);
+      const verification = await verifyRefreshToken(result.refreshToken);
       expect(verification.valid).toBe(false);
     });
   });
 
   describe('revokeAllUserTokens', () => {
-    it('should revoke all tokens for user', () => {
+    it('should revoke all tokens for user', async () => {
       const { generateTokenPair, revokeAllUserTokens, verifyRefreshToken } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const token1 = generateTokenPair(testPayload);
-      const token2 = generateTokenPair(testPayload);
-      const token3 = generateTokenPair(testPayload);
+      const token1 = await generateTokenPair(testPayload);
+      const token2 = await generateTokenPair(testPayload);
+      const token3 = await generateTokenPair(testPayload);
 
-      revokeAllUserTokens(testPayload.id);
+      await revokeAllUserTokens(testPayload.id);
 
-      expect(verifyRefreshToken(token1.refreshToken).valid).toBe(false);
-      expect(verifyRefreshToken(token2.refreshToken).valid).toBe(false);
-      expect(verifyRefreshToken(token3.refreshToken).valid).toBe(false);
+      expect((await verifyRefreshToken(token1.refreshToken)).valid).toBe(false);
+      expect((await verifyRefreshToken(token2.refreshToken)).valid).toBe(false);
+      expect((await verifyRefreshToken(token3.refreshToken)).valid).toBe(false);
     });
 
-    it('should return count of revoked tokens', () => {
+    it('should return count of revoked tokens', async () => {
       const { generateTokenPair, revokeAllUserTokens } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      generateTokenPair(testPayload);
-      generateTokenPair(testPayload);
+      await generateTokenPair(testPayload);
+      await generateTokenPair(testPayload);
 
-      const count = revokeAllUserTokens(testPayload.id);
+      const count = await revokeAllUserTokens(testPayload.id);
       expect(count).toBe(2);
     });
 
-    it('should not affect other users tokens', () => {
+    it('should not affect other users tokens', async () => {
       const { generateTokenPair, revokeAllUserTokens, verifyRefreshToken } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      generateTokenPair(testPayload); // user 1
-      const otherUserToken = generateTokenPair(secondPayload); // user 2
+      await generateTokenPair(testPayload); // user 1
+      const otherUserToken = await generateTokenPair(secondPayload); // user 2
 
-      revokeAllUserTokens(testPayload.id);
+      await revokeAllUserTokens(testPayload.id);
 
       // Other user's token should still be valid
-      expect(verifyRefreshToken(otherUserToken.refreshToken).valid).toBe(true);
+      expect((await verifyRefreshToken(otherUserToken.refreshToken)).valid).toBe(true);
     });
 
-    it('should return 0 when user has no tokens', () => {
+    it('should return 0 when user has no tokens', async () => {
       const { revokeAllUserTokens } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const count = revokeAllUserTokens(99999);
+      const count = await revokeAllUserTokens(99999);
       expect(count).toBe(0);
     });
   });
 
   describe('getUserActiveTokens', () => {
-    it('should return active tokens for user', () => {
+    it('should return active tokens for user', async () => {
       const { generateTokenPair, getUserActiveTokens } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const result = generateTokenPair(testPayload, 'Device A');
+      await generateTokenPair(testPayload, 'Device A');
 
-      const tokens = getUserActiveTokens(testPayload.id);
+      const tokens = await getUserActiveTokens(testPayload.id);
       expect(tokens.length).toBeGreaterThanOrEqual(1);
       expect(tokens[0]).toHaveProperty('token');
       expect(tokens[0]).toHaveProperty('createdAt');
@@ -900,47 +975,47 @@ describe('TokenManager', () => {
       expect(tokens[0]).toHaveProperty('deviceInfo');
     });
 
-    it('should not return expired tokens', () => {
-      const { tokenManager: tm, getUserActiveTokens } =
-        jest.requireActual<typeof import('../jwt')>('../jwt');
+    it('should not return expired tokens', async () => {
+      const { getUserActiveTokens } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      // Inject an expired token directly
+      // Inject an expired token directly into the Redis mock
       const userId = 8888;
-      (tm as any).refreshTokenStore['expired-token-for-active-test'] = {
+      const tokenKey = 'expired-token-for-active-test';
+      mockKVStore[`refresh:${tokenKey}`] = JSON.stringify({
         userId,
-        expiresAt: new Date(Date.now() - 1000),
-        createdAt: new Date(Date.now() - 86400000),
-      };
+        expiresAt: new Date(Date.now() - 1000).toISOString(),
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+        deviceInfo: null,
+      });
+      mockSetStore[`refresh:user:${userId}`] = new Set([tokenKey]);
 
-      const tokens = getUserActiveTokens(userId);
+      const tokens = await getUserActiveTokens(userId);
       expect(tokens.length).toBe(0);
     });
 
-    it('should sort by createdAt descending', () => {
-      const { tokenManager: tm, getUserActiveTokens } =
-        jest.requireActual<typeof import('../jwt')>('../jwt');
+    it('should sort by createdAt descending', async () => {
+      const { getUserActiveTokens } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
       const userId = 7777;
       const futureExpiry = new Date(Date.now() + 86400000);
 
-      // Inject tokens with known createdAt times
-      (tm as any).refreshTokenStore['sort-test-old'] = {
-        userId,
-        expiresAt: futureExpiry,
-        createdAt: new Date('2025-01-01T00:00:00Z'),
+      // Inject tokens with known createdAt times directly into Redis mock
+      const tokenData = {
+        'sort-test-old': new Date('2025-01-01T00:00:00Z'),
+        'sort-test-new': new Date('2025-06-01T00:00:00Z'),
+        'sort-test-mid': new Date('2025-03-01T00:00:00Z'),
       };
-      (tm as any).refreshTokenStore['sort-test-new'] = {
-        userId,
-        expiresAt: futureExpiry,
-        createdAt: new Date('2025-06-01T00:00:00Z'),
-      };
-      (tm as any).refreshTokenStore['sort-test-mid'] = {
-        userId,
-        expiresAt: futureExpiry,
-        createdAt: new Date('2025-03-01T00:00:00Z'),
-      };
+      mockSetStore[`refresh:user:${userId}`] = new Set(Object.keys(tokenData));
+      for (const [token, createdAt] of Object.entries(tokenData)) {
+        mockKVStore[`refresh:${token}`] = JSON.stringify({
+          userId,
+          expiresAt: futureExpiry.toISOString(),
+          createdAt: (createdAt as Date).toISOString(),
+          deviceInfo: null,
+        });
+      }
 
-      const tokens = getUserActiveTokens(userId);
+      const tokens = await getUserActiveTokens(userId);
       expect(tokens.length).toBe(3);
       // Newest first
       expect(tokens[0].token).toBe('sort-test-new');
@@ -948,170 +1023,121 @@ describe('TokenManager', () => {
       expect(tokens[2].token).toBe('sort-test-old');
     });
 
-    it('should return empty array for user with no tokens', () => {
+    it('should return empty array for user with no tokens', async () => {
       const { getUserActiveTokens } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const tokens = getUserActiveTokens(99998);
+      const tokens = await getUserActiveTokens(99998);
       expect(tokens).toEqual([]);
     });
   });
 
   describe('getTokenStats', () => {
-    it('should return stats about active tokens', () => {
+    it('should return stats about active tokens', async () => {
       const { generateTokenPair, getTokenStats } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      generateTokenPair(testPayload);
+      await generateTokenPair(testPayload);
 
-      const stats = getTokenStats();
+      const stats = await getTokenStats();
       expect(stats).toHaveProperty('totalActiveTokens');
       expect(stats).toHaveProperty('activeUserCount');
       expect(stats).toHaveProperty('oldestToken');
       expect(stats.totalActiveTokens).toBeGreaterThanOrEqual(1);
     });
 
-    it('should count unique users', () => {
-      const { generateTokenPair, getTokenStats, revokeAllUserTokens } =
+    it('should count unique users', async () => {
+      const { generateTokenPair, getTokenStats } =
         jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      // Clean up first by revoking all existing tokens for test users
-      revokeAllUserTokens(testPayload.id);
-      revokeAllUserTokens(secondPayload.id);
+      await generateTokenPair(testPayload); // user 1
+      await generateTokenPair(testPayload); // user 1 again
+      await generateTokenPair(secondPayload); // user 2
 
-      generateTokenPair(testPayload); // user 1
-      generateTokenPair(testPayload); // user 1 again
-      generateTokenPair(secondPayload); // user 2
-
-      const stats = getTokenStats();
+      const stats = await getTokenStats();
       expect(stats.activeUserCount).toBeGreaterThanOrEqual(2);
     });
 
-    it('should find oldest token', () => {
-      const { tokenManager: tm, getTokenStats } =
-        jest.requireActual<typeof import('../jwt')>('../jwt');
+    it('should find oldest token', async () => {
+      const { getTokenStats } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
       const futureExpiry = new Date(Date.now() + 86400000);
       const oldDate = new Date('2020-01-01T00:00:00Z');
 
-      (tm as any).refreshTokenStore['oldest-token-test'] = {
+      // Inject old token directly into Redis mock
+      mockKVStore['refresh:oldest-token-test'] = JSON.stringify({
         userId: 6666,
-        expiresAt: futureExpiry,
-        createdAt: oldDate,
-      };
+        expiresAt: futureExpiry.toISOString(),
+        createdAt: oldDate.toISOString(),
+        deviceInfo: null,
+      });
 
-      const stats = getTokenStats();
+      const stats = await getTokenStats();
       expect(stats.oldestToken).not.toBeNull();
       expect(stats.oldestToken!.getTime()).toBeLessThanOrEqual(oldDate.getTime());
     });
 
-    it('should handle empty store gracefully', () => {
+    it('should handle empty store gracefully', async () => {
       const { tokenManager: tm } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      // Save current store and replace with empty
-      const savedStore = (tm as any).refreshTokenStore;
-      (tm as any).refreshTokenStore = {};
-
-      const stats = tm.getTokenStats();
+      // mockKVStore is already empty due to beforeEach reset
+      const stats = await tm.getTokenStats();
       expect(stats.totalActiveTokens).toBe(0);
       expect(stats.activeUserCount).toBe(0);
       expect(stats.oldestToken).toBeNull();
-
-      // Restore
-      (tm as any).refreshTokenStore = savedStore;
-    });
-  });
-
-  describe('cleanupExpiredTokens', () => {
-    it('should remove expired tokens from the store', () => {
-      const { tokenManager: tm, verifyRefreshToken } =
-        jest.requireActual<typeof import('../jwt')>('../jwt');
-
-      // Inject expired tokens
-      (tm as any).refreshTokenStore['cleanup-expired-1'] = {
-        userId: 5555,
-        expiresAt: new Date(Date.now() - 10000),
-        createdAt: new Date(Date.now() - 86400000),
-      };
-      (tm as any).refreshTokenStore['cleanup-expired-2'] = {
-        userId: 5555,
-        expiresAt: new Date(Date.now() - 5000),
-        createdAt: new Date(Date.now() - 86400000),
-      };
-      // Also inject a still-valid token
-      (tm as any).refreshTokenStore['cleanup-valid-1'] = {
-        userId: 5555,
-        expiresAt: new Date(Date.now() + 86400000),
-        createdAt: new Date(),
-      };
-
-      // Call cleanup
-      (tm as any).cleanupExpiredTokens();
-
-      // Expired tokens should be gone
-      expect(verifyRefreshToken('cleanup-expired-1').valid).toBe(false);
-      expect(verifyRefreshToken('cleanup-expired-1').error).toBe('Refresh token not found');
-      expect(verifyRefreshToken('cleanup-expired-2').error).toBe('Refresh token not found');
-
-      // Valid token should remain
-      expect(verifyRefreshToken('cleanup-valid-1').valid).toBe(true);
     });
   });
 
   describe('parseExpiry (tested indirectly)', () => {
-    it('should parse seconds correctly (e.g., "30s")', () => {
+    it('should parse seconds correctly (e.g., "30s")', async () => {
       const { generateTokenPair } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
       process.env.JWT_EXPIRES_IN = '30s';
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
       // 30 seconds
       expect(result.expiresIn).toBe(30);
     });
 
-    it('should parse minutes correctly (e.g., "15m")', () => {
+    it('should parse minutes correctly (e.g., "15m")', async () => {
       const { generateTokenPair } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
       process.env.JWT_EXPIRES_IN = '15m';
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
       // 15 * 60 = 900 seconds
       expect(result.expiresIn).toBe(900);
     });
 
-    it('should parse hours correctly (e.g., "24h")', () => {
+    it('should parse hours correctly (e.g., "24h")', async () => {
       const { generateTokenPair } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
       process.env.JWT_EXPIRES_IN = '24h';
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
       // 24 * 60 * 60 = 86400 seconds
       expect(result.expiresIn).toBe(86400);
     });
 
-    it('should parse days correctly (e.g., "7d")', () => {
+    it('should parse days correctly (e.g., "7d")', async () => {
       const { generateTokenPair } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
       process.env.JWT_EXPIRES_IN = '7d';
-      const result = generateTokenPair(testPayload);
+      const result = await generateTokenPair(testPayload);
 
       // 7 * 24 * 60 * 60 = 604800 seconds
       expect(result.expiresIn).toBe(604800);
     });
 
-    it('should default to 15 minutes for unknown unit', () => {
+    it('should default to 15 minutes for unknown unit', async () => {
       const { tokenManager: tm } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      // Access parseExpiry indirectly -- it is used for both expiresIn calculation
-      // and refresh token store expiry. Test via the refresh token store expiry.
-      // Set REFRESH_TOKEN_EXPIRES_IN to unknown unit; the refresh token should
-      // still be stored with default 15-minute expiry.
       process.env.REFRESH_TOKEN_EXPIRES_IN = '10x'; // Unknown unit 'x'
-      process.env.JWT_EXPIRES_IN = '15m'; // Keep JWT valid
+      process.env.JWT_EXPIRES_IN = '15m';
 
-      const result = tm.generateTokenPair(testPayload);
+      const result = await tm.generateTokenPair(testPayload);
 
       // Verify the refresh token was stored (proving parseExpiry didn't crash)
-      const verification = tm.verifyRefreshToken(result.refreshToken);
+      const verification = await tm.verifyRefreshToken(result.refreshToken);
       expect(verification.valid).toBe(true);
 
       // The expiresIn return is calculated from JWT_EXPIRES_IN ('15m') = 900 seconds
@@ -1120,20 +1146,45 @@ describe('TokenManager', () => {
   });
 
   describe('destroy', () => {
-    it('should clear cleanup interval without throwing', () => {
+    it('should not throw', () => {
       const { tokenManager: tm } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      // Should not throw
+      // destroy() is a no-op in the Redis implementation
       expect(() => tm.destroy()).not.toThrow();
+    });
+
+    it('should be callable multiple times without throwing', () => {
+      const { tokenManager: tm } = jest.requireActual<typeof import('../jwt')>('../jwt');
+
+      expect(() => {
+        tm.destroy();
+        tm.destroy();
+      }).not.toThrow();
+    });
+  });
+
+  describe('getRefreshTokenExpiresIn fallback', () => {
+    it('should use "7d" fallback when REFRESH_TOKEN_EXPIRES_IN is not set', async () => {
+      const { tokenManager: tm } = jest.requireActual<typeof import('../jwt')>('../jwt');
+
+      delete process.env.REFRESH_TOKEN_EXPIRES_IN;
+
+      const result = await tm.generateTokenPair(testPayload);
+
+      // Refresh token should be valid (stored with 7d expiry)
+      const verification = await tm.verifyRefreshToken(result.refreshToken);
+      expect(verification.valid).toBe(true);
+
+      // Restore
+      process.env.REFRESH_TOKEN_EXPIRES_IN = '7d';
     });
   });
 
   describe('getJwtSecret', () => {
-    it('should throw in production when JWT_SECRET is not set', () => {
+    it('should throw in production when JWT_SECRET is not set', async () => {
       process.env.NODE_ENV = 'production';
       delete process.env.JWT_SECRET;
 
-      // The error is thrown lazily when generating/verifying tokens
       const { generateTokenPair: gtp } = jest.requireActual<typeof import('../jwt')>('../jwt');
 
       const prodPayload: AuthTokenPayload = {
@@ -1144,70 +1195,69 @@ describe('TokenManager', () => {
         companyType: 'both',
       };
 
-      expect(() => gtp(prodPayload)).toThrow(
+      await expect(gtp(prodPayload)).rejects.toThrow(
         'JWT_SECRET environment variable is required in production'
       );
 
-      // Reset NODE_ENV
       process.env.NODE_ENV = 'test';
     });
   });
 
   describe('Wrapper functions', () => {
-    it('generateTokenPair wrapper should delegate to tokenManager', () => {
+    it('generateTokenPair wrapper should delegate to tokenManager', async () => {
       const mod = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const result = mod.generateTokenPair(testPayload, 'Test Device');
+      const result = await mod.generateTokenPair(testPayload, 'Test Device');
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
       expect(result).toHaveProperty('expiresIn');
     });
 
-    it('refreshAccessToken wrapper should delegate to tokenManager', () => {
+    it('refreshAccessToken wrapper should delegate to tokenManager', async () => {
       const mod = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const initial = mod.generateTokenPair(testPayload);
-      const refreshed = mod.refreshAccessToken(initial.refreshToken, testPayload);
+      const initial = await mod.generateTokenPair(testPayload);
+      const refreshed = await mod.refreshAccessToken(initial.refreshToken, testPayload);
       expect(refreshed).not.toBeNull();
     });
 
-    it('revokeRefreshToken wrapper should delegate to tokenManager', () => {
+    it('revokeRefreshToken wrapper should delegate to tokenManager', async () => {
       const mod = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const initial = mod.generateTokenPair(testPayload);
-      const revoked = mod.revokeRefreshToken(initial.refreshToken);
+      const initial = await mod.generateTokenPair(testPayload);
+      const revoked = await mod.revokeRefreshToken(initial.refreshToken);
       expect(revoked).toBe(true);
     });
 
-    it('revokeAllUserTokens wrapper should delegate to tokenManager', () => {
+    it('revokeAllUserTokens wrapper should delegate to tokenManager', async () => {
       const mod = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      mod.generateTokenPair(testPayload);
-      const count = mod.revokeAllUserTokens(testPayload.id);
+      await mod.generateTokenPair(testPayload);
+      const count = await mod.revokeAllUserTokens(testPayload.id);
       expect(count).toBeGreaterThanOrEqual(1);
     });
 
-    it('getUserActiveTokens wrapper should delegate to tokenManager', () => {
+    it('getUserActiveTokens wrapper should delegate to tokenManager', async () => {
       const mod = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      mod.generateTokenPair(testPayload, 'Wrapper test');
-      const tokens = mod.getUserActiveTokens(testPayload.id);
+      await mod.generateTokenPair(testPayload, 'Wrapper test');
+      const tokens = await mod.getUserActiveTokens(testPayload.id);
       expect(Array.isArray(tokens)).toBe(true);
     });
 
-    it('getTokenStats wrapper should delegate to tokenManager', () => {
+    it('getTokenStats wrapper should delegate to tokenManager', async () => {
       const mod = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const stats = mod.getTokenStats();
+      const stats = await mod.getTokenStats();
       expect(stats).toHaveProperty('totalActiveTokens');
       expect(stats).toHaveProperty('activeUserCount');
       expect(stats).toHaveProperty('oldestToken');
     });
 
-    it('verifyRefreshToken wrapper should delegate to tokenManager', () => {
+    it('verifyRefreshToken wrapper should delegate to tokenManager', async () => {
       const mod = jest.requireActual<typeof import('../jwt')>('../jwt');
 
-      const result = mod.verifyRefreshToken('nonexistent');
+      const result = await mod.verifyRefreshToken('nonexistent');
       expect(result.valid).toBe(false);
     });
   });

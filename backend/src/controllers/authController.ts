@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
 import User from '../models/User';
 import {
   generateTokenPair,
@@ -10,7 +9,7 @@ import {
 import { asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { RegisterRequest, LoginRequest, AuthResponse as _AuthResponse } from '../types';
-import { CNPJService } from '../services/cnpjService';
+import { authService } from '../services/authService';
 
 const serializeUserResponse = (
   user: User,
@@ -53,57 +52,7 @@ const serializeUserResponse = (
   },
 });
 
-export const registerValidation = [
-  body('email').trim().isEmail().normalizeEmail().withMessage('Please provide a valid email'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-  body('cpf')
-    .isLength({ min: 11, max: 14 })
-    .withMessage('CPF must be between 11 and 14 characters'),
-  body('address').notEmpty().withMessage('Address is required'),
-  body('companyName').notEmpty().withMessage('Company name is required'),
-  body('corporateName').notEmpty().withMessage('Corporate name is required'),
-  body('cnpj')
-    .isLength({ min: 14, max: 18 })
-    .withMessage('CNPJ must be between 14 and 18 characters'),
-  body('industrySector').notEmpty().withMessage('Industry sector is required'),
-  body('companyType')
-    .isIn(['buyer', 'supplier', 'both'])
-    .withMessage('Company type must be buyer, supplier, or both'),
-];
-
-export const loginValidation = [
-  body('cnpj').isLength({ min: 14, max: 18 }).withMessage('Please provide a valid CNPJ'),
-  body('password').notEmpty().withMessage('Password is required'),
-];
-
-export const loginEmailValidation = [
-  body('email').trim().isEmail().normalizeEmail().withMessage('Please provide a valid email'),
-  body('password').notEmpty().withMessage('Password is required'),
-];
-
-export const supplierRegisterValidation = [
-  body('email').trim().isEmail().normalizeEmail().withMessage('Please provide a valid email'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-  body('cpf')
-    .isLength({ min: 11, max: 14 })
-    .withMessage('CPF must be between 11 and 14 characters'),
-  body('address').notEmpty().withMessage('Address is required'),
-  body('companyName').notEmpty().withMessage('Company name is required'),
-  body('cnpj')
-    .isLength({ min: 14, max: 18 })
-    .withMessage('CNPJ must be between 14 and 18 characters'),
-];
-
 export const register = asyncHandler(async (req: Request, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: errors.array(),
-    });
-  }
-
   const {
     email,
     password,
@@ -116,75 +65,20 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     companyType,
   }: RegisterRequest = req.body;
 
-  // Check if user already exists
-  const existingUser = await User.findOne({
-    where: {
-      email,
-    },
-  });
-
-  if (existingUser) {
-    return res.status(400).json({
-      success: false,
-      error: 'User with this email already exists',
-    });
-  }
-
-  // Check if CPF already exists
-  const existingCpf = await User.findOne({
-    where: {
-      cpf,
-    },
-  });
-
-  if (existingCpf) {
-    return res.status(400).json({
-      success: false,
-      error: 'User with this CPF already exists',
-    });
-  }
-
-  // Check if CNPJ already exists
-  const existingCnpj = await User.findOne({
-    where: {
-      cnpj,
-    },
-  });
-
-  if (existingCnpj) {
-    return res.status(400).json({
-      success: false,
-      error: 'Company with this CNPJ already exists',
-    });
-  }
-
-  // Validate CNPJ
-  const cnpjValidation = await CNPJService.validateCNPJWithAPI(cnpj);
-  if (!cnpjValidation.valid) {
-    return res.status(400).json({
-      success: false,
-      error: cnpjValidation.error || 'Invalid CNPJ provided',
-    });
-  }
-
-  // Create new user
-  const user = await User.create({
+  const user = await authService.register({
     email,
     password,
     cpf,
-    address: cnpjValidation.address || address,
-    companyName: cnpjValidation.companyName || companyName,
-    corporateName: cnpjValidation.companyName || corporateName,
-    cnpj: CNPJService.formatCNPJ(cnpj),
+    address,
+    companyName,
+    corporateName,
+    cnpj,
     industrySector,
     companyType,
-    role: companyType === 'supplier' ? 'supplier' : 'customer',
-    status: companyType === 'supplier' ? 'pending' : 'approved',
   });
 
-  // Generate token pair
   const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
-  const tokens = generateTokenPair(
+  const tokens = await generateTokenPair(
     {
       id: user.id,
       email: user.email,
@@ -203,24 +97,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: errors.array(),
-    });
-  }
-
   const { cnpj, password }: LoginRequest = req.body;
 
-  // Find user by CNPJ
-  const user = await User.findOne({
-    where: {
-      cnpj,
-    },
-  });
-
+  const user = await authService.loginByCnpj(cnpj, password);
   if (!user) {
     return res.status(401).json({
       success: false,
@@ -228,18 +107,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     });
   }
 
-  // Check password
-  const isPasswordValid = await user.comparePassword(password);
-  if (!isPasswordValid) {
-    return res.status(401).json({
-      success: false,
-      error: 'Invalid CNPJ or password',
-    });
-  }
-
-  // Generate token pair
   const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
-  const tokens = generateTokenPair(
+  const tokens = await generateTokenPair(
     {
       id: user.id,
       email: user.email,
@@ -258,24 +127,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const loginWithEmail = asyncHandler(async (req: Request, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: errors.array(),
-    });
-  }
-
   const { email, password } = req.body;
 
-  // Find user by email
-  const user = await User.findOne({
-    where: {
-      email,
-    },
-  });
-
+  const user = await authService.loginByEmail(email, password);
   if (!user) {
     return res.status(401).json({
       success: false,
@@ -283,18 +137,8 @@ export const loginWithEmail = asyncHandler(async (req: Request, res: Response) =
     });
   }
 
-  // Check password
-  const isPasswordValid = await user.comparePassword(password);
-  if (!isPasswordValid) {
-    return res.status(401).json({
-      success: false,
-      error: 'Invalid email or password',
-    });
-  }
-
-  // Generate token pair
   const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
-  const tokens = generateTokenPair(
+  const tokens = await generateTokenPair(
     {
       id: user.id,
       email: user.email,
@@ -320,8 +164,7 @@ export const getProfile = asyncHandler(async (req: AuthenticatedRequest, res: Re
     });
   }
 
-  // Find user by ID from token
-  const user = await User.findByPk(req.user.id);
+  const user = await authService.getProfile(req.user.id);
 
   if (!user) {
     return res.status(404).json({
@@ -355,81 +198,22 @@ export const getProfile = asyncHandler(async (req: AuthenticatedRequest, res: Re
 });
 
 export const registerSupplier = asyncHandler(async (req: Request, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: errors.array(),
-    });
-  }
-
   const { email, password, cpf, address, companyName, corporateName, cnpj, industrySector } =
     req.body;
 
-  const existingUser = await User.findOne({
-    where: {
-      email,
-    },
-  });
-
-  if (existingUser) {
-    return res.status(400).json({
-      success: false,
-      error: 'User with this email already exists',
-    });
-  }
-
-  const existingCpf = await User.findOne({
-    where: {
-      cpf,
-    },
-  });
-
-  if (existingCpf) {
-    return res.status(400).json({
-      success: false,
-      error: 'User with this CPF already exists',
-    });
-  }
-
-  const existingCnpj = await User.findOne({
-    where: {
-      cnpj,
-    },
-  });
-
-  if (existingCnpj) {
-    return res.status(400).json({
-      success: false,
-      error: 'Company with this CNPJ already exists',
-    });
-  }
-
-  const cnpjValidation = await CNPJService.validateCNPJWithAPI(cnpj);
-  if (!cnpjValidation.valid) {
-    return res.status(400).json({
-      success: false,
-      error: cnpjValidation.error || 'Invalid CNPJ provided',
-    });
-  }
-
-  const user = await User.create({
+  const { user, cnpjValidation } = await authService.registerSupplier({
     email,
     password,
     cpf,
-    address: cnpjValidation.address || address,
-    companyName: cnpjValidation.companyName || companyName,
-    corporateName: cnpjValidation.companyName || corporateName,
-    cnpj: CNPJService.formatCNPJ(cnpj),
-    industrySector: industrySector || 'other',
-    companyType: 'supplier',
-    role: 'supplier',
-    status: 'pending',
+    address,
+    companyName,
+    corporateName,
+    cnpj,
+    industrySector,
   });
 
   const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
-  const tokens = generateTokenPair(
+  const tokens = await generateTokenPair(
     {
       id: user.id,
       email: user.email,
@@ -453,29 +237,15 @@ export const registerSupplier = asyncHandler(async (req: Request, res: Response)
   });
 });
 
-// Refresh token validation
-export const refreshTokenValidation = [
-  body('refreshToken').notEmpty().withMessage('Refresh token is required'),
-];
-
 // Refresh access token
 export const refreshToken = asyncHandler(async (req: Request, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: errors.array(),
-    });
-  }
-
   const { refreshToken: token } = req.body;
   const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
 
   try {
     // Find user associated with this refresh token
     const { verifyRefreshToken } = await import('../utils/jwt');
-    const verification = verifyRefreshToken(token);
+    const verification = await verifyRefreshToken(token);
 
     if (!verification.valid) {
       return res.status(401).json({
@@ -485,7 +255,7 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
     }
 
     // Get updated user data
-    const user = await User.findByPk(verification.userId);
+    const user = await authService.getUserById(verification.userId!);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -494,7 +264,7 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
     }
 
     // Generate new token pair
-    const newTokens = refreshAccessToken(
+    const newTokens = await refreshAccessToken(
       token,
       {
         id: user.id,
@@ -537,7 +307,7 @@ export const logout = asyncHandler(async (req: AuthenticatedRequest, res: Respon
 
   try {
     if (token) {
-      revokeRefreshToken(token);
+      await revokeRefreshToken(token);
     }
 
     res.status(200).json({
@@ -562,7 +332,7 @@ export const logoutAllDevices = asyncHandler(async (req: AuthenticatedRequest, r
   }
 
   try {
-    const revokedCount = revokeAllUserTokens(req.user.id);
+    const revokedCount = await revokeAllUserTokens(req.user.id);
 
     res.status(200).json({
       success: true,
@@ -590,7 +360,7 @@ export const getActiveSessions = asyncHandler(async (req: AuthenticatedRequest, 
 
   try {
     const { getUserActiveTokens } = await import('../utils/jwt');
-    const activeSessions = getUserActiveTokens(req.user.id);
+    const activeSessions = await getUserActiveTokens(req.user.id);
 
     // Remove sensitive token data for security
     const safeSessions = activeSessions.map(session => ({

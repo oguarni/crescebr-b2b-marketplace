@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Typography,
@@ -27,39 +27,17 @@ import {
   LocationOn,
   Check,
 } from '@mui/icons-material';
-import { Quotation } from '@shared/types';
-import { quotationsService } from '../services/quotationsService';
 import { ordersService } from '../services/ordersService';
 import { useAuth } from '../contexts/AuthContext';
+import { useQuotation } from '../hooks';
 import toast from 'react-hot-toast';
 
 const QuotationDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [quotation, setQuotation] = useState<Quotation | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchQuotation = async () => {
-      if (!id) return;
-
-      try {
-        const data = await quotationsService.getQuotationById(parseInt(id));
-        setQuotation(data);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar cotação';
-        setError(errorMessage);
-        toast.error(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchQuotation();
-  }, [id]);
+  const { quotation, loading, error } = useQuotation(parseInt(id ?? '0'));
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {

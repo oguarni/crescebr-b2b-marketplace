@@ -10,14 +10,17 @@ import {
   getQuotationCalculations,
   processQuotationWithCalculations,
   getMultipleSupplierQuotes,
+} from '../quotationsController';
+import {
   createQuotationValidation,
   updateQuotationValidation,
   calculateQuoteValidation,
-  getMultipleSupplierQuotesValidation,
-} from '../quotationsController';
+  compareSupplierQuotesValidation as getMultipleSupplierQuotesValidation,
+} from '../../validators/quotation.validators';
 import { authenticateJWT } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
 import { errorHandler } from '../../middleware/errorHandler';
+import { handleValidationErrors } from '../../middleware/handleValidationErrors';
 import Product from '../../models/Product';
 import Quotation from '../../models/Quotation';
 import QuotationItem from '../../models/QuotationItem';
@@ -64,6 +67,7 @@ app.post(
   authenticateJWT,
   requireRole('customer'),
   createQuotationValidation,
+  handleValidationErrors,
   createQuotation
 );
 app.get(
@@ -79,9 +83,16 @@ app.put(
   authenticateJWT,
   requireRole('admin'),
   updateQuotationValidation,
+  handleValidationErrors,
   updateQuotation
 );
-app.post('/api/quotations/calculate', authenticateJWT, calculateQuoteValidation, calculateQuote);
+app.post(
+  '/api/quotations/calculate',
+  authenticateJWT,
+  calculateQuoteValidation,
+  handleValidationErrors,
+  calculateQuote
+);
 app.get('/api/quotations/:id/calculations', authenticateJWT, getQuotationCalculations);
 app.post(
   '/api/admin/quotations/:id/process',
@@ -93,6 +104,7 @@ app.post(
   '/api/quotations/compare',
   authenticateJWT,
   getMultipleSupplierQuotesValidation,
+  handleValidationErrors,
   getMultipleSupplierQuotes
 );
 
@@ -1159,6 +1171,117 @@ describe('Quotations Controller', () => {
         [1, 2],
         'standard'
       );
+    });
+
+    it('should return 400 when validation fails (missing required fields)', async () => {
+      (authenticateJWT as jest.Mock).mockImplementation((req: any, res: any, next: any) => {
+        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+        next();
+      });
+
+      const response = await request(app).post('/api/quotations/compare').send({}).expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Validation failed');
+    });
+  });
+
+  describe('Error fallbacks - non-Error throws and uncovered branches', () => {
+    beforeEach(() => {
+      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
+        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+        next();
+      });
+    });
+
+    it('createQuotation - uses fallback message when non-Error is thrown', async () => {
+      MockProduct.findAll.mockRejectedValue('db timeout');
+
+      const response = await request(app)
+        .post('/api/quotations')
+        .send({ items: [{ productId: 1, quantity: 5 }] })
+        .expect(400);
+
+      expect(response.body.error).toBe('Failed to create quotation');
+    });
+
+    it('getQuotationById - uses fallback message when non-Error is thrown', async () => {
+      MockQuotation.findByPk.mockRejectedValue('network error');
+
+      const response = await request(app).get('/api/quotations/1').expect(400);
+
+      expect(response.body.error).toBe('Failed to get quotation');
+    });
+
+    it('getQuotationById - returns 400 for unrecognized error message', async () => {
+      MockQuotation.findByPk.mockRejectedValue(new Error('Connection reset'));
+
+      const response = await request(app).get('/api/quotations/1').expect(400);
+
+      expect(response.body.error).toBe('Connection reset');
+    });
+
+    it('updateQuotation - uses fallback message when non-Error is thrown', async () => {
+      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
+        req.user = { id: 1, email: 'admin@example.com', role: 'admin' };
+        next();
+      });
+      MockQuotation.findByPk.mockRejectedValue('lock timeout');
+
+      const response = await request(app)
+        .put('/api/admin/quotations/1')
+        .send({ status: 'processed' })
+        .expect(400);
+
+      expect(response.body.error).toBe('Failed to update quotation');
+    });
+
+    it('calculateQuote - uses fallback message when non-Error is thrown', async () => {
+      mockQuoteService.calculateQuoteComparison.mockRejectedValue('calculation error');
+
+      const response = await request(app)
+        .post('/api/quotations/calculate')
+        .send({ items: [{ productId: 1, quantity: 5 }] })
+        .expect(400);
+
+      expect(response.body.error).toBe('Quote calculation failed');
+    });
+
+    it('getQuotationCalculations - uses fallback message when non-Error is thrown', async () => {
+      mockQuoteService.getQuotationWithCalculations.mockRejectedValue('service error');
+
+      const response = await request(app).get('/api/quotations/1/calculations').expect(400);
+
+      expect(response.body.error).toBe('Failed to get quotation calculations');
+    });
+
+    it('processQuotationWithCalculations - uses fallback message when non-Error is thrown', async () => {
+      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
+        req.user = { id: 1, email: 'admin@example.com', role: 'admin' };
+        next();
+      });
+      mockQuoteService.getQuotationWithCalculations.mockRejectedValue('timeout');
+
+      const response = await request(app).post('/api/admin/quotations/1/process').expect(400);
+
+      expect(response.body.error).toBe('Failed to process quotation');
+    });
+
+    it('getMultipleSupplierQuotes - uses fallback message when non-Error is thrown', async () => {
+      mockQuoteService.getMultipleSupplierQuotes.mockRejectedValue('network error');
+
+      const response = await request(app)
+        .post('/api/quotations/compare')
+        .send({
+          productId: 1,
+          quantity: 10,
+          buyerLocation: 'SP',
+          supplierIds: [1],
+          shippingMethod: 'standard',
+        })
+        .expect(400);
+
+      expect(response.body.error).toBe('Failed to get supplier quotes');
     });
   });
 });

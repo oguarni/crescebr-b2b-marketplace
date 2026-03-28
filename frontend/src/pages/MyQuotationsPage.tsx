@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -23,38 +23,16 @@ import {
   HourglassEmpty,
   ShoppingCart,
 } from '@mui/icons-material';
-import { Quotation } from '@shared/types';
-import { quotationsService } from '../services/quotationsService';
 import { ordersService } from '../services/ordersService';
 import { useAuth } from '../contexts/AuthContext';
+import { useQuotations } from '../hooks';
 import toast from 'react-hot-toast';
 
 const MyQuotationsPage: React.FC = () => {
-  const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [loading, setLoading] = useState(true);
   const [creatingOrder, setCreatingOrder] = useState<number | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchQuotations = async () => {
-      try {
-        const data = await quotationsService.getCustomerQuotations();
-        setQuotations(data);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar cotações';
-        toast.error(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user?.role === 'customer') {
-      fetchQuotations();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
+  const { quotations, loading } = useQuotations();
 
   const getStatusColor = (
     status: string

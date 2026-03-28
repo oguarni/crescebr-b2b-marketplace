@@ -1,21 +1,11 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import User from '../models/User';
-import Product from '../models/Product';
-import Order from '../models/Order';
-import Quotation from '../models/Quotation';
 import { asyncHandler } from '../middleware/errorHandler';
-import { CNPJService } from '../services/cnpjService';
 import { adminService } from '../services/adminService';
 
 export const getAllPendingCompanies = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const companies = await User.findAll({
-      where: {
-        role: 'supplier',
-        status: 'pending',
-      },
-    });
+    const companies = await adminService.getPendingCompanies();
     res.status(200).json({ success: true, data: companies });
   }
 );
@@ -28,51 +18,26 @@ export const verifyCompany = asyncHandler(async (req: AuthenticatedRequest, res:
     return res.status(400).json({ success: false, error: 'Invalid status provided' });
   }
 
-  const user = await User.findOne({ where: { id: userId, role: 'supplier' } });
-
-  if (!user) {
-    return res.status(404).json({ success: false, error: 'Supplier not found' });
+  try {
+    const user = await adminService.verifyCompany(userId, status, reason, validateCNPJ);
+    res.status(200).json({
+      success: true,
+      data: user,
+      message: `Company ${status} successfully${reason ? ` - ${reason}` : ''}`,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to verify company';
+    const status500 = message.includes('CNPJ validation failed')
+      ? 400
+      : message.includes('not found')
+        ? 404
+        : 500;
+    res.status(status500).json({ success: false, error: message });
   }
-
-  // If approving and CNPJ validation is requested
-  if (status === 'approved' && validateCNPJ && user.cnpj) {
-    try {
-      const cnpjValidation = await CNPJService.validateAndUpdateCompany(user.cnpj, user.id);
-
-      if (!cnpjValidation.valid) {
-        return res.status(400).json({
-          success: false,
-          error: 'CNPJ validation failed',
-          details: cnpjValidation.error,
-        });
-      }
-
-      // Refresh user data after CNPJ update
-      await user.reload();
-    } catch (error) {
-      console.error('CNPJ validation error:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to validate CNPJ',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  }
-
-  user.status = status;
-  await user.save();
-
-  res.status(200).json({
-    success: true,
-    data: user,
-    message: `Company ${status} successfully${reason ? ` - ${reason}` : ''}`,
-  });
 });
 
 export const getAllProducts = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const products = await Product.findAll({
-    order: [['createdAt', 'DESC']],
-  });
+  const products = await adminService.getAllProducts();
   res.status(200).json({ success: true, data: products });
 });
 
@@ -84,87 +49,40 @@ export const moderateProduct = asyncHandler(async (req: AuthenticatedRequest, re
     return res.status(400).json({ success: false, error: 'Invalid action provided' });
   }
 
-  const product = await Product.findByPk(productId);
-  if (!product) {
-    return res.status(404).json({ success: false, error: 'Product not found' });
+  try {
+    const product = await adminService.moderateProduct(productId, action);
+    if (product === null) {
+      return res.status(200).json({ success: true, message: 'Product removed successfully' });
+    }
+    res.status(200).json({ success: true, data: product });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to moderate product';
+    const httpStatus = message.includes('not found') ? 404 : 400;
+    res.status(httpStatus).json({ success: false, error: message });
   }
-
-  if (action === 'remove') {
-    await product.destroy();
-    return res.status(200).json({ success: true, message: 'Product removed successfully' });
-  }
-
-  res.status(200).json({ success: true, data: product });
 });
 
 export const getTransactionMonitoring = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const { startDate, endDate, status } = req.query;
-
-    const whereClause: any = {};
-    if (startDate && endDate) {
-      whereClause.createdAt = {
-        [require('sequelize').Op.between]: [
-          new Date(startDate as string),
-          new Date(endDate as string),
-        ],
-      };
-    }
-    if (status) {
-      whereClause.status = status;
-    }
-
-    const orders = await Order.findAll({
-      where: whereClause,
-      include: [
-        {
-          model: User,
-          as: 'buyer',
-          attributes: ['id', 'email', 'companyName', 'role'],
-        },
-        {
-          model: Quotation,
-          as: 'quotation',
-          attributes: ['id', 'totalAmount', 'status'],
-        },
-      ],
-      order: [['createdAt', 'DESC']],
+    const data = await adminService.getTransactionMonitoring({
+      startDate: startDate as string | undefined,
+      endDate: endDate as string | undefined,
+      status: status as string | undefined,
     });
-
-    const totalRevenue = orders.reduce(
-      (sum, order) => sum + parseFloat(order.totalAmount.toString()),
-      0
-    );
-    const ordersByStatus = orders.reduce((acc: any, order) => {
-      acc[order.status] = (acc[order.status] || 0) + 1;
-      return acc;
-    }, {});
-
-    res.status(200).json({
-      success: true,
-      data: {
-        orders,
-        totalRevenue,
-        ordersByStatus,
-        totalOrders: orders.length,
-      },
-    });
+    res.status(200).json({ success: true, data });
   }
 );
 
 export const getCompanyDetails = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { userId } = req.params;
-
-  const company = await User.findOne({
-    where: { id: userId, role: 'supplier' },
-    attributes: { exclude: ['password'] },
-  });
-
-  if (!company) {
-    return res.status(404).json({ success: false, error: 'Company not found' });
+  try {
+    const company = await adminService.getCompanyDetails(req.params.userId);
+    res.status(200).json({ success: true, data: company });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to get company details';
+    const httpStatus = message.includes('not found') ? 404 : 400;
+    res.status(httpStatus).json({ success: false, error: message });
   }
-
-  res.status(200).json({ success: true, data: company });
 });
 
 export const updateCompanyStatus = asyncHandler(
@@ -172,58 +90,38 @@ export const updateCompanyStatus = asyncHandler(
     const { userId } = req.params;
     const { status, reason } = req.body;
 
-    if (!status || !['approved', 'rejected', 'suspended'].includes(status)) {
+    if (!status || !['approved', 'rejected'].includes(status)) {
       return res.status(400).json({ success: false, error: 'Invalid status provided' });
     }
 
-    const company = await User.findOne({ where: { id: userId, role: 'supplier' } });
-    if (!company) {
-      return res.status(404).json({ success: false, error: 'Company not found' });
+    try {
+      const company = await adminService.updateCompanyStatus(userId, status);
+      res.status(200).json({
+        success: true,
+        data: company,
+        message: `Company status updated to ${status}${reason ? ` - ${reason}` : ''}`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update company status';
+      const httpStatus = message.includes('not found') ? 404 : 400;
+      res.status(httpStatus).json({ success: false, error: message });
     }
-
-    company.status = status;
-    await company.save();
-
-    res.status(200).json({
-      success: true,
-      data: company,
-      message: `Company status updated to ${status}${reason ? ` - ${reason}` : ''}`,
-    });
   }
 );
 
 export const validateSupplierCNPJ = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { userId } = req.params;
-
-    const user = await User.findOne({ where: { id: userId, role: 'supplier' } });
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'Supplier not found' });
-    }
-
-    if (!user.cnpj) {
-      return res.status(400).json({ success: false, error: 'Supplier has no CNPJ to validate' });
-    }
-
     try {
-      const cnpjValidation = await CNPJService.validateAndUpdateCompany(user.cnpj, user.id);
-
-      await user.reload();
-
-      res.status(200).json({
-        success: true,
-        data: {
-          user,
-          cnpjValidation,
-        },
-      });
+      const { user, cnpjValidation } = await adminService.validateSupplierCNPJ(req.params.userId);
+      res.status(200).json({ success: true, data: { user, cnpjValidation } });
     } catch (error) {
-      console.error('CNPJ validation error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to validate CNPJ',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      });
+      const message = error instanceof Error ? error.message : 'Failed to validate CNPJ';
+      const httpStatus = message.includes('not found')
+        ? 404
+        : message.includes('no CNPJ')
+          ? 400
+          : 500;
+      res.status(httpStatus).json({ success: false, error: message });
     }
   }
 );
@@ -234,42 +132,20 @@ export const getSupplierMetrics = asyncHandler(async (req: AuthenticatedRequest,
     res.status(200).json({ success: true, data });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to get supplier metrics';
-    const status = message === 'Supplier not found' ? 404 : 500;
-    res.status(status).json({ success: false, error: message });
+    const httpStatus = message === 'Supplier not found' ? 404 : 500;
+    res.status(httpStatus).json({ success: false, error: message });
   }
 });
 
 export const getVerificationQueue = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const { page = 1, limit = 10, filter = 'all' } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
-
-    const whereClause: any = { role: 'supplier' };
-
-    if (filter === 'pending') {
-      whereClause.status = 'pending';
-    } else if (filter === 'unvalidated_cnpj') {
-      whereClause.cnpjValidated = false;
-      whereClause.cnpj = { [require('sequelize').Op.ne]: null };
-    }
-
-    const companies = await User.findAndCountAll({
-      where: whereClause,
-      attributes: { exclude: ['password'] },
-      order: [['createdAt', 'DESC']],
-      limit: Number(limit),
-      offset,
-    });
-
-    res.status(200).json({
-      success: true,
-      data: {
-        companies: companies.rows,
-        totalCount: companies.count,
-        currentPage: Number(page),
-        totalPages: Math.ceil(companies.count / Number(limit)),
-      },
-    });
+    const data = await adminService.getVerificationQueue(
+      Number(page),
+      Number(limit),
+      filter as string
+    );
+    res.status(200).json({ success: true, data });
   }
 );
 

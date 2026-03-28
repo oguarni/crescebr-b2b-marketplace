@@ -12,7 +12,10 @@ export const productValidation = [
       }
       return true;
     }),
-  body('imageUrl').isURL().withMessage('Image URL must be a valid URL'),
+  body('imageUrl')
+    .optional({ values: 'falsy' })
+    .isURL()
+    .withMessage('Image URL must be a valid URL'),
   body('category').trim().escape().notEmpty().withMessage('Category is required'),
   body('specifications')
     .optional()

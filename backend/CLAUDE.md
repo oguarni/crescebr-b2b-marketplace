@@ -331,7 +331,7 @@ import { createQuotationValidation } from '../validators/quotation.validators';
 
 ---
 
-### Phase 3: Remove Redundant Authorization Checks [STATUS: 🔲 NOT STARTED]
+### Phase 3: Remove Redundant Authorization Checks [STATUS: ✅ DONE — Verified 2026-03-27]
 
 **Why**: Controllers have inline role checks that duplicate what `middleware/rbac.ts` already provides. This creates 80+ lines of redundant code.
 
@@ -423,7 +423,7 @@ if (userRole !== 'admin') {
 
 ---
 
-### Phase 4: Move Data Access from Controllers to Services [STATUS: ⚠️ PARTIAL]
+### Phase 4: Move Data Access from Controllers to Services [STATUS: ✅ DONE — Verified 2026-03-27]
 
 **Why**: Controllers should not contain `Model.findByPk()` or `Model.create()` calls. This violates separation of concerns.
 
@@ -656,6 +656,20 @@ npm run lint         # Lint code
 
 ## Known Issues
 
-1. **Build**: `src/services/productsService.ts` lines 264, 293 — `imageUrl: data.imageUrl || null` assigns null to a non-nullable string field
-2. **Test compile**: `src/controllers/__tests__/quotationsController.test.ts:1066` — TS2345 type mismatch in `getMultipleSupplierQuotes` mock (incomplete `QuoteCalculationResult`)
-3. **Security**: `validator` npm package has HIGH severity URL bypass CVE — run `npm audit fix`
+### Fixed (2026-03-27)
+- ~~Build: productsService.ts imageUrl TS error~~ → Parameter typed as `imageUrl?: string | null`
+- ~~Test compile: quotationsController.test.ts:1066 TS2345~~ → Suite compiles and passes (45 tests)
+- ~~Dockerfiles on node:18~~ → Updated to node:20-alpine
+- ~~`"type": "module"` in package.json conflicts with commonjs tsconfig~~ → Removed
+- ~~`GET /products/import/stats` and `/import/sample` unprotected~~ → Now require auth + requireRole('supplier', 'admin') + rate limit
+- ~~`POST /auth/logout` unrate-limited~~ → authRateLimit added
+- ~~Hardcoded `admin@crescebr.com` rate-limit bypass~~ → Removed
+- ~~403 responses leak userRole/userStatus~~ → Removed from RBAC middleware
+- ~~`backend/.env.test` in git~~ → Untracked; `.gitignore` updated
+
+### Open
+1. **Security**: In-memory refresh token store (`src/utils/jwt.ts:20-30`) — lost on restart, memory leak, no horizontal scaling
+2. **Security**: In-memory rate limit store (`src/middleware/rateLimiting.ts:19`) — same issues
+3. **Dependencies**: `express-validator` v6.x EOL — upgrade to v7.x (breaking API change required)
+4. **Architecture**: 8/9 services bypass repository layer; `order.repository.ts` is dead code
+5. **Tests**: `adminController.test.ts` has 29 pre-existing failures (service mock shape mismatches)

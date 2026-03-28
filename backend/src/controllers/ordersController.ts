@@ -1,113 +1,30 @@
 import { Response } from 'express';
-import { validationResult } from 'express-validator';
 import { AuthenticatedRequest } from '../middleware/auth';
-import Order from '../models/Order';
-import Quotation from '../models/Quotation';
-import User from '../models/User';
 import { asyncHandler } from '../middleware/errorHandler';
 import { OrderStatusService } from '../services/orderStatusService';
-import { QuoteService } from '../services/quoteService';
-import {
-  createOrderValidation,
-  updateOrderStatusValidation,
-  updateOrderNfeValidation,
-} from '../validators/order.validators';
-
-export { createOrderValidation, updateOrderStatusValidation, updateOrderNfeValidation };
+import { orderService } from '../services/orderService';
 
 export const createOrderFromQuotation = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        details: errors.array(),
-      });
-    }
-
     const { quotationId } = req.body;
     const companyId = req.user?.id!;
 
-    const quotation = await Quotation.findOne({ where: { id: quotationId, companyId } });
-
-    if (!quotation) {
-      return res
-        .status(404)
-        .json({ success: false, error: 'Quotation not found or does not belong to the user' });
-    }
-
-    if (quotation.status !== 'processed') {
-      return res
-        .status(400)
-        .json({ success: false, error: 'Only processed quotations can be converted to orders' });
-    }
-
-    // Check if quotation has expired
-    if (quotation.validUntil) {
-      const expirationDate = new Date(quotation.validUntil);
-      const now = new Date();
-      if (now > expirationDate) {
-        return res.status(400).json({
-          success: false,
-          error: `This quotation expired on ${expirationDate.toLocaleDateString()}. Please request a new quotation.`,
-        });
-      }
-    }
-
     try {
-      const { calculations } = await QuoteService.getQuotationWithCalculations(quotationId);
-
-      const order = await Order.create({
-        companyId,
-        quotationId,
-        totalAmount: calculations.grandTotal,
-        status: 'pending',
-      });
-
-      // Update quotation status to completed
-      await quotation.update({ status: 'completed' });
-
-      const fullOrder = await Order.findByPk(order.id, {
-        include: [
-          {
-            model: User,
-            as: 'user',
-            attributes: ['id', 'email', 'role'],
-          },
-          {
-            model: Quotation,
-            as: 'quotation',
-          },
-        ],
-      });
-
+      const order = await orderService.createFromQuotation(quotationId, companyId);
       res.status(201).json({
         success: true,
         message: 'Order created successfully',
-        data: fullOrder,
+        data: order,
       });
     } catch (error) {
-      res.status(400).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to create order',
-      });
+      const message = error instanceof Error ? error.message : 'Failed to create order';
+      const status = message.includes('not found') ? 404 : 400;
+      res.status(status).json({ success: false, error: message });
     }
   }
 );
 
-// updateOrderStatusValidation is imported from validators/order.validators.ts
-
 export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: errors.array(),
-    });
-  }
-
   const { orderId } = req.params;
   const { status, trackingNumber, estimatedDeliveryDate, notes, nfeAccessKey, nfeUrl } = req.body;
   const companyId = req.user?.id!;
@@ -173,27 +90,18 @@ export const getUserOrders = asyncHandler(async (req: AuthenticatedRequest, res:
 export const getOrderHistory = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { orderId } = req.params;
   const companyId = req.user?.id!;
-  const userRole = req.user?.role;
+  const userRole = req.user?.role!;
 
   try {
-    const result = await OrderStatusService.getOrderHistory(orderId);
-
-    if (userRole === 'customer' && result.order.companyId !== companyId) {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied',
-      });
-    }
-
+    const result = await orderService.getHistory(orderId, companyId, userRole);
     res.status(200).json({
       success: true,
       data: result,
     });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get order history',
-    });
+    const message = error instanceof Error ? error.message : 'Failed to get order history';
+    const status = message === 'Access denied' ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
@@ -244,15 +152,6 @@ export const getOrderStats = asyncHandler(async (req: AuthenticatedRequest, res:
 });
 
 export const updateOrderNfe = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: errors.array(),
-    });
-  }
-
   const { orderId } = req.params;
   const { nfeAccessKey, nfeUrl } = req.body;
   const requesterId = req.user?.id!;

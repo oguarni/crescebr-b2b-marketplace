@@ -205,6 +205,15 @@ describe('productsService', () => {
       consoleSpy.mockRestore();
     });
 
+    it('should skip Op.and assignment when specifications filter produces no conditions (empty object)', async () => {
+      setupGetAllMock([], 0);
+
+      // Empty JSON object produces no spec conditions → specConditions.length === 0
+      await productsService.getAll({ specifications: '{}' });
+
+      expect(MockProduct.findAndCountAll).toHaveBeenCalled();
+    });
+
     it('should validate sort fields and fallback to createdAt', async () => {
       setupGetAllMock([], 0);
 
@@ -309,6 +318,23 @@ describe('productsService', () => {
       expect(result.facets).toBeDefined();
       expect(result.facets!.categories).toEqual([]);
       expect(result.facets!.priceRange).toBeNull();
+    });
+
+    it('should use 0 fallback when priceRange values are null/NaN', async () => {
+      setupGetAllMock([], 0);
+
+      MockProduct.findAll
+        .mockResolvedValueOnce([] as any)
+        .mockResolvedValueOnce([] as any)
+        .mockResolvedValueOnce([
+          { dataValues: { minPrice: null, maxPrice: null, avgPrice: null } },
+        ] as any);
+
+      const result = await productsService.getAll({ facets: 'true' });
+
+      expect((result.facets!.priceRange as any).min).toBe(0);
+      expect((result.facets!.priceRange as any).max).toBe(0);
+      expect((result.facets!.priceRange as any).avg).toBe(0);
     });
 
     it('should calculate correct pagination', async () => {
@@ -483,6 +509,26 @@ describe('productsService', () => {
       expect(MockProduct.create).toHaveBeenCalledWith(
         expect.objectContaining({
           specifications: {},
+        })
+      );
+    });
+
+    it('should use specifications object directly when it is not a string', async () => {
+      MockProduct.create.mockResolvedValue({ id: 1 } as any);
+
+      await productsService.create({
+        name: 'Test',
+        description: 'Test',
+        price: '50',
+        imageUrl: '',
+        category: 'Test',
+        supplierId: 1,
+        specifications: { color: 'red', size: 'L' } as any,
+      });
+
+      expect(MockProduct.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specifications: { color: 'red', size: 'L' },
         })
       );
     });

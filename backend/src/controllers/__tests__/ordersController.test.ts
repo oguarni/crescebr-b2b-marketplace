@@ -8,9 +8,13 @@ import {
   getAllOrders,
   getOrderStats,
   updateOrderNfe,
+} from '../ordersController';
+import {
   createOrderValidation,
   updateOrderStatusValidation,
-} from '../ordersController';
+  updateOrderNfeValidation,
+} from '../../validators/order.validators';
+import { handleValidationErrors } from '../../middleware/handleValidationErrors';
 import { authenticateJWT } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
 import { errorHandler } from '../../middleware/errorHandler';
@@ -49,19 +53,32 @@ const app = express();
 app.use(express.json());
 
 // Setup routes
-app.post('/api/orders', authenticateJWT, createOrderValidation, createOrderFromQuotation);
+app.post(
+  '/api/orders',
+  authenticateJWT,
+  createOrderValidation,
+  handleValidationErrors,
+  createOrderFromQuotation
+);
 app.put(
   '/api/orders/:orderId/status',
   authenticateJWT,
   requireRole('admin', 'supplier'),
   updateOrderStatusValidation,
+  handleValidationErrors,
   updateOrderStatus
 );
 app.get('/api/orders', authenticateJWT, getUserOrders);
 app.get('/api/orders/:orderId/history', authenticateJWT, getOrderHistory);
 app.get('/api/admin/orders', authenticateJWT, requireRole('admin'), getAllOrders);
 app.get('/api/admin/orders/stats', authenticateJWT, requireRole('admin'), getOrderStats);
-app.put('/api/orders/:orderId/nfe', authenticateJWT, updateOrderNfe);
+app.put(
+  '/api/orders/:orderId/nfe',
+  authenticateJWT,
+  updateOrderNfeValidation,
+  handleValidationErrors,
+  updateOrderNfe
+);
 
 app.use(errorHandler);
 
@@ -507,6 +524,46 @@ describe('Orders Controller', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error).toContain('expired');
     });
+
+    it('should proceed when validUntil is set but not yet expired', async () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 7);
+      const mockQuotation = {
+        ...createMockQuotation({ id: 1, companyId: 1, status: 'processed' }),
+        validUntil: futureDate.toISOString(),
+        update: jest.fn().mockResolvedValue(true),
+      };
+      const mockCalculations = {
+        items: [],
+        totalSubtotal: 500,
+        totalShipping: 50,
+        totalTax: 90,
+        grandTotal: 640,
+        totalSavings: 0,
+      };
+      const mockOrder = createMockOrder({
+        id: 'order-future',
+        companyId: 1,
+        quotationId: 1,
+        totalAmount: 640,
+      });
+
+      (MockQuotation.findOne as jest.Mock).mockResolvedValue(mockQuotation);
+      MockQuoteService.getQuotationWithCalculations.mockResolvedValue({
+        quotation: mockQuotation as any,
+        calculations: mockCalculations,
+      });
+      MockOrder.create.mockResolvedValue(mockOrder as any);
+      MockOrder.findByPk.mockResolvedValue({
+        ...mockOrder,
+        user: null,
+        quotation: mockQuotation,
+      } as any);
+
+      const response = await request(app).post('/api/orders').send({ quotationId: 1 }).expect(201);
+
+      expect(response.body.success).toBe(true);
+    });
   });
 
   describe('GET /api/orders - error handling', () => {
@@ -581,16 +638,18 @@ describe('Orders Controller', () => {
         req.user = { id: 1, role: 'supplier', email: 'supplier@test.com' };
         next();
       });
+      // Valid 44-digit NF-e key with correct Modulo 11 check digit
+      const validNfeKey = '35240312345678000195550010000014761000047680';
       (MockOrderStatusService.updateOrderNfe as jest.Mock).mockResolvedValue({
         id: 'order-123',
-        nfeAccessKey: '12345678901234567890123456789012345678901234',
+        nfeAccessKey: validNfeKey,
         nfeUrl: 'https://nfe.example.com/123',
       });
 
       const response = await request(app)
         .put('/api/orders/order-123/nfe')
         .send({
-          nfeAccessKey: '12345678901234567890123456789012345678901234',
+          nfeAccessKey: validNfeKey,
           nfeUrl: 'https://nfe.example.com/123',
         })
         .expect(200);
@@ -606,7 +665,7 @@ describe('Orders Controller', () => {
 
       const response = await request(app)
         .put('/api/orders/order-123/nfe')
-        .send({ nfeAccessKey: '123', nfeUrl: 'https://example.com' })
+        .send({ nfeUrl: 'https://example.com' })
         .expect(403);
 
       expect(response.body.success).toBe(false);
@@ -620,7 +679,7 @@ describe('Orders Controller', () => {
 
       const response = await request(app)
         .put('/api/orders/order-999/nfe')
-        .send({ nfeAccessKey: '123', nfeUrl: 'https://example.com' })
+        .send({ nfeUrl: 'https://example.com' })
         .expect(404);
 
       expect(response.body.success).toBe(false);
@@ -634,7 +693,7 @@ describe('Orders Controller', () => {
 
       const response = await request(app)
         .put('/api/orders/order-123/nfe')
-        .send({ nfeAccessKey: '123', nfeUrl: 'https://example.com' })
+        .send({ nfeUrl: 'https://example.com' })
         .expect(400);
 
       expect(response.body.success).toBe(false);
@@ -645,10 +704,84 @@ describe('Orders Controller', () => {
 
       const response = await request(app)
         .put('/api/orders/order-123/nfe')
-        .send({ nfeAccessKey: '123', nfeUrl: 'https://example.com' })
+        .send({ nfeUrl: 'https://example.com' })
         .expect(400);
 
       expect(response.body.error).toBe('Failed to update NF-e data');
+    });
+
+    it('should return 400 when NF-e access key fails validation', async () => {
+      const response = await request(app)
+        .put('/api/orders/order-123/nfe')
+        .send({ nfeAccessKey: '12345' })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Validation failed');
+    });
+  });
+
+  describe('Non-Error fallback branches', () => {
+    it('createOrderFromQuotation - uses fallback when non-Error is thrown', async () => {
+      const mockQuotation = createMockQuotation({ id: 1, companyId: 1, status: 'processed' });
+      (MockQuotation.findOne as jest.Mock).mockResolvedValue(mockQuotation);
+      MockQuoteService.getQuotationWithCalculations.mockRejectedValue('timeout');
+
+      const response = await request(app).post('/api/orders').send({ quotationId: 1 }).expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to create order');
+    });
+
+    it('updateOrderStatus - uses fallback when non-Error is thrown', async () => {
+      (authenticateJWT as jest.Mock).mockImplementation((req, res, next) => {
+        req.user = { id: 2, role: 'supplier', email: 'supplier@test.com' };
+        next();
+      });
+      MockOrderStatusService.updateOrderStatus.mockRejectedValue('lock timeout');
+
+      const response = await request(app)
+        .put('/api/orders/order-123/status')
+        .send({ status: 'shipped', trackingNumber: 'T123' })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to update order status');
+    });
+
+    it('getOrderHistory - uses fallback when non-Error is thrown', async () => {
+      MockOrderStatusService.getOrderHistory.mockRejectedValue('db error');
+
+      const response = await request(app).get('/api/orders/order-123/history').expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to get order history');
+    });
+
+    it('getAllOrders - uses fallback when non-Error is thrown', async () => {
+      (authenticateJWT as jest.Mock).mockImplementation((req, res, next) => {
+        req.user = { id: 1, role: 'admin', email: 'admin@test.com' };
+        next();
+      });
+      MockOrderStatusService.getOrdersByStatus.mockRejectedValue('network error');
+
+      const response = await request(app).get('/api/admin/orders').expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to get orders');
+    });
+
+    it('getOrderStats - uses fallback when non-Error is thrown', async () => {
+      (authenticateJWT as jest.Mock).mockImplementation((req, res, next) => {
+        req.user = { id: 1, role: 'admin', email: 'admin@test.com' };
+        next();
+      });
+      MockOrderStatusService.getOrderStatusStats.mockRejectedValue('stats error');
+
+      const response = await request(app).get('/api/admin/orders/stats').expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to get order stats');
     });
   });
 });

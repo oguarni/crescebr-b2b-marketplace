@@ -42,7 +42,7 @@ describe('Product Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'name')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'name')).toBe(true);
     });
 
     it('should fail with missing name', async () => {
@@ -50,7 +50,7 @@ describe('Product Validators', () => {
       const result = await runValidators(productValidation, bodyWithoutName);
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      const nameError = errors.find((e: any) => e.param === 'name');
+      const nameError = errors.find((e: any) => e.path === 'name');
       expect(nameError?.msg).toBe('Product name is required');
     });
 
@@ -62,7 +62,7 @@ describe('Product Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'description')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'description')).toBe(true);
     });
 
     it('should fail with missing description', async () => {
@@ -70,7 +70,7 @@ describe('Product Validators', () => {
       const result = await runValidators(productValidation, bodyWithoutDesc);
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      const descError = errors.find((e: any) => e.param === 'description');
+      const descError = errors.find((e: any) => e.path === 'description');
       expect(descError?.msg).toBe('Product description is required');
     });
 
@@ -82,7 +82,7 @@ describe('Product Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'price')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'price')).toBe(true);
     });
 
     it('should fail with price of 0', async () => {
@@ -93,7 +93,7 @@ describe('Product Validators', () => {
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
       const priceError = errors.find(
-        (e: any) => e.param === 'price' && e.msg === 'Price must be greater than 0'
+        (e: any) => e.path === 'price' && e.msg === 'Price must be greater than 0'
       );
       expect(priceError).toBeDefined();
     });
@@ -105,7 +105,7 @@ describe('Product Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'price')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'price')).toBe(true);
     });
 
     it('should pass with valid integer price', async () => {
@@ -140,18 +140,15 @@ describe('Product Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'imageUrl')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'imageUrl')).toBe(true);
     });
 
-    it('should fail with empty imageUrl', async () => {
+    it('should pass with empty imageUrl (optional field)', async () => {
       const result = await runValidators(productValidation, {
         ...validBody,
         imageUrl: '',
       });
-      expect(result.isEmpty()).toBe(false);
-      const errors = result.array();
-      const urlError = errors.find((e: any) => e.param === 'imageUrl');
-      expect(urlError?.msg).toBe('Image URL must be a valid URL');
+      expect(result.isEmpty()).toBe(true);
     });
 
     it('should pass with valid https URL', async () => {
@@ -178,7 +175,7 @@ describe('Product Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'category')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'category')).toBe(true);
     });
 
     it('should fail with missing category', async () => {
@@ -186,7 +183,7 @@ describe('Product Validators', () => {
       const result = await runValidators(productValidation, bodyWithoutCategory);
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      const catError = errors.find((e: any) => e.param === 'category');
+      const catError = errors.find((e: any) => e.path === 'category');
       expect(catError?.msg).toBe('Category is required');
     });
 
@@ -211,7 +208,7 @@ describe('Product Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      const specError = errors.find((e: any) => e.param === 'specifications');
+      const specError = errors.find((e: any) => e.path === 'specifications');
       expect(specError?.msg).toBe('Specifications must be a string');
     });
 
@@ -244,7 +241,7 @@ describe('Product Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      const moqError = errors.find((e: any) => e.param === 'minimumOrderQuantity');
+      const moqError = errors.find((e: any) => e.path === 'minimumOrderQuantity');
       expect(moqError?.msg).toBe('Minimum order quantity must be at least 1');
     });
 
@@ -255,7 +252,7 @@ describe('Product Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'minimumOrderQuantity')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'minimumOrderQuantity')).toBe(true);
     });
 
     it('should fail with non-integer minimumOrderQuantity', async () => {
@@ -265,7 +262,7 @@ describe('Product Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'minimumOrderQuantity')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'minimumOrderQuantity')).toBe(true);
     });
 
     // Multiple validation errors
@@ -273,8 +270,8 @@ describe('Product Validators', () => {
       const result = await runValidators(productValidation, {});
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      // At minimum: name, description, price, imageUrl, category
-      expect(errors.length).toBeGreaterThanOrEqual(5);
+      // At minimum: name, description, price, category (imageUrl is optional)
+      expect(errors.length).toBeGreaterThanOrEqual(4);
     });
 
     it('should report errors for all invalid required fields', async () => {
@@ -287,7 +284,7 @@ describe('Product Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      const errorPaths = errors.map((e: any) => e.param);
+      const errorPaths = errors.map((e: any) => e.path);
       expect(errorPaths).toContain('name');
       expect(errorPaths).toContain('description');
       expect(errorPaths).toContain('price');

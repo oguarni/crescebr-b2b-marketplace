@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Typography,
@@ -37,8 +37,8 @@ import {
 } from '@mui/icons-material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { quotationsService } from '../services/quotationsService';
-import { productsService } from '../services/productsService';
 import { Product } from '@shared/types';
+import { useProducts } from '../hooks';
 import toast from 'react-hot-toast';
 
 interface SupplierQuote {
@@ -67,7 +67,7 @@ interface SupplierQuote {
 }
 
 const QuoteComparisonPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const { products, loading: loadingProducts } = useProducts();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [buyerLocation, setBuyerLocation] = useState<string>('');
@@ -77,22 +77,6 @@ const QuoteComparisonPage: React.FC = () => {
   const [quotes, setQuotes] = useState<SupplierQuote[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedQuote, setExpandedQuote] = useState<number | null>(null);
-  const [loadingProducts, setLoadingProducts] = useState(true);
-
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-  const loadProducts = async () => {
-    try {
-      const response = await productsService.getAllProducts({ limit: 100 });
-      setProducts(response.products);
-    } catch (_error) {
-      toast.error('Erro ao carregar produtos');
-    } finally {
-      setLoadingProducts(false);
-    }
-  };
 
   const handleCompareQuotes = async () => {
     if (!selectedProduct) {
@@ -171,7 +155,15 @@ const QuoteComparisonPage: React.FC = () => {
   if (loadingProducts) {
     return (
       <Container maxWidth='lg'>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            py: 8,
+          }}
+        >
           <CircularProgress />
           <Typography sx={{ mt: 2 }} color='text.secondary'>
             Carregando produtos...
@@ -226,7 +218,9 @@ const QuoteComparisonPage: React.FC = () => {
                 label='Quantidade'
                 type='number'
                 value={quantity}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+                }
                 inputProps={{
                   min: selectedProduct?.minimumOrderQuantity || 1,
                   step: 1,
@@ -244,7 +238,9 @@ const QuoteComparisonPage: React.FC = () => {
                 fullWidth
                 label='Sua Localização'
                 value={buyerLocation}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBuyerLocation(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setBuyerLocation(e.target.value)
+                }
                 placeholder='Ex: Curitiba'
               />
             </Grid>

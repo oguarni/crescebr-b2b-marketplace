@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { productsService } from '../services/productsService';
 import { Product } from '@shared/types';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface UseProductsOptions {
   autoFetch?: boolean;
@@ -19,7 +20,7 @@ export const useProducts = (options: UseProductsOptions = { autoFetch: true }) =
       const response = await productsService.getAllProducts(options.filters || {});
       setProducts(response.products);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch products');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

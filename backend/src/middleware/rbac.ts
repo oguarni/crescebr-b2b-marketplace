@@ -141,8 +141,6 @@ export const requirePermission = (permission: Permission) => {
         res.status(403).json({
           success: false,
           error: `Access denied. Required permission: ${permission}`,
-          userRole: user.role,
-          userStatus: user.status,
         });
         return;
       }
@@ -188,8 +186,6 @@ export const requireAnyPermission = (permissions: Permission[]) => {
         res.status(403).json({
           success: false,
           error: `Access denied. Required permissions: ${permissions.join(' OR ')}`,
-          userRole: user.role,
-          userStatus: user.status,
         });
         return;
       }
@@ -234,8 +230,6 @@ export const requireAllPermissions = (permissions: Permission[]) => {
         res.status(403).json({
           success: false,
           error: `Access denied. Required permissions: ${permissions.join(' AND ')}`,
-          userRole: user.role,
-          userStatus: user.status,
         });
         return;
       }

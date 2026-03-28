@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -52,6 +52,7 @@ import {
 import { Order } from '@shared/types';
 import { ordersService } from '../services/ordersService';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrders } from '../hooks';
 import toast from 'react-hot-toast';
 
 interface OrderHistory {
@@ -65,11 +66,8 @@ interface OrderHistory {
 }
 
 const MyOrdersPage: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderHistory, setOrderHistory] = useState<OrderHistory | null>(null);
   const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
@@ -77,32 +75,12 @@ const MyOrdersPage: React.FC = () => {
 
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (user?.role === 'customer') {
-      loadOrders();
-    } else {
-      setLoading(false);
-    }
-  }, [user, statusFilter, currentPage]);
-
-  const loadOrders = async () => {
-    setLoading(true);
-    try {
-      const response = await ordersService.getUserOrders({
-        status: statusFilter || undefined,
-        page: currentPage,
-        limit: 10,
-      });
-
-      setOrders(response.orders);
-      setTotalPages(response.pagination.totalPages);
-    } catch (_error) {
-      toast.error('Erro ao carregar pedidos');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { orders, loading, pagination } = useOrders({
+    status: statusFilter || undefined,
+    page: currentPage,
+    limit: 10,
+  });
+  const totalPages = pagination.totalPages;
 
   const handleViewTimeline = async (order: Order) => {
     setSelectedOrder(order);

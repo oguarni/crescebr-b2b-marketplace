@@ -1,6 +1,7 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
 import { AuthTokenPayload } from '../types';
+import { getRedisClient } from '../config/redis';
 
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
@@ -16,82 +17,12 @@ const getJwtSecret = () => {
 const getJwtExpiresIn = () => process.env.JWT_EXPIRES_IN || '15m';
 const getRefreshTokenExpiresIn = () => process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
 
-// Store for refresh tokens (in production, use Redis or database)
-interface RefreshTokenStore {
-  [key: string]: {
-    userId: number;
-    expiresAt: Date;
-    createdAt: Date;
-    deviceInfo?: string;
-  };
-}
+const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 class TokenManager {
-  private refreshTokenStore: RefreshTokenStore = {};
-  private cleanupInterval: NodeJS.Timeout;
-
-  constructor() {
-    // Clean up expired refresh tokens every hour
-    this.cleanupInterval = setInterval(
-      () => {
-        this.cleanupExpiredTokens();
-      },
-      60 * 60 * 1000
-    );
-  }
-
-  private cleanupExpiredTokens(): void {
-    const now = new Date();
-    for (const [token, data] of Object.entries(this.refreshTokenStore)) {
-      if (data.expiresAt <= now) {
-        delete this.refreshTokenStore[token];
-      }
-    }
-  }
-
-  generateTokenPair(
-    payload: AuthTokenPayload,
-    deviceInfo?: string
-  ): {
-    accessToken: string;
-    refreshToken: string;
-    expiresIn: number;
-  } {
-    // Generate access token with shorter expiry
-    const accessToken = jwt.sign(payload as object, getJwtSecret(), {
-      expiresIn: getJwtExpiresIn(),
-    } as SignOptions);
-
-    // Generate refresh token
-    const refreshToken = this.generateRefreshToken();
-
-    // Store refresh token
-    const expiresAt = new Date();
-    expiresAt.setTime(expiresAt.getTime() + this.parseExpiry(getRefreshTokenExpiresIn()));
-
-    this.refreshTokenStore[refreshToken] = {
-      userId: payload.id,
-      expiresAt,
-      createdAt: new Date(),
-      deviceInfo,
-    };
-
-    return {
-      accessToken,
-      refreshToken,
-      expiresIn: this.parseExpiry(getJwtExpiresIn()) / 1000, // Convert to seconds
-    };
-  }
-
-  private generateRefreshToken(): string {
-    return crypto.randomBytes(40).toString('hex');
-  }
-
   private parseExpiry(expiry: string): number {
-    // Parse expiry string like '15m', '7d', '24h' to milliseconds
     const timeValue = parseInt(expiry.slice(0, -1));
     const timeUnit = expiry.slice(-1);
-
     switch (timeUnit) {
       case 's':
         return timeValue * 1000;
@@ -102,13 +33,63 @@ class TokenManager {
       case 'd':
         return timeValue * 24 * 60 * 60 * 1000;
       default:
-        return 15 * 60 * 1000; // Default 15 minutes
+        return 15 * 60 * 1000;
     }
+  }
+
+  private parseExpirySeconds(expiry: string): number {
+    return Math.floor(this.parseExpiry(expiry) / 1000);
+  }
+
+  private generateRefreshToken(): string {
+    return crypto.randomBytes(40).toString('hex');
+  }
+
+  private refreshKey(token: string): string {
+    return `refresh:${token}`;
+  }
+
+  private userKey(userId: number): string {
+    return `refresh:user:${userId}`;
+  }
+
+  async generateTokenPair(
+    payload: AuthTokenPayload,
+    deviceInfo?: string
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: number;
+  }> {
+    const accessToken = jwt.sign(payload as object, getJwtSecret(), {
+      expiresIn: getJwtExpiresIn(),
+      algorithm: 'HS256',
+    } as SignOptions);
+
+    const refreshToken = this.generateRefreshToken();
+    const expiresAt = new Date(Date.now() + this.parseExpiry(getRefreshTokenExpiresIn()));
+    const tokenData = JSON.stringify({
+      userId: payload.id,
+      expiresAt: expiresAt.toISOString(),
+      createdAt: new Date().toISOString(),
+      deviceInfo: deviceInfo ?? null,
+    });
+
+    const redis = getRedisClient();
+    await redis.set(this.refreshKey(refreshToken), tokenData, 'EX', REFRESH_TTL_SECONDS);
+    await redis.sadd(this.userKey(payload.id), refreshToken);
+    await redis.expire(this.userKey(payload.id), REFRESH_TTL_SECONDS);
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: this.parseExpirySeconds(getJwtExpiresIn()),
+    };
   }
 
   verifyAccessToken(token: string): AuthTokenPayload {
     try {
-      return jwt.verify(token, getJwtSecret()) as AuthTokenPayload;
+      return jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] }) as AuthTokenPayload;
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
         throw new Error('Access token expired');
@@ -120,124 +101,148 @@ class TokenManager {
     }
   }
 
-  verifyRefreshToken(refreshToken: string): { valid: boolean; userId?: number; error?: string } {
-    const tokenData = this.refreshTokenStore[refreshToken];
+  async verifyRefreshToken(
+    refreshToken: string
+  ): Promise<{ valid: boolean; userId?: number; error?: string }> {
+    const redis = getRedisClient();
+    const raw = await redis.get(this.refreshKey(refreshToken));
 
-    if (!tokenData) {
+    if (!raw) {
       return { valid: false, error: 'Refresh token not found' };
     }
 
-    if (tokenData.expiresAt <= new Date()) {
-      // Clean up expired token
-      delete this.refreshTokenStore[refreshToken];
+    const data = JSON.parse(raw);
+    if (new Date(data.expiresAt) <= new Date()) {
+      await redis.del(this.refreshKey(refreshToken));
       return { valid: false, error: 'Refresh token expired' };
     }
 
-    return { valid: true, userId: tokenData.userId };
+    return { valid: true, userId: data.userId };
   }
 
-  refreshAccessToken(
+  async refreshAccessToken(
     refreshToken: string,
     newPayload: AuthTokenPayload,
     deviceInfo?: string
-  ): {
+  ): Promise<{
     accessToken: string;
     refreshToken: string;
     expiresIn: number;
-  } | null {
-    const verification = this.verifyRefreshToken(refreshToken);
+  } | null> {
+    const verification = await this.verifyRefreshToken(refreshToken);
 
     if (!verification.valid || verification.userId !== newPayload.id) {
       return null;
     }
 
-    // Revoke old refresh token
-    delete this.refreshTokenStore[refreshToken];
+    const redis = getRedisClient();
+    await redis.del(this.refreshKey(refreshToken));
+    await redis.srem(this.userKey(newPayload.id), refreshToken);
 
-    // Generate new token pair
     return this.generateTokenPair(newPayload, deviceInfo);
   }
 
-  revokeRefreshToken(refreshToken: string): boolean {
-    if (this.refreshTokenStore[refreshToken]) {
-      delete this.refreshTokenStore[refreshToken];
-      return true;
-    }
-    return false;
+  async revokeRefreshToken(refreshToken: string): Promise<boolean> {
+    const redis = getRedisClient();
+    const raw = await redis.get(this.refreshKey(refreshToken));
+    if (!raw) return false;
+
+    const data = JSON.parse(raw);
+    await redis.del(this.refreshKey(refreshToken));
+    await redis.srem(this.userKey(data.userId), refreshToken);
+    return true;
   }
 
-  revokeAllUserTokens(userId: number): number {
-    let revokedCount = 0;
+  async revokeAllUserTokens(userId: number): Promise<number> {
+    const redis = getRedisClient();
+    const tokens = await redis.smembers(this.userKey(userId));
+    if (tokens.length === 0) return 0;
 
-    for (const [token, data] of Object.entries(this.refreshTokenStore)) {
-      if (data.userId === userId) {
-        delete this.refreshTokenStore[token];
-        revokedCount++;
-      }
-    }
+    const pipeline = redis.pipeline();
+    tokens.forEach(token => pipeline.del(this.refreshKey(token)));
+    pipeline.del(this.userKey(userId));
+    await pipeline.exec();
 
-    return revokedCount;
+    return tokens.length;
   }
 
-  getUserActiveTokens(userId: number): Array<{
-    token: string;
-    createdAt: Date;
-    expiresAt: Date;
-    deviceInfo?: string;
-  }> {
-    const userTokens = [];
+  async getUserActiveTokens(userId: number): Promise<
+    Array<{
+      token: string;
+      createdAt: Date;
+      expiresAt: Date;
+      deviceInfo?: string;
+    }>
+  > {
+    const redis = getRedisClient();
+    const tokens = await redis.smembers(this.userKey(userId));
 
-    for (const [token, data] of Object.entries(this.refreshTokenStore)) {
-      if (data.userId === userId && data.expiresAt > new Date()) {
-        userTokens.push({
+    const results = await Promise.all(
+      tokens.map(async token => {
+        const raw = await redis.get(this.refreshKey(token));
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        return {
           token,
-          createdAt: data.createdAt,
-          expiresAt: data.expiresAt,
-          deviceInfo: data.deviceInfo,
-        });
-      }
-    }
+          createdAt: new Date(data.createdAt),
+          expiresAt: new Date(data.expiresAt),
+          deviceInfo: data.deviceInfo ?? undefined,
+        };
+      })
+    );
 
-    return userTokens.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return results
+      .filter((r): r is NonNullable<typeof r> => r !== null && r.expiresAt > new Date())
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
-  getTokenStats(): {
+  async getTokenStats(): Promise<{
     totalActiveTokens: number;
     activeUserCount: number;
     oldestToken: Date | null;
-  } {
-    const now = new Date();
-    const activeTokens = Object.values(this.refreshTokenStore).filter(data => data.expiresAt > now);
+  }> {
+    const redis = getRedisClient();
+    const keys = await redis.keys('refresh:*');
+    const tokenKeys = keys.filter(k => !k.startsWith('refresh:user:'));
 
-    const uniqueUsers = new Set(activeTokens.map(data => data.userId));
+    if (tokenKeys.length === 0) {
+      return { totalActiveTokens: 0, activeUserCount: 0, oldestToken: null };
+    }
+
+    const values = await Promise.all(tokenKeys.map(k => redis.get(k)));
+    const now = new Date();
+    const active = values
+      .filter((v): v is string => v !== null)
+      .map(v => JSON.parse(v))
+      .filter(d => new Date(d.expiresAt) > now);
+
+    const uniqueUsers = new Set(active.map((d: any) => d.userId));
     const oldestToken =
-      activeTokens.length > 0
-        ? activeTokens.reduce((oldest, current) =>
-            current.createdAt < oldest.createdAt ? current : oldest
+      active.length > 0
+        ? active.reduce((oldest: any, current: any) =>
+            new Date(current.createdAt) < new Date(oldest.createdAt) ? current : oldest
           ).createdAt
         : null;
 
     return {
-      totalActiveTokens: activeTokens.length,
+      totalActiveTokens: active.length,
       activeUserCount: uniqueUsers.size,
-      oldestToken,
+      oldestToken: oldestToken ? new Date(oldestToken) : null,
     };
   }
 
-  destroy(): void {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-    }
-  }
+  // No-op: Redis handles TTL-based cleanup automatically
+  destroy(): void {}
 }
 
 // Create global token manager instance
 const tokenManager = new TokenManager();
 
-// Legacy functions for backward compatibility
+// Legacy function for backward compatibility (sync, no refresh token store)
 export const generateToken = (payload: AuthTokenPayload): string => {
   return jwt.sign(payload as object, getJwtSecret(), {
     expiresIn: getJwtExpiresIn(),
+    algorithm: 'HS256',
   } as SignOptions);
 };
 
@@ -256,12 +261,12 @@ export const extractTokenFromHeader = (authHeader: string | undefined): string |
   return token.trimStart();
 };
 
-// New enhanced functions
-export const generateTokenPair = (payload: AuthTokenPayload, deviceInfo?: string) => {
+// Async token pair management
+export const generateTokenPair = async (payload: AuthTokenPayload, deviceInfo?: string) => {
   return tokenManager.generateTokenPair(payload, deviceInfo);
 };
 
-export const refreshAccessToken = (
+export const refreshAccessToken = async (
   refreshToken: string,
   newPayload: AuthTokenPayload,
   deviceInfo?: string
@@ -269,23 +274,23 @@ export const refreshAccessToken = (
   return tokenManager.refreshAccessToken(refreshToken, newPayload, deviceInfo);
 };
 
-export const revokeRefreshToken = (refreshToken: string): boolean => {
+export const revokeRefreshToken = async (refreshToken: string): Promise<boolean> => {
   return tokenManager.revokeRefreshToken(refreshToken);
 };
 
-export const revokeAllUserTokens = (userId: number): number => {
+export const revokeAllUserTokens = async (userId: number): Promise<number> => {
   return tokenManager.revokeAllUserTokens(userId);
 };
 
-export const getUserActiveTokens = (userId: number) => {
+export const getUserActiveTokens = async (userId: number) => {
   return tokenManager.getUserActiveTokens(userId);
 };
 
-export const getTokenStats = () => {
+export const getTokenStats = async () => {
   return tokenManager.getTokenStats();
 };
 
-export const verifyRefreshToken = (refreshToken: string) => {
+export const verifyRefreshToken = async (refreshToken: string) => {
   return tokenManager.verifyRefreshToken(refreshToken);
 };
 

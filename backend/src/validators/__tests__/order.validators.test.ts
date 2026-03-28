@@ -1,7 +1,11 @@
 import express from 'express';
 import request from 'supertest';
 import { validationResult } from 'express-validator';
-import { validateNfeModulo11, updateOrderStatusValidation } from '../order.validators';
+import {
+  validateNfeModulo11,
+  updateOrderStatusValidation,
+  updateOrderNfeValidation,
+} from '../order.validators';
 
 /**
  * The Modulo 11 algorithm used by SEFAZ for Brazilian NF-e keys:
@@ -152,5 +156,52 @@ describe('nfeAccessKeyChain integration', () => {
     const response = await request(app).post('/test').send({ status: 'shipped' }).expect(200);
 
     expect(response.body.success).toBe(true);
+  });
+});
+
+describe('updateOrderNfeValidation (default fieldName parameter)', () => {
+  const nfeApp = express();
+  nfeApp.use(express.json());
+  nfeApp.post('/nfe-test', updateOrderNfeValidation, (req: any, res: any) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    res.status(200).json({ success: true });
+  });
+
+  it('should pass when nfeAccessKey uses default field name and is valid', async () => {
+    const first43 = '4321011234567800019455001000001476100004768';
+    const weights = [2, 3, 4, 5, 6, 7, 8, 9];
+    let sum = 0;
+    for (let i = 0; i < 43; i++) {
+      sum += parseInt(first43[i], 10) * weights[(42 - i) % 8];
+    }
+    const rem = sum % 11;
+    const check = rem < 2 ? 0 : 11 - rem;
+    const validKey = first43 + String(check);
+
+    const response = await request(nfeApp)
+      .post('/nfe-test')
+      .send({ nfeAccessKey: validKey })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+  });
+
+  it('should pass when no nfe fields provided (all optional)', async () => {
+    const response = await request(nfeApp).post('/nfe-test').send({}).expect(200);
+    expect(response.body.success).toBe(true);
+  });
+
+  it('should reject invalid nfeAccessKey using default field name', async () => {
+    const response = await request(nfeApp)
+      .post('/nfe-test')
+      .send({ nfeAccessKey: '12345' })
+      .expect(400);
+
+    expect(response.body.errors.map((e: any) => e.msg)).toContain(
+      'NF-e access key must be exactly 44 numeric digits'
+    );
   });
 });

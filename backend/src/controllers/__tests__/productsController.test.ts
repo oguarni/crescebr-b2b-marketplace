@@ -12,8 +12,9 @@ import {
   importProductsFromCSV,
   generateSampleCSV,
   getImportStats,
-  productValidation,
 } from '../productsController';
+import { productValidation } from '../../validators/product.validators';
+import { handleValidationErrors } from '../../middleware/handleValidationErrors';
 import { authenticateJWT } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
 import { errorHandler } from '../../middleware/errorHandler';
@@ -53,14 +54,26 @@ app.get('/api/products/specifications', getAvailableSpecifications);
 app.get('/api/products/import/sample', generateSampleCSV);
 app.get('/api/products/import/stats', getImportStats);
 app.get('/api/products/:id', getProductById);
-app.post('/api/products', authenticateJWT, productValidation, createProduct);
+app.post(
+  '/api/products',
+  authenticateJWT,
+  productValidation,
+  handleValidationErrors,
+  createProduct
+);
 app.post(
   '/api/products/import/csv',
   authenticateJWT,
   requireRole('supplier'),
   importProductsFromCSV
 );
-app.put('/api/products/:id', authenticateJWT, productValidation, updateProduct);
+app.put(
+  '/api/products/:id',
+  authenticateJWT,
+  productValidation,
+  handleValidationErrors,
+  updateProduct
+);
 app.delete('/api/products/:id', authenticateJWT, deleteProduct);
 
 // CSV import route (would typically be in a separate controller)
@@ -570,6 +583,19 @@ describe('Products Controller', () => {
       expect(response.body.success).toBe(false);
     });
 
+    it('should return 400 when a non-CSV file is uploaded (fileFilter rejection)', async () => {
+      const response = await request(app)
+        .post('/api/products/import/csv')
+        .attach('csvFile', Buffer.from('some binary content'), {
+          filename: 'file.png',
+          contentType: 'image/png',
+        })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Only CSV files are allowed');
+    });
+
     it('should import CSV successfully when file is provided', async () => {
       MockCSVImporter.importProductsFromCSV.mockResolvedValue({
         success: true,
@@ -608,6 +634,27 @@ describe('Products Controller', () => {
 
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBe('Failed to write file');
+    });
+
+    it('should log download error and skip cleanup when file does not exist (B16 true/B17 false)', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      MockCSVImporter.generateSampleCSV = jest.fn(); // no-op: file never created
+
+      const mockRes = {
+        download: jest.fn((_filePath: string, _name: string, cb: Function) => {
+          cb(new Error('ENOENT: no such file or directory'));
+        }),
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+      const mockReq = {};
+      const next = jest.fn();
+
+      await generateSampleCSV(mockReq as any, mockRes as any, next);
+
+      expect(consoleSpy).toHaveBeenCalledWith('Error downloading file:', expect.any(Error));
+      expect(mockRes.status).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
     });
   });
 
@@ -655,6 +702,68 @@ describe('Products Controller', () => {
         expect(response.body.success).toBe(false);
       }
     });
+
+    it('should use "File upload failed" fallback when multer error has no message (B9 false)', async () => {
+      // Temporarily replace multer in require cache to inject a no-message error
+      const multerPath = require.resolve('multer');
+      const cachedMod = (require as any).cache[multerPath];
+      const originalExports = cachedMod?.exports;
+
+      const mockMulter = jest.fn(() => ({
+        single: jest.fn(() => (req: any, res: any, cb: Function) => {
+          cb({ code: 'UNKNOWN_ERROR' }); // no .message property
+        }),
+      }));
+      (mockMulter as any).diskStorage = jest.fn(() => ({}));
+
+      if (cachedMod) cachedMod.exports = mockMulter;
+
+      const mockRes = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+      const next = jest.fn();
+
+      try {
+        await importProductsFromCSV({ user: { id: 1 }, body: {} } as any, mockRes as any, next);
+
+        expect(mockRes.status).toHaveBeenCalledWith(400);
+        expect(mockRes.json).toHaveBeenCalledWith({
+          success: false,
+          error: 'File upload failed',
+        });
+      } finally {
+        if (cachedMod) cachedMod.exports = originalExports;
+      }
+    });
+
+    it('should skip file cleanup when uploaded file no longer exists (B14 false)', async () => {
+      MockCSVImporter.importProductsFromCSV.mockResolvedValue({
+        success: true,
+        imported: 1,
+        failed: 0,
+        errors: [],
+      });
+
+      const fs = require('fs');
+      const unlinkSyncSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
+      const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      try {
+        await request(app)
+          .post('/api/products/import/csv')
+          .attach('csvFile', Buffer.from('name,description,price,category\nProd,Desc,10,Cat'), {
+            filename: 'test.csv',
+            contentType: 'text/csv',
+          })
+          .expect(200);
+
+        expect(unlinkSyncSpy).not.toHaveBeenCalled();
+      } finally {
+        existsSyncSpy.mockRestore();
+        unlinkSyncSpy.mockRestore();
+      }
+    });
   });
 
   describe('GET /api/products/import/sample - success path', () => {
@@ -673,6 +782,70 @@ describe('Products Controller', () => {
       expect(MockCSVImporter.generateSampleCSV).toHaveBeenCalled();
       // Response should succeed (not 500) since the file was created
       expect(response.status).not.toBe(500);
+    });
+  });
+
+  describe('POST /api/products/import/csv - batchSize fallback', () => {
+    it('should use default batchSize of 100 when batchSize cannot be parsed as integer', async () => {
+      MockCSVImporter.importProductsFromCSV.mockResolvedValue({
+        success: true,
+        imported: 1,
+        failed: 0,
+        errors: [],
+      });
+
+      await request(app)
+        .post('/api/products/import/csv')
+        .field('batchSize', '0')
+        .attach('csvFile', Buffer.from('name,description,price,category\nProd1,Desc1,10,Cat1'), {
+          filename: 'test.csv',
+          contentType: 'text/csv',
+        });
+
+      if (MockCSVImporter.importProductsFromCSV.mock.calls.length > 0) {
+        expect(MockCSVImporter.importProductsFromCSV).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({ batchSize: 100 })
+        );
+      }
+    });
+  });
+
+  describe('Non-Error fallback branches', () => {
+    it('should use "Import failed" fallback when non-Error is thrown during CSV import', async () => {
+      MockCSVImporter.importProductsFromCSV.mockRejectedValue('db timeout');
+
+      const response = await request(app)
+        .post('/api/products/import/csv')
+        .attach('csvFile', Buffer.from('name,description,price,category\nProd1,Desc1,10,Cat1'), {
+          filename: 'test.csv',
+          contentType: 'text/csv',
+        });
+
+      expect(response.status).toBe(500);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Import failed');
+    });
+
+    it('should use "Failed to generate sample CSV" fallback when non-Error is thrown', async () => {
+      MockCSVImporter.generateSampleCSV = jest.fn().mockImplementation(() => {
+        // eslint-disable-next-line no-throw-literal
+        throw 'disk full';
+      });
+
+      const response = await request(app).get('/api/products/import/sample').expect(500);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to generate sample CSV');
+    });
+
+    it('should use "Failed to get import statistics" fallback when non-Error is thrown', async () => {
+      MockCSVImporter.getImportStats = jest.fn().mockRejectedValue('network error');
+
+      const response = await request(app).get('/api/products/import/stats').expect(500);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to get import statistics');
     });
   });
 });

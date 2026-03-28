@@ -1,7 +1,7 @@
 import { body } from 'express-validator';
 
 export const registerValidation = [
-  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  body('email').trim().isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
   body('cpf')
     .isLength({ min: 11, max: 14 })

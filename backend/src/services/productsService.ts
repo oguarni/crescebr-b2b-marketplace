@@ -251,7 +251,7 @@ export const productsService = {
     name: string;
     description: string;
     price: string | number;
-    imageUrl: string;
+    imageUrl?: string | null;
     category: string;
     supplierId: number;
     specifications?: string;
@@ -280,7 +280,7 @@ export const productsService = {
       name: string;
       description: string;
       price: string | number;
-      imageUrl: string;
+      imageUrl?: string | null;
       category: string;
       specifications?: string;
       minimumOrderQuantity?: number;

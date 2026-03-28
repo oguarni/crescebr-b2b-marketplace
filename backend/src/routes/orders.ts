@@ -7,10 +7,13 @@ import {
   getOrderHistory,
   getAllOrders,
   getOrderStats,
+} from '../controllers/ordersController';
+import {
   createOrderValidation,
   updateOrderStatusValidation,
   updateOrderNfeValidation,
-} from '../controllers/ordersController';
+} from '../validators/order.validators';
+import { handleValidationErrors } from '../middleware/handleValidationErrors';
 import { authenticateJWT } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
 import { generalRateLimit } from '../middleware/rateLimiting';
@@ -20,7 +23,7 @@ const router = Router();
 router.use(authenticateJWT, generalRateLimit);
 
 // Customer/General routes
-router.post('/', createOrderValidation, createOrderFromQuotation);
+router.post('/', createOrderValidation, handleValidationErrors, createOrderFromQuotation);
 router.get('/', getUserOrders);
 router.get('/:orderId/history', getOrderHistory);
 
@@ -29,12 +32,14 @@ router.put(
   '/:orderId/status',
   requireRole('admin', 'supplier'),
   updateOrderStatusValidation,
+  handleValidationErrors,
   updateOrderStatus
 );
 router.patch(
   '/:orderId/nfe',
   requireRole('admin', 'supplier'),
   updateOrderNfeValidation,
+  handleValidationErrors,
   updateOrderNfe
 );
 

@@ -201,6 +201,20 @@ describe('QuotationService', () => {
         adminNotes: 'Old notes',
       });
     });
+
+    it('should use existing quotation status when data.status is not provided', async () => {
+      const mockQuotation = { id: 1, status: 'processed', adminNotes: null };
+      mockQuotationRepo.findById.mockResolvedValue(mockQuotation as any);
+      mockQuotationRepo.update.mockResolvedValue(undefined as any);
+      mockQuotationRepo.findByIdWithItemsAndUser.mockResolvedValue({} as any);
+
+      await quotationService.updateByAdmin(1, { adminNotes: 'New note' });
+
+      expect(mockQuotationRepo.update).toHaveBeenCalledWith(mockQuotation, {
+        status: 'processed',
+        adminNotes: 'New note',
+      });
+    });
   });
 
   describe('processWithCalculations', () => {

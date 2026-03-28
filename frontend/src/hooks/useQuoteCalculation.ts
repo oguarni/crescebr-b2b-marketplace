@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { quotationsService } from '../services/quotationsService';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface QuoteItem {
   productId: number;
@@ -25,8 +26,7 @@ export const useQuoteCalculation = () => {
       setCalculation(result);
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Calculation failed';
-      setError(message);
+      setError(getErrorMessage(err));
       throw err;
     } finally {
       setLoading(false);

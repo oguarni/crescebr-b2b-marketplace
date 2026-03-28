@@ -42,7 +42,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'email')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'email')).toBe(true);
     });
 
     it('should fail with empty email', async () => {
@@ -60,7 +60,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'password')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'password')).toBe(true);
     });
 
     it('should pass with password of exactly 6 chars', async () => {
@@ -69,7 +69,7 @@ describe('Auth Validators', () => {
         password: '123456',
       });
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'password')).toBe(false);
+      expect(errors.some((e: any) => e.path === 'password')).toBe(false);
     });
 
     it('should fail with cpf shorter than 11 chars', async () => {
@@ -79,7 +79,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'cpf')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'cpf')).toBe(true);
     });
 
     it('should fail with cpf longer than 14 chars', async () => {
@@ -89,7 +89,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'cpf')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'cpf')).toBe(true);
     });
 
     it('should pass with cpf of 11 chars', async () => {
@@ -98,7 +98,7 @@ describe('Auth Validators', () => {
         cpf: '12345678901',
       });
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'cpf')).toBe(false);
+      expect(errors.some((e: any) => e.path === 'cpf')).toBe(false);
     });
 
     it('should pass with formatted cpf of 14 chars', async () => {
@@ -107,7 +107,7 @@ describe('Auth Validators', () => {
         cpf: '123.456.789-01',
       });
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'cpf')).toBe(false);
+      expect(errors.some((e: any) => e.path === 'cpf')).toBe(false);
     });
 
     it('should fail with empty address', async () => {
@@ -117,7 +117,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'address')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'address')).toBe(true);
     });
 
     it('should fail with empty companyName', async () => {
@@ -127,7 +127,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'companyName')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'companyName')).toBe(true);
     });
 
     it('should fail with empty corporateName', async () => {
@@ -137,7 +137,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'corporateName')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'corporateName')).toBe(true);
     });
 
     it('should fail with cnpj shorter than 14 chars', async () => {
@@ -147,7 +147,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'cnpj')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'cnpj')).toBe(true);
     });
 
     it('should fail with cnpj longer than 18 chars', async () => {
@@ -157,7 +157,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'cnpj')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'cnpj')).toBe(true);
     });
 
     it('should pass with cnpj of 14 chars', async () => {
@@ -166,7 +166,7 @@ describe('Auth Validators', () => {
         cnpj: '12345678000190',
       });
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'cnpj')).toBe(false);
+      expect(errors.some((e: any) => e.path === 'cnpj')).toBe(false);
     });
 
     it('should pass with formatted cnpj of 18 chars', async () => {
@@ -175,7 +175,7 @@ describe('Auth Validators', () => {
         cnpj: '12.345.678/0001-90',
       });
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'cnpj')).toBe(false);
+      expect(errors.some((e: any) => e.path === 'cnpj')).toBe(false);
     });
 
     it('should fail with empty industrySector', async () => {
@@ -185,7 +185,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'industrySector')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'industrySector')).toBe(true);
     });
 
     it('should fail with invalid companyType', async () => {
@@ -195,7 +195,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'companyType')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'companyType')).toBe(true);
     });
 
     it('should pass with companyType "buyer"', async () => {
@@ -204,7 +204,7 @@ describe('Auth Validators', () => {
         companyType: 'buyer',
       });
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'companyType')).toBe(false);
+      expect(errors.some((e: any) => e.path === 'companyType')).toBe(false);
     });
 
     it('should pass with companyType "supplier"', async () => {
@@ -213,7 +213,7 @@ describe('Auth Validators', () => {
         companyType: 'supplier',
       });
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'companyType')).toBe(false);
+      expect(errors.some((e: any) => e.path === 'companyType')).toBe(false);
     });
 
     it('should pass with companyType "both"', async () => {
@@ -222,7 +222,7 @@ describe('Auth Validators', () => {
         companyType: 'both',
       });
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'companyType')).toBe(false);
+      expect(errors.some((e: any) => e.path === 'companyType')).toBe(false);
     });
 
     it('should report multiple errors for completely invalid body', async () => {
@@ -251,7 +251,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'cnpj')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'cnpj')).toBe(true);
     });
 
     it('should fail with cnpj longer than 18 chars', async () => {
@@ -277,7 +277,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'password')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'password')).toBe(true);
     });
 
     it('should fail with missing password', async () => {
@@ -320,7 +320,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'email')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'email')).toBe(true);
     });
 
     it('should fail with empty email', async () => {
@@ -338,7 +338,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'password')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'password')).toBe(true);
     });
 
     it('should fail with missing fields', async () => {
@@ -380,7 +380,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'email')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'email')).toBe(true);
     });
 
     it('should fail with short password', async () => {
@@ -390,7 +390,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'password')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'password')).toBe(true);
     });
 
     it('should fail with cpf shorter than 11 chars', async () => {
@@ -400,7 +400,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'cpf')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'cpf')).toBe(true);
     });
 
     it('should fail with empty address', async () => {
@@ -410,7 +410,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'address')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'address')).toBe(true);
     });
 
     it('should fail with empty companyName', async () => {
@@ -420,7 +420,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'companyName')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'companyName')).toBe(true);
     });
 
     it('should fail with cnpj shorter than 14 chars', async () => {
@@ -430,7 +430,7 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'cnpj')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'cnpj')).toBe(true);
     });
 
     it('should not require corporateName (unlike registerValidation)', async () => {
@@ -470,14 +470,14 @@ describe('Auth Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'refreshToken')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'refreshToken')).toBe(true);
     });
 
     it('should fail with missing refreshToken', async () => {
       const result = await runValidators(refreshTokenValidation, {});
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.param === 'refreshToken')).toBe(true);
+      expect(errors.some((e: any) => e.path === 'refreshToken')).toBe(true);
     });
 
     it('should contain the correct error message', async () => {
@@ -485,7 +485,7 @@ describe('Auth Validators', () => {
         refreshToken: '',
       });
       const errors = result.array();
-      const refreshError = errors.find((e: any) => e.param === 'refreshToken');
+      const refreshError = errors.find((e: any) => e.path === 'refreshToken');
       expect(refreshError?.msg).toBe('Refresh token is required');
     });
   });

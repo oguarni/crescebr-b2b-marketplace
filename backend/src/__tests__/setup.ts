@@ -10,6 +10,27 @@ export const mockSequelize = new Sequelize({
 // Mock the database config to use our test database
 jest.mock('../config/database', () => mockSequelize);
 
+// Mock Redis client
+jest.mock('../config/redis', () => ({
+  getRedisClient: jest.fn(() => ({
+    set: jest.fn().mockResolvedValue('OK'),
+    get: jest.fn().mockResolvedValue(null),
+    del: jest.fn().mockResolvedValue(1),
+    sadd: jest.fn().mockResolvedValue(1),
+    srem: jest.fn().mockResolvedValue(1),
+    smembers: jest.fn().mockResolvedValue([]),
+    expire: jest.fn().mockResolvedValue(1),
+    ttl: jest.fn().mockResolvedValue(3600),
+    keys: jest.fn().mockResolvedValue([]),
+    pipeline: jest.fn(() => ({
+      del: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([]),
+    })),
+    quit: jest.fn().mockResolvedValue('OK'),
+  })),
+  closeRedisConnection: jest.fn().mockResolvedValue(undefined),
+}));
+
 // Mock JWT token utilities
 jest.mock('../utils/jwt', () => ({
   verifyToken: jest.fn(),

@@ -57,6 +57,12 @@ describe('CNPJService', () => {
       const result = CNPJService.validateCNPJFormat(invalidCNPJ);
       expect(result).toBe(false);
     });
+
+    it('should return true for CNPJ where first check digit is 0 (remainder < 2)', () => {
+      // 27.865.757/0001-02: sum1=254, 254%11=1, 1<2 → digit1=0; sum2=262, 262%11=9, digit2=2
+      const result = CNPJService.validateCNPJFormat('27.865.757/0001-02');
+      expect(result).toBe(true);
+    });
   });
 
   describe('formatCNPJ', () => {
@@ -391,6 +397,51 @@ describe('CNPJService', () => {
       expect(result.companyName).toBe('Test Company');
       // Should not throw error when database update fails
     });
+
+    it('should use companyName when fantasyName is absent (B19 index 1)', async () => {
+      const validCNPJ = '11.222.333/0001-81';
+      const mockUser = {
+        id: 1,
+        companyName: 'Existing Co',
+        corporateName: 'Existing Corp',
+        update: jest.fn(),
+      };
+      MockUser.findByPk.mockResolvedValue(mockUser as any);
+      const spy = jest
+        .spyOn(CNPJService, 'validateCNPJWithAPI')
+        .mockResolvedValueOnce({ valid: true, companyName: 'API Company' });
+
+      await CNPJService.validateAndUpdateCompany(validCNPJ, 1);
+
+      expect(mockUser.update).toHaveBeenCalledWith(
+        expect.objectContaining({ companyName: 'API Company' })
+      );
+      spy.mockRestore();
+    });
+
+    it('should use user.companyName and user.corporateName when validation has no names (B19 index 2, B20 index 1)', async () => {
+      const validCNPJ = '11.222.333/0001-81';
+      const mockUser = {
+        id: 1,
+        companyName: 'Existing Co',
+        corporateName: 'Existing Corp',
+        update: jest.fn(),
+      };
+      MockUser.findByPk.mockResolvedValue(mockUser as any);
+      const spy = jest
+        .spyOn(CNPJService, 'validateCNPJWithAPI')
+        .mockResolvedValueOnce({ valid: true });
+
+      await CNPJService.validateAndUpdateCompany(validCNPJ, 1);
+
+      expect(mockUser.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          companyName: 'Existing Co',
+          corporateName: 'Existing Corp',
+        })
+      );
+      spy.mockRestore();
+    });
   });
 
   describe('Cache behavior', () => {
@@ -477,6 +528,43 @@ describe('CNPJService', () => {
 
       await CNPJService.validateCNPJWithAPI(validCNPJ);
       expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('should clear timeout and delete expired entry in getCachedResult (lines 78-79)', async () => {
+      jest.useFakeTimers();
+
+      mockedAxios.get.mockResolvedValue(mockApiResponse);
+
+      // First call: sets cache entry with current timestamp and setTimeout
+      await CNPJService.validateCNPJWithAPI(validCNPJ);
+      expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+
+      // Advance system clock past expiration WITHOUT firing setTimeout callbacks.
+      // This makes Date.now() return a future time, but the cache entry still exists
+      // (the setTimeout has not fired yet). getCachedResult will detect expiry and execute
+      // clearTimeout + delete (lines 78-79).
+      jest.setSystemTime(Date.now() + 3600001);
+
+      // Second call: getCachedResult finds stale entry → clears timeout → deletes → re-fetches
+      await CNPJService.validateCNPJWithAPI(validCNPJ);
+      expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('should clear existing timeout in setCachedResult when overwriting a cache entry (line 91)', async () => {
+      jest.useFakeTimers();
+
+      const mockResult = { valid: true, companyName: 'Test Company' };
+
+      // First direct setCachedResult call: no existing entry, line 91 NOT triggered
+      (CNPJService as any).setCachedResult(validCNPJ, mockResult);
+
+      // Second direct setCachedResult call: existing entry found → clearTimeout (line 91)
+      (CNPJService as any).setCachedResult(validCNPJ, { ...mockResult, companyName: 'Updated' });
+
+      // Verify the new result was stored
+      const cached = (CNPJService as any).getCachedResult(validCNPJ);
+      expect(cached).not.toBeNull();
+      expect(cached.companyName).toBe('Updated');
     });
   });
 });

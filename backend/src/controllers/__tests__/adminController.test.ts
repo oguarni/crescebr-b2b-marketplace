@@ -222,6 +222,21 @@ describe('Admin Controller', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBe('Invalid status provided');
     });
+
+    it('should include reason in success message when reason is provided', async () => {
+      const mockUser = createMockUser({ id: 1, role: 'supplier', status: 'pending' });
+      mockUser.save = jest.fn().mockResolvedValue(mockUser);
+
+      MockUser.findOne.mockResolvedValue(mockUser as any);
+
+      const response = await request(app)
+        .put('/api/admin/companies/1/verify')
+        .send({ status: 'rejected', reason: 'Missing documentation', validateCNPJ: false })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toContain('Missing documentation');
+    });
   });
 
   describe('GET /api/admin/products', () => {
@@ -425,6 +440,21 @@ describe('Admin Controller', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBe('Company not found');
     });
+
+    it('should omit reason from message when reason is not provided', async () => {
+      const mockCompany = createMockUser({ id: 1, role: 'supplier', status: 'pending' });
+      mockCompany.save = jest.fn().mockResolvedValue(mockCompany);
+
+      MockUser.findOne.mockResolvedValue(mockCompany as any);
+
+      const response = await request(app)
+        .put('/api/admin/companies/1/status')
+        .send({ status: 'approved' })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toBe('Company status updated to approved');
+    });
   });
 
   describe('PUT /api/admin/companies/:userId/verify - CNPJ validation on approval', () => {
@@ -502,6 +532,27 @@ describe('Admin Controller', () => {
       expect(response.body.error).toBe('Failed to validate CNPJ');
       expect(response.body.details).toBe('CNPJ service unavailable');
     });
+
+    it('should use "Unknown error" details when non-Error is thrown during CNPJ validation', async () => {
+      const mockUser = createMockUser({
+        id: 1,
+        role: 'supplier',
+        status: 'pending',
+        cnpj: '12.345.678/0001-90',
+      });
+
+      MockUser.findOne.mockResolvedValue(mockUser as any);
+      MockCNPJService.validateAndUpdateCompany.mockRejectedValue('service timeout');
+
+      const response = await request(app)
+        .put('/api/admin/companies/1/verify')
+        .send({ status: 'approved', validateCNPJ: true })
+        .expect(500);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to validate CNPJ');
+      expect(response.body.details).toBe('Unknown error');
+    });
   });
 
   describe('POST /api/admin/companies/:userId/validate-cnpj', () => {
@@ -573,6 +624,23 @@ describe('Admin Controller', () => {
       expect(response.body.error).toBe('Failed to validate CNPJ');
       expect(response.body.details).toBe('External service down');
     });
+
+    it('should use "Unknown error" details when non-Error is thrown during CNPJ validation', async () => {
+      const mockUser = createMockUser({
+        id: 1,
+        role: 'supplier',
+        cnpj: '12.345.678/0001-90',
+      });
+
+      MockUser.findOne.mockResolvedValue(mockUser as any);
+      MockCNPJService.validateAndUpdateCompany.mockRejectedValue({ code: 'ECONNREFUSED' });
+
+      const response = await request(app).post('/api/admin/companies/1/validate-cnpj').expect(500);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to validate CNPJ');
+      expect(response.body.details).toBe('Unknown error');
+    });
   });
 
   describe('GET /api/admin/suppliers/:userId/metrics', () => {
@@ -620,6 +688,15 @@ describe('Admin Controller', () => {
 
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBe('Database connection failed');
+    });
+
+    it('should use "Failed to get supplier metrics" fallback when non-Error is thrown', async () => {
+      MockAdminService.getSupplierMetrics.mockRejectedValue('service unavailable');
+
+      const response = await request(app).get('/api/admin/suppliers/1/metrics').expect(500);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to get supplier metrics');
     });
   });
 

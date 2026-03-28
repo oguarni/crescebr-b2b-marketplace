@@ -1,30 +1,8 @@
 import { Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { productsService } from '../services/productsService';
-
-export const productValidation = [
-  body('name').notEmpty().withMessage('Product name is required'),
-  body('description').notEmpty().withMessage('Product description is required'),
-  body('price')
-    .isNumeric()
-    .withMessage('Price must be a number')
-    .custom(value => {
-      if (value <= 0) throw new Error('Price must be greater than 0');
-      return true;
-    }),
-  body('imageUrl')
-    .optional({ checkFalsy: true })
-    .isURL()
-    .withMessage('Image URL must be a valid URL'),
-  body('category').notEmpty().withMessage('Category is required'),
-  body('specifications').optional().isString().withMessage('Specifications must be a string'),
-  body('minimumOrderQuantity')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Minimum order quantity must be at least 1'),
-];
+import path from 'path';
 
 export const getAllProducts = asyncHandler(async (req: Request, res: Response) => {
   const result = await productsService.getAll(req.query as any);
@@ -46,13 +24,6 @@ export const getProductById = asyncHandler(async (req: Request, res: Response) =
 });
 
 export const createProduct = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res
-      .status(400)
-      .json({ success: false, error: 'Validation failed', details: errors.array() });
-  }
-
   const product = await productsService.create({
     ...req.body,
     supplierId: req.user!.id,
@@ -62,13 +33,6 @@ export const createProduct = asyncHandler(async (req: AuthenticatedRequest, res:
 });
 
 export const updateProduct = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res
-      .status(400)
-      .json({ success: false, error: 'Validation failed', details: errors.array() });
-  }
-
   const product = await productsService.getById(Number(req.params.id));
   if (!product) {
     return res.status(404).json({ success: false, error: 'Product not found' });
@@ -101,7 +65,6 @@ export const getAvailableSpecifications = asyncHandler(async (req: Request, res:
 export const importProductsFromCSV = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const multer = require('multer');
-    const path = require('path');
     const { CSVImporter } = require('../utils/csvImporter');
 
     const storage = multer.diskStorage({
@@ -171,7 +134,6 @@ export const importProductsFromCSV = asyncHandler(
 
 export const generateSampleCSV = asyncHandler(async (req: Request, res: Response) => {
   const { CSVImporter } = require('../utils/csvImporter');
-  const path = require('path');
   const sampleFilePath = path.join('uploads', `sample-products-${Date.now()}.csv`);
 
   try {

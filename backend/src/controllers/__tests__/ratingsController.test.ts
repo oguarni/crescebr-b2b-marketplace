@@ -7,8 +7,9 @@ import {
   deleteRating,
   getTopSuppliers,
   getBuyerRatings,
-  createRatingValidation,
 } from '../ratingsController';
+import { createRatingValidation } from '../../validators/rating.validators';
+import { handleValidationErrors } from '../../middleware/handleValidationErrors';
 import { authenticateJWT } from '../../middleware/auth';
 import { errorHandler } from '../../middleware/errorHandler';
 import Rating from '../../models/Rating';
@@ -36,7 +37,13 @@ const app = express();
 app.use(express.json());
 
 // Setup routes
-app.post('/api/ratings', authenticateJWT, createRatingValidation, createRating);
+app.post(
+  '/api/ratings',
+  authenticateJWT,
+  createRatingValidation,
+  handleValidationErrors,
+  createRating
+);
 app.get('/api/suppliers/:supplierId/ratings', authenticateJWT, getSupplierRatings);
 app.put('/api/ratings/:ratingId', authenticateJWT, updateRating);
 app.delete('/api/ratings/:ratingId', authenticateJWT, deleteRating);
@@ -468,6 +475,112 @@ describe('Ratings Controller', () => {
     });
   });
 
+  describe('PUT /api/ratings/:ratingId - error fallbacks', () => {
+    it('should use status 400 when error has no statusCode', async () => {
+      const recentDate = new Date(Date.now() - 1000 * 60 * 60);
+      const mockRating = {
+        id: 1,
+        buyerId: 1,
+        createdAt: recentDate,
+        update: jest.fn().mockRejectedValue(new Error('DB error')),
+      };
+      MockRating.findOne.mockResolvedValue(mockRating as any);
+
+      const response = await request(app).put('/api/ratings/1').send({ score: 5 }).expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('DB error');
+    });
+
+    it('should use fallback message when error has no message', async () => {
+      const recentDate = new Date(Date.now() - 1000 * 60 * 60);
+      const noMsgError = Object.assign(new Error(''), {});
+      noMsgError.message = '';
+      const mockRating = {
+        id: 1,
+        buyerId: 1,
+        createdAt: recentDate,
+        update: jest.fn().mockRejectedValue(noMsgError),
+      };
+      MockRating.findOne.mockResolvedValue(mockRating as any);
+
+      const response = await request(app).put('/api/ratings/1').send({ score: 5 }).expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to update rating');
+    });
+  });
+
+  describe('DELETE /api/ratings/:ratingId - error fallbacks', () => {
+    it('should use status 400 when error has no statusCode', async () => {
+      const mockRating = {
+        id: 1,
+        buyerId: 1,
+        destroy: jest.fn().mockRejectedValue(new Error('DB error')),
+      };
+      MockRating.findOne.mockResolvedValue(mockRating as any);
+
+      const response = await request(app).delete('/api/ratings/1').expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('DB error');
+    });
+
+    it('should use fallback message when error has no message', async () => {
+      const noMsgError = Object.assign(new Error(''), {});
+      noMsgError.message = '';
+      const mockRating = {
+        id: 1,
+        buyerId: 1,
+        destroy: jest.fn().mockRejectedValue(noMsgError),
+      };
+      MockRating.findOne.mockResolvedValue(mockRating as any);
+
+      const response = await request(app).delete('/api/ratings/1').expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to delete rating');
+    });
+  });
+
+  describe('POST /api/ratings - error fallbacks', () => {
+    it('should use status 400 when Rating.create throws without statusCode', async () => {
+      const mockSupplier = createMockUser({ id: 2, role: 'supplier' });
+      const mockOrder = createMockOrder({ id: 'order-x', companyId: 1, status: 'delivered' });
+      MockUser.findOne.mockResolvedValue(mockSupplier as any);
+      MockOrder.findOne.mockResolvedValue(mockOrder as any);
+      MockRating.findOne.mockResolvedValue(null);
+      MockRating.create.mockRejectedValue(new Error('DB failure'));
+
+      const response = await request(app)
+        .post('/api/ratings')
+        .send({ supplierId: 2, orderId: 'order-x', score: 5 })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('DB failure');
+    });
+
+    it('should use fallback message when error thrown has no message', async () => {
+      const mockSupplier = createMockUser({ id: 2, role: 'supplier' });
+      const mockOrder = createMockOrder({ id: 'order-y', companyId: 1, status: 'delivered' });
+      const noMsgError = Object.assign(new Error(''), {});
+      noMsgError.message = '';
+      MockUser.findOne.mockResolvedValue(mockSupplier as any);
+      MockOrder.findOne.mockResolvedValue(mockOrder as any);
+      MockRating.findOne.mockResolvedValue(null);
+      MockRating.create.mockRejectedValue(noMsgError);
+
+      const response = await request(app)
+        .post('/api/ratings')
+        .send({ supplierId: 2, orderId: 'order-y', score: 5 })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to create rating');
+    });
+  });
+
   describe('GET /api/ratings/my', () => {
     it("should get buyer's own ratings", async () => {
       const mockRatings = [
@@ -524,6 +637,17 @@ describe('Ratings Controller', () => {
           limit: 5,
           offset: 5,
         })
+      );
+    });
+
+    it('should use default page and limit when not provided', async () => {
+      MockRating.findAndCountAll.mockResolvedValue({ count: 0, rows: [] } as any);
+
+      const response = await request(app).get('/api/ratings/my').expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(MockRating.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 10, offset: 0 })
       );
     });
   });

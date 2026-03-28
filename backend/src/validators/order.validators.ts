@@ -36,7 +36,7 @@ export function validateNfeModulo11(key: string): boolean {
 /** Reusable chain for nfeAccessKey that includes Modulo 11 validation. */
 const nfeAccessKeyChain = (fieldName = 'nfeAccessKey') =>
   body(fieldName)
-    .optional({ checkFalsy: true })
+    .optional({ values: 'falsy' })
     .isString()
     .matches(/^\d{44}$/)
     .withMessage('NF-e access key must be exactly 44 numeric digits')
@@ -52,23 +52,23 @@ export const updateOrderStatusValidation = [
     .isIn(['pending', 'processing', 'shipped', 'delivered', 'cancelled'])
     .withMessage('Invalid status'),
   body('trackingNumber')
-    .optional({ checkFalsy: true })
+    .optional({ values: 'falsy' })
     .trim()
     .escape()
     .isString()
     .withMessage('Tracking number must be a string'),
   body('estimatedDeliveryDate')
-    .optional({ checkFalsy: true })
+    .optional({ values: 'falsy' })
     .isISO8601()
     .withMessage('Invalid date format'),
   body('notes')
-    .optional({ checkFalsy: true })
+    .optional({ values: 'falsy' })
     .trim()
     .escape()
     .isString()
     .withMessage('Notes must be a string'),
   nfeAccessKeyChain('nfeAccessKey'),
-  body('nfeUrl').optional({ checkFalsy: true }).isURL().withMessage('nfeUrl must be a valid URL'),
+  body('nfeUrl').optional({ values: 'falsy' }).isURL().withMessage('nfeUrl must be a valid URL'),
 ];
 
 /**
@@ -77,6 +77,6 @@ export const updateOrderStatusValidation = [
  * must pass all format validations including Modulo 11.
  */
 export const updateOrderNfeValidation = [
-  nfeAccessKeyChain('nfeAccessKey'),
-  body('nfeUrl').optional({ checkFalsy: true }).isURL().withMessage('nfeUrl must be a valid URL'),
+  nfeAccessKeyChain(),
+  body('nfeUrl').optional({ values: 'falsy' }).isURL().withMessage('nfeUrl must be a valid URL'),
 ];

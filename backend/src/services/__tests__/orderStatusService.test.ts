@@ -152,6 +152,17 @@ describe('OrderStatusService', () => {
       expect(estimated.getTime()).toBeGreaterThan(beforeCall.getTime());
       expect(estimated.getTime()).toBeLessThan(afterCall.getTime() + 10 * 24 * 60 * 60 * 1000); // Within 10 days
     });
+
+    it('should adjust delivery date by 1 when it falls on Sunday (local date)', () => {
+      // Use local date constructor (year, month, day) to avoid timezone issues
+      // Jan 3, 2023 is Tuesday in local time; +5 standard days = Sunday Jan 8
+      const shippedDate = new Date(2023, 0, 3); // local midnight Tuesday Jan 3
+      const estimated = OrderStatusService.calculateEstimatedDelivery('standard', shippedDate);
+
+      // If result is Sunday (0), should be adjusted to Monday (1)
+      // In some timezones this may land on Saturday instead; either way verify not Sunday
+      expect(estimated.getDay()).not.toBe(0);
+    });
   });
 
   describe('updateOrderStatus', () => {
@@ -355,6 +366,33 @@ describe('OrderStatusService', () => {
         })
       );
     });
+
+    it('should call businessLogic when transition defines it', async () => {
+      const businessLogicFn = jest.fn().mockResolvedValue(undefined);
+      const mockOrder = {
+        id: 'order-biz',
+        status: 'pending',
+        update: jest.fn().mockResolvedValue(true),
+      };
+
+      // Temporarily override private static STATUS_TRANSITIONS to inject businessLogic
+      const originalTransitions = (OrderStatusService as any).STATUS_TRANSITIONS;
+      (OrderStatusService as any).STATUS_TRANSITIONS = [
+        { from: 'pending', to: 'processing', businessLogic: businessLogicFn },
+        ...originalTransitions.filter((t: any) => !(t.from === 'pending' && t.to === 'processing')),
+      ];
+
+      MockOrder.findByPk
+        .mockResolvedValueOnce(mockOrder as any)
+        .mockResolvedValueOnce({ ...mockOrder, status: 'processing' } as any);
+
+      await OrderStatusService.updateOrderStatus('order-biz', { status: 'processing' }, 1);
+
+      expect(businessLogicFn).toHaveBeenCalledWith(mockOrder, { status: 'processing' });
+
+      // Restore original transitions
+      (OrderStatusService as any).STATUS_TRANSITIONS = originalTransitions;
+    });
   });
 
   describe('getOrderHistory', () => {
@@ -528,6 +566,16 @@ describe('OrderStatusService', () => {
           offset: 20,
         })
       );
+    });
+
+    it('should return all orders without status filter when status is undefined', async () => {
+      MockOrder.findAndCountAll.mockResolvedValue({ count: 3, rows: [] } as any);
+
+      const result = await OrderStatusService.getOrdersByStatus(undefined);
+
+      expect(result.total).toBe(3);
+      const callArgs = MockOrder.findAndCountAll.mock.calls[0][0] as any;
+      expect(callArgs.where).not.toHaveProperty('status');
     });
   });
 

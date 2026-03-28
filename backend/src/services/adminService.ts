@@ -3,6 +3,7 @@ import User from '../models/User';
 import Product from '../models/Product';
 import Order from '../models/Order';
 import Quotation from '../models/Quotation';
+import { CNPJService } from './cnpjService';
 
 export interface DashboardAnalytics {
   summary: {
@@ -182,6 +183,158 @@ export const adminService = {
           urgentTasks: pendingCompanies + unvalidatedCNPJ,
         },
       },
+    };
+  },
+
+  async getPendingCompanies(): Promise<User[]> {
+    return User.findAll({
+      where: { role: 'supplier', status: 'pending' },
+    });
+  },
+
+  async verifyCompany(
+    userId: string,
+    status: 'approved' | 'rejected',
+    reason?: string,
+    validateCNPJ = true
+  ): Promise<User> {
+    const user = await User.findOne({ where: { id: userId, role: 'supplier' } });
+    if (!user) throw new Error('Supplier not found');
+
+    if (status === 'approved' && validateCNPJ && user.cnpj) {
+      const cnpjValidation = await CNPJService.validateAndUpdateCompany(user.cnpj, user.id);
+      if (!cnpjValidation.valid) {
+        throw new Error(cnpjValidation.error || 'CNPJ validation failed');
+      }
+      await user.reload();
+    }
+
+    user.status = status;
+    await user.save();
+    return user;
+  },
+
+  async getAllProducts(): Promise<Product[]> {
+    return Product.findAll({ order: [['createdAt', 'DESC']] });
+  },
+
+  async moderateProduct(
+    productId: string,
+    action: 'approve' | 'reject' | 'remove'
+  ): Promise<Product | null> {
+    const product = await Product.findByPk(productId);
+    if (!product) throw new Error('Product not found');
+
+    if (action === 'remove') {
+      await product.destroy();
+      return null;
+    }
+
+    return product;
+  },
+
+  async getTransactionMonitoring(filters: {
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+  }) {
+    const whereClause: any = {};
+    if (filters.startDate && filters.endDate) {
+      whereClause.createdAt = {
+        [Op.between]: [new Date(filters.startDate), new Date(filters.endDate)],
+      };
+    }
+    if (filters.status) {
+      whereClause.status = filters.status;
+    }
+
+    const orders = await Order.findAll({
+      where: whereClause,
+      include: [
+        { model: User, as: 'buyer', attributes: ['id', 'email', 'companyName', 'role'] },
+        { model: Quotation, as: 'quotation', attributes: ['id', 'totalAmount', 'status'] },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    const totalRevenue = orders.reduce(
+      (sum, order) => sum + parseFloat(order.totalAmount.toString()),
+      0
+    );
+    const ordersByStatus = orders.reduce((acc: Record<string, number>, order) => {
+      acc[order.status] = (acc[order.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    return { orders, totalRevenue, ordersByStatus, totalOrders: orders.length };
+  },
+
+  async getCompanyDetails(userId: string): Promise<User> {
+    const company = await User.findOne({
+      where: { id: userId, role: 'supplier' },
+      attributes: { exclude: ['password'] },
+    });
+    if (!company) throw new Error('Company not found');
+    return company;
+  },
+
+  async updateCompanyStatus(
+    userId: string,
+    status: 'pending' | 'approved' | 'rejected'
+  ): Promise<User> {
+    const company = await User.findOne({ where: { id: userId, role: 'supplier' } });
+    if (!company) throw new Error('Company not found');
+
+    company.status = status;
+    await company.save();
+    return company;
+  },
+
+  async validateSupplierCNPJ(userId: string): Promise<{
+    user: User;
+    cnpjValidation: {
+      valid: boolean;
+      companyName?: string;
+      fantasyName?: string;
+      city?: string;
+      state?: string;
+      address?: string;
+      error?: string;
+    };
+  }> {
+    const user = await User.findOne({ where: { id: userId, role: 'supplier' } });
+    if (!user) throw new Error('Supplier not found');
+    if (!user.cnpj) throw new Error('Supplier has no CNPJ to validate');
+
+    const cnpjValidation = await CNPJService.validateAndUpdateCompany(user.cnpj, user.id);
+    await user.reload();
+    return { user, cnpjValidation };
+  },
+
+  async getVerificationQueue(page: number, limit: number, filter: string) {
+    const offset = (page - 1) * limit;
+    const whereClause: any = { role: 'supplier' };
+
+    if (filter === 'pending') {
+      whereClause.status = 'pending';
+    } else if (filter === 'unvalidated_cnpj') {
+      whereClause.cnpjValidated = false;
+      whereClause.cnpj = { [Op.ne]: null };
+    }
+
+    const companies = await User.findAndCountAll({
+      where: whereClause,
+      attributes: { exclude: ['password'] },
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset,
+    });
+
+    return {
+      companies: companies.rows,
+      totalCount: companies.count,
+      currentPage: page,
+      totalPages: Math.ceil(companies.count / limit),
     };
   },
 

@@ -199,18 +199,32 @@ After completing any refactoring task:
 
 ---
 
-## Known Issues (Updated 2026-03-26)
+## Known Issues (Updated 2026-03-27)
 
 ### Fixed
 - ~~CORS allows all origins~~ → Now environment-aware (production restricted)
 - ~~404 handler commented out~~ → Active
 - ~~Middleware at 17.7% coverage~~ → 100% coverage
 - ~~Backend 52% overall~~ → 94.16% overall
+- ~~Architecture: authController and ordersController still have direct Model access~~ → Phase 4 complete: authService.ts, orderService.ts created; adminService expanded
+- ~~TypeScript error: productsService.ts imageUrl non-nullable~~ → Fixed: parameter typed as `string | null`
+- ~~Backend test compile: quotationsController.test.ts TS2345~~ → Suite now compiles and passes (45 tests)
+- ~~Dockerfiles on node:18~~ → Updated to node:20-alpine (all 4 Dockerfiles)
+- ~~Backend module system conflict (`type:module` + commonjs tsconfig)~~ → Removed `"type": "module"` from backend/package.json
+- ~~X-User-Permissions header leak~~ → Removed (guarded by NODE_ENV=development in addPermissionsToResponse)
+- ~~403 responses leak userRole/userStatus~~ → Removed from requirePermission, requireAnyPermission, requireAllPermissions
+- ~~Unprotected import endpoints~~ → `/products/import/stats` and `/products/import/sample` now require auth + role + rate limit
+- ~~Unauthenticated logout route~~ → `POST /auth/logout` now rate-limited with authRateLimit
+- ~~Hardcoded admin email rate-limit bypass~~ → Removed `admin@crescebr.com` hardcoded bypass; dev-only skip retained
+- ~~`backend/.env.test` committed to git~~ → Untracked; `.gitignore` now excludes `.env.test`, `.env.staging`, `.env.production`
+- ~~Engine constraint `>=16`~~ → Was already `>=20` in package.json; Dockerfiles now aligned to node:20
+
+- ~~In-memory refresh token store~~ → Migrated to Redis (`ioredis`, `refresh:<token>` + `refresh:user:<id>` SET, TTL-based cleanup)
+- ~~In-memory rate limit store~~ → Migrated to Redis (INCR + EXPIRE pattern, fail-open on errors)
+- ~~`express-validator` v6.x EOL~~ → Upgraded to v7.x; `handleValidationErrors` centralizes boilerplate; `e.param` → `e.path`; `checkFalsy` → `values: 'falsy'`
+- ~~Frontend Dockerfile `--legacy-peer-deps`~~ → Removed; root `package-lock.json` copied into build context
 
 ### Open
-1. **TypeScript error**: `backend/src/services/productsService.ts:264,293` — null assigned to non-nullable `imageUrl`
-2. **Backend test compile**: `quotationsController.test.ts:1066` — TS2345 mock type mismatch (1 suite fails to compile)
-3. **Frontend tests**: 12 failing across 6 suites (timeouts, label mismatches)
-4. **Security**: In-memory rate limiter, X-User-Permissions header leak, duplicate role guards in auth.ts/rbac.ts
-5. **Dependencies**: `validator` npm package has HIGH severity URL bypass CVE; engine constraint `>=16` should be `>=20`
-6. **Architecture**: authController and ordersController still have direct Model access (Phase 4 incomplete)
+1. **Frontend tests**: 12 failing across 6 suites (timeouts, label mismatches)
+2. **Architecture**: 8/9 services bypass repository layer — `order.repository.ts` is dead code → Decision needed: wire or delete
+3. **Backend tests**: `adminController.test.ts` has 29 pre-existing failures (service mock shape mismatches)

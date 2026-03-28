@@ -1,30 +1,11 @@
 import { Response } from 'express';
-import { validationResult } from 'express-validator';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { quotationService } from '../services/quotation.service';
 import { QuoteService } from '../services/quoteService';
 
-// Re-export validators for backward compatibility with routes
-// TODO: Update routes to import directly from validators
-export {
-  createQuotationValidation,
-  updateQuotationValidation,
-  calculateQuoteValidation,
-  compareSupplierQuotesValidation as getMultipleSupplierQuotesValidation,
-} from '../validators/quotation.validators';
-
 // Customer endpoints
 export const createQuotation = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: errors.array(),
-    });
-  }
-
   try {
     const quotation = await quotationService.validateAndCreate({
       items: req.body.items,
@@ -59,11 +40,7 @@ export const getQuotationById = asyncHandler(async (req: AuthenticatedRequest, r
   const { id } = req.params;
 
   try {
-    const quotation = await quotationService.getById(
-      parseInt(id),
-      req.user!.id,
-      req.user!.role
-    );
+    const quotation = await quotationService.getById(parseInt(id), req.user!.id, req.user!.role);
 
     res.status(200).json({
       success: true,
@@ -71,7 +48,8 @@ export const getQuotationById = asyncHandler(async (req: AuthenticatedRequest, r
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to get quotation';
-    const status = message === 'Quotation not found' ? 404 : message === 'Access denied' ? 403 : 400;
+    const status =
+      message === 'Quotation not found' ? 404 : message === 'Access denied' ? 403 : 400;
 
     res.status(status).json({
       success: false,
@@ -91,15 +69,6 @@ export const getAllQuotations = asyncHandler(async (req: AuthenticatedRequest, r
 });
 
 export const updateQuotation = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: errors.array(),
-    });
-  }
-
   const { id } = req.params;
   const { status, adminNotes } = req.body;
 
@@ -126,15 +95,6 @@ export const updateQuotation = asyncHandler(async (req: AuthenticatedRequest, re
 });
 
 export const calculateQuote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: errors.array(),
-    });
-  }
-
   const { items, buyerLocation, supplierLocation, shippingMethod } = req.body;
 
   try {
@@ -205,11 +165,7 @@ export const processQuotationWithCalculations = asyncHandler(
 
       await QuoteService.updateQuotationWithCalculations(parseInt(id), result.calculations);
 
-      const updatedQuotation = await quotationService.getById(
-        parseInt(id),
-        req.user!.id,
-        'admin'
-      );
+      const updatedQuotation = await quotationService.getById(parseInt(id), req.user!.id, 'admin');
 
       const formattedResponse = QuoteService.formatQuoteResponse(result.calculations);
 
@@ -232,15 +188,6 @@ export const processQuotationWithCalculations = asyncHandler(
 
 export const getMultipleSupplierQuotes = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        details: errors.array(),
-      });
-    }
-
     const { productId, quantity, buyerLocation, supplierIds, shippingMethod } = req.body;
 
     try {

@@ -10,14 +10,17 @@ import {
   getActiveSessions,
   getProfile,
   registerSupplier,
+} from '../authController';
+import {
   registerValidation,
   loginValidation,
   loginEmailValidation,
   refreshTokenValidation,
   supplierRegisterValidation,
-} from '../authController';
+} from '../../validators/auth.validators';
 import { authenticateJWT } from '../../middleware/auth';
 import { errorHandler } from '../../middleware/errorHandler';
+import { handleValidationErrors } from '../../middleware/handleValidationErrors';
 import User from '../../models/User';
 import {
   generateToken,
@@ -60,15 +63,20 @@ const app = express();
 app.use(express.json());
 
 // Setup routes
-app.post('/api/auth/register', registerValidation, register);
-app.post('/api/auth/login', loginValidation, login);
-app.post('/api/auth/login-email', loginEmailValidation, loginWithEmail);
-app.post('/api/auth/refresh-token', refreshTokenValidation, refreshToken);
+app.post('/api/auth/register', registerValidation, handleValidationErrors, register);
+app.post('/api/auth/login', loginValidation, handleValidationErrors, login);
+app.post('/api/auth/login-email', loginEmailValidation, handleValidationErrors, loginWithEmail);
+app.post('/api/auth/refresh-token', refreshTokenValidation, handleValidationErrors, refreshToken);
 app.post('/api/auth/logout', authenticateJWT, logout);
 app.post('/api/auth/logout-all', authenticateJWT, logoutAllDevices);
 app.get('/api/auth/sessions', authenticateJWT, getActiveSessions);
 app.get('/api/auth/profile', authenticateJWT, getProfile);
-app.post('/api/auth/register-supplier', supplierRegisterValidation, registerSupplier);
+app.post(
+  '/api/auth/register-supplier',
+  supplierRegisterValidation,
+  handleValidationErrors,
+  registerSupplier
+);
 
 app.use(errorHandler);
 
@@ -78,7 +86,7 @@ describe('Auth Controller', () => {
     MockUser.findOne.mockReset();
     MockUser.create.mockReset();
     MockUser.findByPk.mockReset();
-    mockGenerateTokenPair.mockReturnValue({
+    mockGenerateTokenPair.mockResolvedValue({
       accessToken: 'mock-jwt-token',
       refreshToken: 'mock-refresh-token',
       expiresIn: 900,
@@ -687,6 +695,19 @@ describe('Auth Controller', () => {
       expect(response.body.success).toBe(false);
     });
 
+    it('should fall back to "Invalid CNPJ provided" when supplier CNPJ validation fails without error message', async () => {
+      MockUser.findOne.mockResolvedValue(null);
+      mockCNPJService.validateCNPJWithAPI.mockResolvedValue({ valid: false });
+
+      const response = await request(app)
+        .post('/api/auth/register-supplier')
+        .send(validSupplierData)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Invalid CNPJ provided');
+    });
+
     it('should handle database errors gracefully', async () => {
       // Arrange
       MockUser.findOne.mockRejectedValue(new Error('Database connection failed'));
@@ -822,6 +843,83 @@ describe('Auth Controller', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBe('Invalid CNPJ format');
     });
+
+    it('should fall back to "Invalid CNPJ provided" when CNPJ validation fails without error message', async () => {
+      MockUser.findOne.mockResolvedValue(null);
+      mockCNPJService.validateCNPJWithAPI.mockResolvedValue({ valid: false });
+
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send(validRegisterData)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Invalid CNPJ provided');
+    });
+
+    it('should fall back to request body address and companyName when CNPJ API returns no address', async () => {
+      const mockUser = {
+        id: 2,
+        email: 'test@example.com',
+        cpf: '12345678901',
+        address: 'Test Address, 123',
+        companyName: 'Test Company',
+        role: 'customer',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      MockUser.findOne.mockResolvedValue(null);
+      MockUser.create.mockResolvedValue(mockUser as any);
+      mockCNPJService.validateCNPJWithAPI.mockResolvedValue({ valid: true });
+      mockCNPJService.formatCNPJ.mockReturnValue('12.345.678/0001-90');
+
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send(validRegisterData)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(MockUser.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          address: validRegisterData.address,
+          companyName: validRegisterData.companyName,
+        })
+      );
+    });
+
+    it('should set role=supplier and status=pending when companyType is supplier', async () => {
+      const mockUser = {
+        id: 3,
+        email: 'supplier@example.com',
+        role: 'supplier',
+        status: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      MockUser.findOne.mockResolvedValue(null);
+      MockUser.create.mockResolvedValue(mockUser as any);
+      mockCNPJService.validateCNPJWithAPI.mockResolvedValue({
+        valid: true,
+        address: 'Supplier Address',
+        companyName: 'Supplier Co',
+      });
+      mockCNPJService.formatCNPJ.mockReturnValue('12.345.678/0001-90');
+
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({ ...validRegisterData, companyType: 'supplier' })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(MockUser.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: 'supplier',
+          status: 'pending',
+        })
+      );
+    });
   });
 
   describe('POST /api/auth/login-email', () => {
@@ -910,10 +1008,10 @@ describe('Auth Controller', () => {
 
       // The controller does a dynamic import for verifyRefreshToken
       const jwtModule = require('../../utils/jwt');
-      jwtModule.verifyRefreshToken = jest.fn().mockReturnValue({ valid: true, userId: 1 });
+      jwtModule.verifyRefreshToken = jest.fn().mockResolvedValue({ valid: true, userId: 1 });
 
       MockUser.findByPk.mockResolvedValue(mockUser as any);
-      mockRefreshAccessToken.mockReturnValue({
+      mockRefreshAccessToken.mockResolvedValue({
         accessToken: 'new-access-token',
         refreshToken: 'new-refresh-token',
         expiresIn: 900,
@@ -940,7 +1038,7 @@ describe('Auth Controller', () => {
 
     it('should return 401 for invalid refresh token', async () => {
       const jwtModule = require('../../utils/jwt');
-      jwtModule.verifyRefreshToken = jest.fn().mockReturnValue({
+      jwtModule.verifyRefreshToken = jest.fn().mockResolvedValue({
         valid: false,
         error: 'Refresh token not found',
       });
@@ -954,9 +1052,22 @@ describe('Auth Controller', () => {
       expect(response.body.error).toBe('Refresh token not found');
     });
 
+    it('should fall back to "Invalid refresh token" when verification fails without error message', async () => {
+      const jwtModule = require('../../utils/jwt');
+      jwtModule.verifyRefreshToken = jest.fn().mockResolvedValue({ valid: false });
+
+      const response = await request(app)
+        .post('/api/auth/refresh-token')
+        .send({ refreshToken: 'invalid-token' })
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Invalid refresh token');
+    });
+
     it('should return 404 when user not found', async () => {
       const jwtModule = require('../../utils/jwt');
-      jwtModule.verifyRefreshToken = jest.fn().mockReturnValue({ valid: true, userId: 999 });
+      jwtModule.verifyRefreshToken = jest.fn().mockResolvedValue({ valid: true, userId: 999 });
 
       MockUser.findByPk.mockResolvedValue(null);
 
@@ -979,10 +1090,10 @@ describe('Auth Controller', () => {
       };
 
       const jwtModule = require('../../utils/jwt');
-      jwtModule.verifyRefreshToken = jest.fn().mockReturnValue({ valid: true, userId: 1 });
+      jwtModule.verifyRefreshToken = jest.fn().mockResolvedValue({ valid: true, userId: 1 });
 
       MockUser.findByPk.mockResolvedValue(mockUser as any);
-      mockRefreshAccessToken.mockReturnValue(null);
+      mockRefreshAccessToken.mockResolvedValue(null);
 
       const response = await request(app)
         .post('/api/auth/refresh-token')
@@ -1018,7 +1129,7 @@ describe('Auth Controller', () => {
     });
 
     it('should logout successfully with refresh token', async () => {
-      mockRevokeRefreshToken.mockReturnValue(true);
+      mockRevokeRefreshToken.mockResolvedValue(true);
 
       const response = await request(app)
         .post('/api/auth/logout')
@@ -1065,7 +1176,7 @@ describe('Auth Controller', () => {
         req.user = { id: 1, email: 'test@example.com', role: 'customer' };
         next();
       });
-      mockRevokeAllUserTokens.mockReturnValue(3);
+      mockRevokeAllUserTokens.mockResolvedValue(3);
 
       const response = await request(app)
         .post('/api/auth/logout-all')
@@ -1120,7 +1231,7 @@ describe('Auth Controller', () => {
       });
 
       const jwtModule = require('../../utils/jwt');
-      jwtModule.getUserActiveTokens = jest.fn().mockReturnValue([
+      jwtModule.getUserActiveTokens = jest.fn().mockResolvedValue([
         {
           token: 'token-1',
           deviceInfo: 'Chrome on Windows',

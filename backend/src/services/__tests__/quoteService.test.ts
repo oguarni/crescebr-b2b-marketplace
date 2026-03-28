@@ -295,6 +295,31 @@ describe('QuoteService', () => {
       // Expected shipping: (100 + 10 * 0.5 * 5.0) * (380/100) = (100 + 25) * 3.8 = 475
       expect(result.shippingCost).toBe(475);
     });
+
+    it('should apply zero tier discount when custom tiers do not cover the quantity', async () => {
+      // Custom tiers that only cover quantities 100-200, leaving quantity=10 uncovered
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        unitPrice: null,
+        minimumOrderQuantity: 1,
+        tierPricing: [{ minQuantity: 100, maxQuantity: 200, discount: 0.1 }],
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const input = {
+        productId: 1,
+        quantity: 10,
+        buyerLocation: 'Curitiba',
+        supplierLocation: 'Londrina',
+        shippingMethod: 'standard' as const,
+      };
+
+      const result = await QuoteService.calculateQuoteForItem(input);
+
+      // appliedTier is null → tierDiscount = 0, no discount applied
+      expect(result.tierDiscount).toBe(0);
+      expect(result.appliedTier).toBeNull();
+    });
   });
 
   describe('calculateQuoteComparison', () => {
@@ -1064,6 +1089,30 @@ describe('QuoteService', () => {
       expect(result).toHaveLength(1);
       expect(result[0].quote).toBeNull();
       expect(result[0].error).toBe('Failed to calculate quote');
+    });
+
+    it('should return 0 when both quotes are null (sort stability)', async () => {
+      const mockSuppliers = [
+        { id: 10, companyName: 'Fail A', corporateName: 'Fail A LTDA', address: 'Curitiba' },
+        { id: 11, companyName: 'Fail B', corporateName: 'Fail B LTDA', address: 'Londrina' },
+      ];
+
+      await setupUserMock(mockSuppliers);
+
+      // Both findByPk calls fail → both quotes are null
+      MockProduct.findByPk.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+
+      const result = await QuoteService.getMultipleSupplierQuotes(
+        1,
+        10,
+        'Curitiba',
+        [10, 11],
+        'standard'
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].quote).toBeNull();
+      expect(result[1].quote).toBeNull();
     });
   });
 

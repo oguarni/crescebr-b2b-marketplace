@@ -1,15 +1,16 @@
 # Stage 1: Build the React application
-FROM node:18-alpine AS build
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
 # Copy package files for frontend and shared workspace
 COPY frontend/package*.json ./
+COPY package-lock.json ./
 COPY shared/package*.json ./shared/
 
 # Install dependencies for both
-RUN npm install --legacy-peer-deps
-RUN npm install --prefix ./shared --legacy-peer-deps
+RUN npm install
+RUN npm install --prefix ./shared
 
 # Copy source code
 COPY frontend/ .

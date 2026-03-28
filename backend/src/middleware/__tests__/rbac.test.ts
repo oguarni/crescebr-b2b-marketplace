@@ -346,8 +346,6 @@ describe('RBAC Middleware', () => {
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
         error: `Access denied. Required permission: ${Permission.MANAGE_USERS}`,
-        userRole: 'customer',
-        userStatus: 'approved',
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -472,8 +470,6 @@ describe('RBAC Middleware', () => {
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
         error: `Access denied. Required permissions: ${requiredPerms.join(' OR ')}`,
-        userRole: 'customer',
-        userStatus: 'approved',
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -582,8 +578,6 @@ describe('RBAC Middleware', () => {
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
         error: `Access denied. Required permissions: ${requiredPerms.join(' AND ')}`,
-        userRole: 'customer',
-        userStatus: 'approved',
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -912,6 +906,31 @@ describe('RBAC Middleware', () => {
         JSON.stringify(reqPermissions)
       );
       expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('should not set X-User-Permissions header when NODE_ENV is not development', async () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+      mockRequest.user = {
+        id: 1,
+        email: 'admin@test.com',
+        role: 'admin',
+        cnpj: '11111111000111',
+        companyType: 'both',
+      };
+      mockFindByPk.mockResolvedValue({ id: 1, role: 'admin', status: 'approved' });
+
+      await addPermissionsToResponse(
+        mockRequest as AuthenticatedRequest,
+        mockResponse as Response,
+        mockNext
+      );
+
+      process.env.NODE_ENV = originalEnv;
+
+      expect(mockNext).toHaveBeenCalled();
+      expect((mockRequest as any).userPermissions).toBeDefined();
+      expect(mockResponse.setHeader).not.toHaveBeenCalled();
     });
   });
 });

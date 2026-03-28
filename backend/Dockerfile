@@ -1,5 +1,5 @@
 # Stage 1: Build stage
-FROM node:18-alpine AS build
+FROM node:20-alpine AS build
 
 WORKDIR /usr/src/app
 
@@ -27,7 +27,7 @@ ENV NODE_ENV=${NODE_ENV}
 RUN npm run build
 
 # Stage 2: Production stage
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /usr/src/app
 
