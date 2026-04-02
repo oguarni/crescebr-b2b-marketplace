@@ -101,7 +101,7 @@ describe('ratingsService', () => {
 
       try {
         await ratingsService.createRating(1, { supplierId: 999, score: 5 });
-        fail('Should have thrown an error');
+        throw new Error('Should have thrown an error');
       } catch (error: any) {
         expect(error.message).toBe('Supplier not found');
         expect(error.statusCode).toBe(404);
@@ -114,7 +114,7 @@ describe('ratingsService', () => {
 
       try {
         await ratingsService.createRating(1, { supplierId: 2, orderId: 'order-bad', score: 5 });
-        fail('Should have thrown an error');
+        throw new Error('Should have thrown an error');
       } catch (error: any) {
         expect(error.message).toBe('You can only rate suppliers from completed orders');
         expect(error.statusCode).toBe(403);
@@ -128,7 +128,7 @@ describe('ratingsService', () => {
 
       try {
         await ratingsService.createRating(1, { supplierId: 2, orderId: 'order-dup', score: 4 });
-        fail('Should have thrown an error');
+        throw new Error('Should have thrown an error');
       } catch (error: any) {
         expect(error.message).toBe('You have already rated this order');
         expect(error.statusCode).toBe(400);
@@ -141,7 +141,7 @@ describe('ratingsService', () => {
 
       try {
         await ratingsService.createRating(1, { supplierId: 2, score: 5 });
-        fail('Should have thrown an error');
+        throw new Error('Should have thrown an error');
       } catch (error: any) {
         expect(error.message).toBe('You can only rate suppliers from completed orders');
         expect(error.statusCode).toBe(403);
@@ -287,7 +287,7 @@ describe('ratingsService', () => {
 
       try {
         await ratingsService.updateRating('999', 1, { score: 4 });
-        fail('Should have thrown an error');
+        throw new Error('Should have thrown an error');
       } catch (error: any) {
         expect(error.message).toBe('Rating not found or you do not have permission to edit it');
         expect(error.statusCode).toBe(404);
@@ -307,7 +307,7 @@ describe('ratingsService', () => {
 
       try {
         await ratingsService.updateRating('1', 1, { score: 5 });
-        fail('Should have thrown an error');
+        throw new Error('Should have thrown an error');
       } catch (error: any) {
         expect(error.message).toBe('Ratings can only be edited within 24 hours of creation');
         expect(error.statusCode).toBe(400);
@@ -400,7 +400,7 @@ describe('ratingsService', () => {
 
       try {
         await ratingsService.deleteRating('999', 1, 'buyer');
-        fail('Should have thrown an error');
+        throw new Error('Should have thrown an error');
       } catch (error: any) {
         expect(error.message).toBe('Rating not found or you do not have permission to delete it');
         expect(error.statusCode).toBe(404);
@@ -412,7 +412,7 @@ describe('ratingsService', () => {
 
       try {
         await ratingsService.deleteRating('1', 99, 'buyer');
-        fail('Should have thrown an error');
+        throw new Error('Should have thrown an error');
       } catch (error: any) {
         expect(error.message).toBe('Rating not found or you do not have permission to delete it');
         expect(error.statusCode).toBe(404);

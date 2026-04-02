@@ -128,7 +128,7 @@ export const adminRateLimit = rateLimiter.createLimiter({
   windowMs: 60 * 60 * 1000,
   maxRequests: 500,
   message: 'Too many admin requests. Please try again in an hour.',
-  skipIf: (req: Request) => {
+  skipIf: (_req: Request) => {
     return process.env.NODE_ENV === 'development';
   },
 });

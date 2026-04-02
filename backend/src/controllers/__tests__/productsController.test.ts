@@ -829,7 +829,6 @@ describe('Products Controller', () => {
 
     it('should use "Failed to generate sample CSV" fallback when non-Error is thrown', async () => {
       MockCSVImporter.generateSampleCSV = jest.fn().mockImplementation(() => {
-        // eslint-disable-next-line no-throw-literal
         throw 'disk full';
       });
 
