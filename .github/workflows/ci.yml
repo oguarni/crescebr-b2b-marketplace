@@ -30,6 +30,7 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgres://crescebr:crescebr@localhost:5432/crescebr_test
       JWT_SECRET: ci-test-secret
+      NODE_OPTIONS: '--max-old-space-size=4096'
 
     steps:
       - uses: actions/checkout@v4
@@ -39,11 +40,13 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: 'package-lock.json'
 
-      - name: Install backend dependencies
-        working-directory: backend
+      - name: Install dependencies
         run: npm ci
+
+      - name: Build shared types
+        run: npm run shared:build
 
       - name: Lint backend
         working-directory: backend
@@ -76,11 +79,13 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: 'package-lock.json'
 
-      - name: Install frontend dependencies
-        working-directory: frontend
+      - name: Install dependencies
         run: npm ci
+
+      - name: Build shared types
+        run: npm run shared:build
 
       - name: Lint frontend
         working-directory: frontend
