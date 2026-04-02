@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
@@ -6,7 +7,19 @@ import { ordersService } from '../../services/ordersService';
 
 // Mock MUI Chip to prevent ripple/animation state updates in React 19 act()
 vi.mock('@mui/material/Chip', () => ({
-  default: ({ label, icon, color, variant, clickable }: any) => (
+  default: ({
+    label,
+    icon,
+    color,
+    variant,
+    clickable,
+  }: {
+    label?: React.ReactNode;
+    icon?: React.ReactNode;
+    color?: string;
+    variant?: string;
+    clickable?: boolean;
+  }) => (
     <div data-testid='chip' data-color={color} data-variant={variant} data-clickable={clickable}>
       {icon && <span data-testid='chip-icon'>{icon}</span>}
       <span>{label}</span>
@@ -49,7 +62,7 @@ vi.mock('../../services/ordersService', () => ({
         delivered: 'success',
         cancelled: 'error',
       };
-      return (colors[status] || 'default') as any;
+      return colors[status] || 'default';
     }),
     formatPrice: vi.fn((price: number) =>
       new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price)

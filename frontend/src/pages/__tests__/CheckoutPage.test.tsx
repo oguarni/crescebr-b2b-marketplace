@@ -42,13 +42,13 @@ vi.mock('react-router-dom', async () => {
 
 // Mock cart context
 const mockClearCart = vi.fn();
-let mockCartItems: any[] = [];
+let mockCartItems: import('@shared/types').CartItem[] = [];
 let mockTotalPrice = 0;
 
 vi.mock('../../contexts/CartContext', () => ({
   useCart: () => ({
     items: mockCartItems,
-    totalItems: mockCartItems.reduce((sum: number, item: any) => sum + item.quantity, 0),
+    totalItems: mockCartItems.reduce((sum: number, item) => sum + item.quantity, 0),
     totalPrice: mockTotalPrice,
     isOpen: false,
     addItem: vi.fn(),
@@ -246,7 +246,7 @@ describe('CheckoutPage', () => {
       totalAmount: 3125.0,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any);
+    } as unknown as import('@shared/types').Order);
 
     await renderCheckoutPage();
 

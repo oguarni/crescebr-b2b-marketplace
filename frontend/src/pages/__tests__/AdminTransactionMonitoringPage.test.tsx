@@ -1,17 +1,22 @@
+import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AdminTransactionMonitoringPage from '../AdminTransactionMonitoringPage';
 
 vi.mock('recharts', () => ({
-  LineChart: ({ children }: any) => <div data-testid='line-chart'>{children}</div>,
+  LineChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid='line-chart'>{children}</div>
+  ),
   Line: () => <div />,
   XAxis: () => <div />,
   YAxis: () => <div />,
   CartesianGrid: () => <div />,
   Tooltip: () => <div />,
   Legend: () => <div />,
-  ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
-  PieChart: ({ children }: any) => <div data-testid='pie-chart'>{children}</div>,
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PieChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid='pie-chart'>{children}</div>
+  ),
   Pie: () => <div />,
   Cell: () => <div />,
 }));
@@ -20,7 +25,7 @@ const mockAdminRequest = vi.fn();
 
 vi.mock('../../services/authService', () => ({
   authService: {
-    adminRequest: (...args: any[]) => mockAdminRequest(...args),
+    adminRequest: (...args: unknown[]) => mockAdminRequest(...args),
   },
 }));
 

@@ -8,7 +8,6 @@ import {
   Badge,
   Grid,
   Card,
-  CardContent,
   Chip,
   Button,
   Divider,
@@ -22,7 +21,6 @@ import {
   ArrowUpward,
   EditNote,
   VisibilityOutlined,
-  MoreHoriz,
   Inventory2Outlined,
   PrecisionManufacturingOutlined,
   CheckCircle,
@@ -49,7 +47,7 @@ interface DashboardMetrics {
 const SupplierDashboardPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   // Re-integrated state
   const [metrics, setMetrics] = useState<DashboardMetrics>({

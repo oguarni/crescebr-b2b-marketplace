@@ -4,7 +4,6 @@ import { BrowserRouter } from 'react-router-dom';
 import SupplierDashboardPage from '../SupplierDashboardPage';
 import { ordersService } from '../../services/ordersService';
 import { quotationsService } from '../../services/quotationsService';
-import toast from 'react-hot-toast';
 
 // Mock services
 vi.mock('../../services/ordersService', () => ({

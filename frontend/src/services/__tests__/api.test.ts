@@ -62,7 +62,7 @@ describe('api module', () => {
   describe('request interceptor', () => {
     it('should add Bearer token from localStorage when token exists', () => {
       localStorage.setItem('crescebr_token', 'test-jwt-token');
-      const config = { headers: {} } as any;
+      const config = { headers: {} as Record<string, string> };
 
       const result = requestInterceptorFn(config);
 
@@ -70,7 +70,7 @@ describe('api module', () => {
     });
 
     it('should not add Authorization header when no token exists', () => {
-      const config = { headers: {} } as any;
+      const config = { headers: {} as Record<string, string> };
 
       const result = requestInterceptorFn(config);
 
@@ -78,7 +78,7 @@ describe('api module', () => {
     });
 
     it('should return the config object', () => {
-      const config = { headers: {} } as any;
+      const config = { headers: {} as Record<string, string> };
 
       const result = requestInterceptorFn(config);
 

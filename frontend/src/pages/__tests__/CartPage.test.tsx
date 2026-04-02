@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import CartPage from '../CartPage';
@@ -20,13 +20,13 @@ const mockUpdateQuantity = vi.fn();
 const mockRemoveItem = vi.fn();
 const mockClearCart = vi.fn();
 
-let mockCartItems: any[] = [];
+let mockCartItems: import('@shared/types').CartItem[] = [];
 let mockTotalPrice = 0;
 
 vi.mock('../../contexts/CartContext', () => ({
   useCart: () => ({
     items: mockCartItems,
-    totalItems: mockCartItems.reduce((sum: number, item: any) => sum + item.quantity, 0),
+    totalItems: mockCartItems.reduce((sum: number, item) => sum + item.quantity, 0),
     totalPrice: mockTotalPrice,
     isOpen: false,
     addItem: vi.fn(),

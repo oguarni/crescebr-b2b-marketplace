@@ -1,5 +1,6 @@
 import {
   AuthResponse,
+  Company,
   LoginRequest,
   LoginEmailRequest,
   RegisterRequest,
@@ -8,16 +9,19 @@ import {
 import { apiService } from './api';
 
 class AuthService {
-  private normalizeAuthResponse(data: any): AuthResponse {
+  private normalizeAuthResponse(data: Record<string, unknown>): AuthResponse {
     return {
-      token: data.token || data.accessToken,
-      user: data.user,
+      token: (data.token || data.accessToken) as string,
+      user: data.user as Omit<Company, 'password'>,
     };
   }
 
   async login(cnpj: string, password: string): Promise<AuthResponse> {
     const loginData: LoginRequest = { cnpj, password };
-    const response = await apiService.post<ApiResponse<any>>('/auth/login', loginData);
+    const response = await apiService.post<ApiResponse<Record<string, unknown>>>(
+      '/auth/login',
+      loginData
+    );
 
     if (!response.success || !response.data) {
       throw new Error(response.error || 'Login failed');
@@ -28,7 +32,10 @@ class AuthService {
 
   async loginWithEmail(email: string, password: string): Promise<AuthResponse> {
     const loginData: LoginEmailRequest = { email, password };
-    const response = await apiService.post<ApiResponse<any>>('/auth/login-email', loginData);
+    const response = await apiService.post<ApiResponse<Record<string, unknown>>>(
+      '/auth/login-email',
+      loginData
+    );
 
     if (!response.success || !response.data) {
       throw new Error(response.error || 'Login with email failed');
@@ -38,7 +45,10 @@ class AuthService {
   }
 
   async register(registerData: RegisterRequest): Promise<AuthResponse> {
-    const response = await apiService.post<ApiResponse<any>>('/auth/register', registerData);
+    const response = await apiService.post<ApiResponse<Record<string, unknown>>>(
+      '/auth/register',
+      registerData
+    );
 
     if (!response.success || !response.data) {
       throw new Error(response.error || 'Registration failed');

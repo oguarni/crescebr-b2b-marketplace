@@ -77,7 +77,7 @@ const HomePage: React.FC = () => {
     setError('');
 
     try {
-      const filters: any = {
+      const filters: Record<string, unknown> = {
         search: searchTerm || undefined,
         category: selectedCategory !== 'All Products' ? selectedCategory : undefined,
         page,
@@ -704,7 +704,7 @@ const HomePage: React.FC = () => {
                       >
                         SKU-{product.id || Math.floor(Math.random() * 9000) + 1000}
                       </Box>
-                      {(product as any).stockQuantity > 0 && (
+                      {((product as Record<string, unknown>).stockQuantity as number) > 0 && (
                         <Box
                           sx={{
                             position: 'absolute',

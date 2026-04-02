@@ -78,7 +78,7 @@ describe('AuthContext', () => {
     // Reset getRawApi mock
     vi.mocked(apiService.getRawApi).mockReturnValue({
       defaults: { headers: { common: {} } },
-    } as any);
+    } as unknown as import('axios').AxiosInstance);
   });
 
   describe('useAuth hook', () => {

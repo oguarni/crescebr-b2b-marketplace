@@ -9,8 +9,8 @@ const mockUpdateQuotation = vi.fn();
 
 vi.mock('../../services/quotationsService', () => ({
   quotationsService: {
-    getAllQuotations: (...args: any[]) => mockGetAllQuotations(...args),
-    updateQuotation: (...args: any[]) => mockUpdateQuotation(...args),
+    getAllQuotations: (...args: unknown[]) => mockGetAllQuotations(...args),
+    updateQuotation: (...args: unknown[]) => mockUpdateQuotation(...args),
   },
 }));
 
@@ -36,7 +36,7 @@ const mockQuotations: Quotation[] = [
       cnpj: '12345678000100',
       companyName: 'Buyer Corp',
       role: 'customer',
-    } as any,
+    } as unknown as import('@shared/types').Company,
     items: [
       {
         id: 100,
@@ -73,7 +73,7 @@ const mockQuotations: Quotation[] = [
       cnpj: '98765432000100',
       companyName: 'Other Corp',
       role: 'customer',
-    } as any,
+    } as unknown as import('@shared/types').Company,
     items: [],
     status: 'completed',
     adminNotes: 'Approved',
