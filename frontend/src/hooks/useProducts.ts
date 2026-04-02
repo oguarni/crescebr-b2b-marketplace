@@ -8,7 +8,8 @@ interface UseProductsOptions {
   filters?: Record<string, string | number | boolean>;
 }
 
-export const useProducts = (options: UseProductsOptions = { autoFetch: true }) => {
+export const useProducts = (options: UseProductsOptions = {}) => {
+  const { autoFetch = true, filters } = options;
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,20 +18,20 @@ export const useProducts = (options: UseProductsOptions = { autoFetch: true }) =
     setLoading(true);
     setError(null);
     try {
-      const response = await productsService.getAllProducts(options.filters || {});
+      const response = await productsService.getAllProducts(filters || {});
       setProducts(response.products);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [options.filters]);
+  }, [filters]);
 
   useEffect(() => {
-    if (options.autoFetch) {
+    if (autoFetch) {
       fetchProducts();
     }
-  }, [options.autoFetch, fetchProducts]);
+  }, [autoFetch, fetchProducts]);
 
   return {
     products,
@@ -51,7 +52,7 @@ export const useProduct = (id: number) => {
         const data = await productsService.getProductById(id);
         setProduct(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch product');
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }

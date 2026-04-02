@@ -7,7 +7,8 @@ interface UseQuotationsOptions {
   autoFetch?: boolean;
 }
 
-export const useQuotations = (options: UseQuotationsOptions = { autoFetch: true }) => {
+export const useQuotations = (options: UseQuotationsOptions = {}) => {
+  const { autoFetch = true } = options;
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,10 +27,10 @@ export const useQuotations = (options: UseQuotationsOptions = { autoFetch: true 
   }, []);
 
   useEffect(() => {
-    if (options.autoFetch) {
+    if (autoFetch) {
       fetchQuotations();
     }
-  }, [options.autoFetch, fetchQuotations]);
+  }, [autoFetch, fetchQuotations]);
 
   return {
     quotations,

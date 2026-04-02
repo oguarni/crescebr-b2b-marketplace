@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -75,12 +75,21 @@ const MyOrdersPage: React.FC = () => {
 
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { orders, loading, pagination } = useOrders({
+  const {
+    orders,
+    loading,
+    pagination,
+    error: ordersError,
+  } = useOrders({
     status: statusFilter || undefined,
     page: currentPage,
     limit: 10,
   });
   const totalPages = pagination.totalPages;
+
+  useEffect(() => {
+    if (ordersError) toast.error('Erro ao carregar pedidos');
+  }, [ordersError]);
 
   const handleViewTimeline = async (order: Order) => {
     setSelectedOrder(order);

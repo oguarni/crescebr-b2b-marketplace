@@ -102,7 +102,7 @@ describe('useProducts', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.error).toBe('Failed to fetch products');
+    expect(result.current.error).toBe('An unexpected error occurred');
   });
 
   it('should refetch products when refetch is called', async () => {
@@ -212,7 +212,7 @@ describe('useProduct', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.error).toBe('Failed to fetch product');
+    expect(result.current.error).toBe('An unexpected error occurred');
   });
 
   it('should not fetch when id is falsy', async () => {

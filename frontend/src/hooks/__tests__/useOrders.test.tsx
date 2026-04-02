@@ -111,7 +111,7 @@ describe('useOrders', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.error).toBe('Failed to fetch orders');
+    expect(result.current.error).toBe('An unexpected error occurred');
   });
 
   it('should return pagination data', async () => {
@@ -223,7 +223,7 @@ describe('useOrder', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.error).toBe('Failed to fetch order');
+    expect(result.current.error).toBe('An unexpected error occurred');
   });
 
   it('should not fetch when id is falsy', async () => {

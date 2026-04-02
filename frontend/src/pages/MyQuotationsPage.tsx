@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -32,7 +32,11 @@ const MyQuotationsPage: React.FC = () => {
   const [creatingOrder, setCreatingOrder] = useState<number | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { quotations, loading } = useQuotations();
+  const { quotations, loading, error: quotationsError } = useQuotations();
+
+  useEffect(() => {
+    if (quotationsError) toast.error(quotationsError);
+  }, [quotationsError]);
 
   const getStatusColor = (
     status: string

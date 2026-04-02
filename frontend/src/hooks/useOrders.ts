@@ -10,7 +10,8 @@ interface UseOrdersOptions {
   limit?: number;
 }
 
-export const useOrders = (options: UseOrdersOptions = { autoFetch: true }) => {
+export const useOrders = (options: UseOrdersOptions = {}) => {
+  const { autoFetch = true, status, page, limit } = options;
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,11 +21,7 @@ export const useOrders = (options: UseOrdersOptions = { autoFetch: true }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await ordersService.getUserOrders({
-        status: options.status,
-        page: options.page,
-        limit: options.limit,
-      });
+      const data = await ordersService.getUserOrders({ status, page, limit });
       setOrders(data.orders);
       setPagination(data.pagination);
     } catch (err) {
@@ -32,13 +29,13 @@ export const useOrders = (options: UseOrdersOptions = { autoFetch: true }) => {
     } finally {
       setLoading(false);
     }
-  }, [options.status, options.page, options.limit]);
+  }, [status, page, limit]);
 
   useEffect(() => {
-    if (options.autoFetch) {
+    if (autoFetch) {
       fetchOrders();
     }
-  }, [options.autoFetch, fetchOrders]);
+  }, [autoFetch, fetchOrders]);
 
   return { orders, loading, error, pagination, refetch: fetchOrders };
 };

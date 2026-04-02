@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container,
   Typography,
@@ -67,7 +67,18 @@ interface SupplierQuote {
 }
 
 const QuoteComparisonPage: React.FC = () => {
-  const { products, loading: loadingProducts } = useProducts();
+  const productFilters = useMemo(() => ({ limit: 100 }), []);
+  const {
+    products,
+    loading: loadingProducts,
+    error: productsError,
+  } = useProducts({
+    filters: productFilters,
+  });
+
+  useEffect(() => {
+    if (productsError) toast.error('Erro ao carregar produtos');
+  }, [productsError]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [buyerLocation, setBuyerLocation] = useState<string>('');

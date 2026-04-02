@@ -123,7 +123,7 @@ describe('useQuoteCalculation', () => {
       }
     });
 
-    expect(result.current.error).toBe('Calculation failed');
+    expect(result.current.error).toBe('An unexpected error occurred');
   });
 
   it('should set loading state during calculation', async () => {

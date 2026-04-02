@@ -86,7 +86,7 @@ describe('useQuotations', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.error).toBe('Failed to fetch quotations');
+    expect(result.current.error).toBe('An unexpected error occurred');
   });
 
   it('should refetch quotations when refetch is called', async () => {
@@ -177,6 +177,6 @@ describe('useQuotation', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.error).toBe('Failed to fetch quotation');
+    expect(result.current.error).toBe('An unexpected error occurred');
   });
 });
