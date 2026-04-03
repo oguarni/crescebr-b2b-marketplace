@@ -199,18 +199,23 @@ After completing any refactoring task:
 
 ---
 
-## Known Issues (Updated 2026-03-28)
+## Known Issues (Updated 2026-04-03)
 
 ### Fixed (historical — see git log for details)
 - CORS, 404 handler, middleware coverage, backend coverage, service extraction, Dockerfiles, module system, header leaks, import endpoints, rate limiting, Redis migration, express-validator v7, frontend Dockerfile — all resolved
+- CI workflow: cache paths, workspace install, shared build order — fixed
+- `.env.test` git tracking — confirmed not tracked
+- Frontend lint errors (38) — fixed (D-4)
+- Frontend tests (45 failing) — fixed (D-5)
+- `POST /auth/logout` missing `authenticateJWT` — fixed (2026-04-03)
+- JWT fallback secret active in staging/QA — tightened to `NODE_ENV === 'development'` only (2026-04-03)
+- Rating PUT/DELETE lacked role restriction — added `requireRole` middleware (2026-04-03)
 
 ### Open
-1. **CI broken**: `cache-dependency-path` in `.github/workflows/ci.yml` points to `backend/package-lock.json` and `frontend/package-lock.json` which don't exist (only root `package-lock.json` exists). Also, `npm ci` runs in subdirectories but workspaces require install from root. Shared types not built before dependent jobs.
-2. **Git-tracked secret**: `backend/.env.test` is tracked by git despite `.gitignore` — needs `git rm --cached backend/.env.test`
-3. **Backend tests OOM**: `jest --runInBand` hits heap limit on default Node memory. Needs `--max-old-space-size=4096` or test sharding.
-4. **Lint errors**: Backend 10 errors (8x `fail` not defined in ratingsService.test.ts, 1 unused `req` param, 1 stale eslint-disable). Frontend 38 errors (unused imports, `any` types).
-5. **Frontend tests**: 45 failing across 14 suites (mostly timeouts — 438/483 pass). Regression from 12 fails; likely timeout sensitivity
-6. **Architecture**: 8/9 services bypass repository layer — `order.repository.ts` is dead code
-7. **DRY violation**: `authController.ts` has 4x identical `generateTokenPair` payload construction (lines 81-89, 111-119, 141-149, 216-224)
-8. **Bundle size**: `AdminTransactionMonitoringPage` 338KB, `index.js` 529KB (exceeds Vite 500KB warning)
-9. **Vulnerabilities**: 36 npm audit findings (1 critical in form-data, 20 high) — most fixable via `npm audit fix`
+1. **Backend lint errors**: 8x `fail` not defined in `ratingsService.test.ts`, 1 unused `req` in `rateLimiting.ts:131`, 1 stale eslint-disable in `productsController.test.ts`
+2. **Backend tests OOM**: `jest --runInBand` hits heap limit without `--max-old-space-size=4096` in `backend/package.json` test script (CI has it via `NODE_OPTIONS`)
+3. **Architecture (intentional)**: Services use direct Sequelize model access — this is the accepted pattern (KISS/YAGNI). `quotation.service.ts` uses repositories as an example, not a mandate. `order.repository.ts` exists but no service uses it — document and leave as-is.
+4. **DRY violation**: `authController.ts` has 5x identical `generateTokenPair` payload construction — extract `buildTokenPayload(user)` helper
+5. **Bundle size**: `AdminTransactionMonitoringPage` 338KB, `index.js` 529KB (exceeds Vite 500KB warning) — add `manualChunks` to Vite config
+6. **Vulnerabilities**: npm audit findings — run `npm audit fix` and add `overrides` for unfixable transitive deps
+7. **Docker security**: Backend Dockerfile runs as root (add `USER node`); DB/Redis ports bound to `0.0.0.0` (bind to `127.0.0.1`)

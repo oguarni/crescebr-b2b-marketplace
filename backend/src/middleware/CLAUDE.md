@@ -25,17 +25,13 @@ middleware/
 
 **Primary**: `authenticateJWT` - Extracts and verifies JWT from Authorization header.
 
-**Role Guards** (simple role checks):
-
-- `isAdmin`, `isSupplier`, `isCustomer` - Single-role middleware
-- `hasRole(allowedRoles[])` - Multi-role middleware
-- `isApprovedSupplier` - Role + status check (hits DB)
-
 **Resource Ownership** (hit DB to verify):
 
 - `isResourceOwner(field)` - Generic ownership check
 - `canModifyProduct` - Supplier can only modify own products, admin can modify any
 - `canAccessOrder` - Customer sees own orders, supplier sees orders with their products, admin sees all
+
+**Note**: Legacy role guards (`isAdmin`, `isSupplier`, `isCustomer`, `hasRole`) have been removed. Use `requireRole` from `rbac.ts` instead.
 
 ### 2. RBAC Engine (`rbac.ts`)
 
@@ -80,7 +76,7 @@ _Supplier permissions marked with `_`require`status: 'approved'`.
 
 ### 3. Rate Limiting (`rateLimiting.ts`)
 
-**Implementation**: Custom in-memory store with periodic cleanup (15min interval).
+**Implementation**: Redis-backed rate limiter. Fails open (logs and continues) on Redis errors — intentional tradeoff (availability > strict limiting).
 
 **Predefined Profiles**:
 | Profile | Window | Max Requests | Use Case |
@@ -140,9 +136,9 @@ All middleware files at 100% statement coverage (auth.ts, rbac.ts, rateLimiting.
 
 ### Remaining Warnings
 
-- **Duplicate role guards**: `auth.ts` exports `isAdmin`/`isSupplier`/`isCustomer`/`hasRole` AND `rbac.ts` exports `requireRole`. Routes use `requireRole` — the auth.ts guards are legacy dead code candidates.
-- **DB hits in middleware**: `requirePermission`, `isApprovedSupplier`, `canModifyProduct`, `canAccessOrder` all hit DB. Consider request-level caching.
+- **DB hits in middleware**: `requirePermission`, `isApprovedSupplier`, `canModifyProduct`, `canAccessOrder` all hit DB. Consider request-level caching if latency becomes an issue.
 - **Lint error**: `rateLimiting.ts:131` — `req` param should be `_req` (unused in adminRateLimit skipIf)
+- **`addPermissionsToResponse`**: Exported from `rbac.ts` but not wired into any route — safe, no production header leak.
 
 ---
 

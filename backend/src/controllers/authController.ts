@@ -11,6 +11,20 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { RegisterRequest, LoginRequest, AuthResponse as _AuthResponse } from '../types';
 import { authService } from '../services/authService';
 
+const buildTokenPayload = (user: {
+  id: number;
+  email: string;
+  cnpj: string;
+  role: 'customer' | 'admin' | 'supplier';
+  companyType: 'supplier' | 'buyer' | 'both';
+}) => ({
+  id: user.id,
+  email: user.email,
+  cnpj: user.cnpj,
+  role: user.role,
+  companyType: user.companyType,
+});
+
 const serializeUserResponse = (
   user: User,
   tokens: { accessToken: string; refreshToken: string; expiresIn: number }
@@ -78,16 +92,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   });
 
   const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
-  const tokens = await generateTokenPair(
-    {
-      id: user.id,
-      email: user.email,
-      cnpj: user.cnpj,
-      role: user.role,
-      companyType: user.companyType,
-    },
-    deviceInfo
-  );
+  const tokens = await generateTokenPair(buildTokenPayload(user), deviceInfo);
 
   res.status(201).json({
     success: true,
@@ -108,16 +113,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
-  const tokens = await generateTokenPair(
-    {
-      id: user.id,
-      email: user.email,
-      cnpj: user.cnpj,
-      role: user.role,
-      companyType: user.companyType,
-    },
-    deviceInfo
-  );
+  const tokens = await generateTokenPair(buildTokenPayload(user), deviceInfo);
 
   res.status(200).json({
     success: true,
@@ -138,16 +134,7 @@ export const loginWithEmail = asyncHandler(async (req: Request, res: Response) =
   }
 
   const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
-  const tokens = await generateTokenPair(
-    {
-      id: user.id,
-      email: user.email,
-      cnpj: user.cnpj,
-      role: user.role,
-      companyType: user.companyType,
-    },
-    deviceInfo
-  );
+  const tokens = await generateTokenPair(buildTokenPayload(user), deviceInfo);
 
   res.status(200).json({
     success: true,
@@ -213,16 +200,7 @@ export const registerSupplier = asyncHandler(async (req: Request, res: Response)
   });
 
   const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
-  const tokens = await generateTokenPair(
-    {
-      id: user.id,
-      email: user.email,
-      cnpj: user.cnpj,
-      role: user.role,
-      companyType: user.companyType,
-    },
-    deviceInfo
-  );
+  const tokens = await generateTokenPair(buildTokenPayload(user), deviceInfo);
 
   res.status(201).json({
     success: true,
@@ -264,17 +242,7 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
     }
 
     // Generate new token pair
-    const newTokens = await refreshAccessToken(
-      token,
-      {
-        id: user.id,
-        email: user.email,
-        cnpj: user.cnpj,
-        role: user.role,
-        companyType: user.companyType,
-      },
-      deviceInfo
-    );
+    const newTokens = await refreshAccessToken(token, buildTokenPayload(user), deviceInfo);
 
     if (!newTokens) {
       return res.status(401).json({

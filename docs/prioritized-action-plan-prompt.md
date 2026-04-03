@@ -23,27 +23,28 @@ Read these files FIRST before doing any analysis:
 - `backend/CLAUDE.md` — refactoring phases (1-5), code patterns, known build/test errors
 - `frontend/CLAUDE.md` — refactoring phases (1-5), hooks extraction, test coverage
 - `backend/src/middleware/CLAUDE.md` — RBAC engine, 17 permissions, 3 roles, rate limiting
-- `backend/src/__tests__/CLAUDE.md` — coverage report (94.16% overall), zero-coverage files
+- `backend/src/__tests__/CLAUDE.md` — coverage report, zero-coverage files
 
-Known issues already documented (do NOT re-discover these, just rank them):
-1. TS error: `productsService.ts:264,293` — null assigned to non-nullable imageUrl
-2. Test compile: `quotationsController.test.ts:1066` — TS2345 mock type mismatch → 0% coverage on quotationsController
-3. Frontend: 12 failing tests across 6 suites (timeouts, label mismatches)
-4. Security: in-memory rate limiter, X-User-Permissions header leak, duplicate role guards in auth.ts/rbac.ts
-5. Dependencies: `validator` npm HIGH severity CVE; engine constraint was `>=16` (now `>=20`)
-6. Architecture: authController + ordersController still have direct Model access (Phase 4 incomplete)
+Also read `docs/prioritized-action-plan.md` for previously identified and resolved issues.
 
-Refactoring status:
-- Backend Phase 1 (Repositories): ✅ DONE
-- Backend Phase 2 (Validators): ✅ DONE
-- Backend Phase 3 (Remove redundant auth checks): 🔲 NOT STARTED
-- Backend Phase 4 (Service extraction): ⚠️ PARTIAL — auth + orders controllers still have direct Model access
-- Backend Phase 5 (Injectable classes): 🔲 NOT STARTED
-- Frontend Phase 1 (Custom hooks): ✅ DONE
-- Frontend Phase 2 (Use hooks in pages): 🔲 NEEDS VERIFICATION
-- Frontend Phase 3 (Reusable UI components): ✅ DONE
-- Frontend Phase 4 (Type safety): 🔲 NOT STARTED
-- Frontend Phase 5 (Error handling): 🔲 NOT STARTED
+Known resolved issues (do NOT re-discover these):
+1. CI workflow fixed (cache paths, workspace install, shared types build)
+2. `backend/.env.test` untracked from git
+3. npm audit fix applied
+4. Backend lint errors fixed (ratingsService.test.ts `fail`, unused params)
+5. Frontend lint errors fixed (unused imports, `any` types)
+6. Frontend test failures fixed (timeouts, label mismatches)
+7. JWT hardening (explicit HS256 algorithm)
+8. Frontend type safety and error handling utilities added
+9. Service extraction for auth, orders, admin completed
+10. Frontend hooks adoption across pages completed
+
+Known open issues (rank and action these):
+1. 8/9 services bypass repository layer — `order.repository.ts` is dead code
+2. `authController.ts` has 4x identical `generateTokenPair` payload construction
+3. Bundle size: `AdminTransactionMonitoringPage` 338KB, `index.js` 529KB
+4. Legacy role guards (`isAdmin`/`isSupplier`/`isCustomer`) in `auth.ts` overlap with `rbac.ts`
+5. 36 npm audit findings remain (1 critical in form-data, 20 high)
 
 ## Task: 4-Step Audit, then Prioritized Action Plan
 
@@ -55,8 +56,8 @@ Reference `backend/src/middleware/CLAUDE.md` for the RBAC permission matrix.
 ### Step 2 — Build & Test Health
 Run mentally (or actually):
 - `npm run build` — check for TypeScript compilation errors
-- Backend tests: note the 1 compile-failing suite + overall pass rate
-- Frontend tests: note the 12 failures across 6 suites
+- Backend tests: note overall pass rate and any failing suites
+- Frontend tests: note overall pass rate and any failing suites
 Identify root causes, not just symptoms.
 
 ### Step 3 — Architecture & Code Quality
@@ -109,7 +110,7 @@ Use: `Security`, `Build`, `Testing`, `Architecture`, `Dependencies`, `Configurat
 - This analysis and the action plan itself
 - Architecture decisions and design trade-offs
 - CLAUDE.md content updates
-- Custom command definitions (`.claude/commands/*.md`)
+- Custom command definitions
 - Complex refactoring plans that require understanding multiple files
 - Security remediation strategies
 

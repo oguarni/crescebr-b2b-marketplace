@@ -1,45 +1,45 @@
 # CresceBR B2B Marketplace — Prioritized Action Plan
 
 Generated: 2026-03-27
-Updated: 2026-03-27
+Updated: 2026-04-02
 
-## Priority Summary
+## Status Overview
 
-| Priority | Count | Key Items |
-|----------|-------|-----------|
-| P0-Critical | 5 | Route protection gaps, npm vulns, build error |
-| P1-High | 8 | Header leak, IDOR, 0% coverage, authService missing, Docker |
-| P2-Medium | 9 | Service extraction, Phase 3, frontend hooks adoption — **COMPLETED** |
-| P3-Low | 7 | JWT hardening, types, error handling — **COMPLETED** |
+| Priority     | Total | Resolved | Open |
+| ------------ | ----- | -------- | ---- |
+| P0-Critical  | 5     | 5        | 0    |
+| P1-High      | 8     | 6        | 2    |
+| P2-Medium    | 9     | 9        | 0    |
+| P3-Low       | 7     | 7        | 0    |
 
-## Execution Order
+## Completed Work (D-series, March 2026)
 
-### Immediate (P0 — do first)
-1. Fix route protection: logout, import/stats, import/sample
-2. Fix route ordering in quotations routes
-3. Run `npm audit fix`
-4. Fix productsService.ts imageUrl null error
+The following tasks were resolved through delegation batches D-0 through D-5:
 
-### This Sprint (P1)
-5. Remove X-User-Permissions header
-6. Add authorization to quotation/:id and order history routes
-7. Fix quotationsController test mock (unblock 0% coverage)
-8. Update Dockerfiles to Node 20
-9. Fix frontend 12 failing tests
-10. Design and create authService.ts
+- **D-0**: Untracked `backend/.env.test` from git (security)
+- **D-1**: Fixed CI workflow (`cache-dependency-path`, workspace install, shared types build)
+- **D-2**: Ran `npm audit fix` to reduce vulnerabilities
+- **D-3**: Fixed 10 backend lint errors (ratingsService.test.ts `fail`, unused params, stale directive)
+- **D-4**: Fixed 38 frontend lint errors (unused imports, `any` types)
+- **D-5**: Fixed 45 failing frontend tests and added `testTimeout`
 
-### Next Sprint (P2) — ✅ COMPLETED 2026-03-27
-11. ~~Expand adminService, create orderService~~ → Done: authService.ts, orderService.ts, adminService expanded
-12. ~~Phase 3: Remove inline role checks~~ → Done: ownership checks moved to services
-13. ~~Frontend: Adopt custom hooks in all pages~~ → Done: MyQuotationsPage, MyOrdersPage, QuotationDetailPage, QuoteComparisonPage
-14. ~~Frontend: Adopt shared UI components~~ → Already done in Phase 3
+P2 (service extraction, Phase 3, frontend hooks) and P3 (JWT hardening, types, error handling) were completed in the March 27 audit session.
 
-### Backlog (P3) — ✅ COMPLETED 2026-03-27
-15. ~~JWT hardening (algorithm, expiration validation)~~ → Done: explicit HS256 algorithm in sign/verify
-16. ~~Frontend type safety (Phase 4)~~ → Done: src/types/index.ts created
-17. ~~Frontend error handling (Phase 5)~~ → Done: src/utils/errorHandler.ts, hooks updated
+## Remaining Open Items
 
-## Delegation
+### P1-High
 
-13 tasks delegatable to cheaper model (see delegated task queue in audit output).
-Tasks D-1 through D-13 are self-contained with patterns, acceptance criteria, and verification commands.
+| # | Domain | Issue | Action |
+|---|--------|-------|--------|
+| 1 | Architecture | 8/9 services bypass repository layer; `order.repository.ts` is dead code | Remove dead repository file; evaluate whether remaining services need repository extraction or if direct model access is acceptable for this project's scale |
+| 2 | Code Quality | `authController.ts` has 4x identical `generateTokenPair` payload construction | Extract `buildTokenPayload` helper (D-7 from delegation prompt, not yet executed) |
+
+### Backlog (not prioritized)
+
+- **Bundle size**: `AdminTransactionMonitoringPage` 338KB, `index.js` 529KB — lazy-load admin pages (D-8)
+- **Legacy role guards**: `isAdmin`/`isSupplier`/`isCustomer` in `auth.ts` overlap with `rbac.ts` — remove after confirming no imports (D-9)
+- **Vulnerabilities**: 36 npm audit findings remain (1 critical in form-data, 20 high) — most require upstream patches
+
+## Delegation Reference
+
+Tasks D-6 through D-9 are defined in [`delegation-prompt-sonnet.md`](delegation-prompt-sonnet.md) with full acceptance criteria and verification commands. They are self-contained and can be executed independently.

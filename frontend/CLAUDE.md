@@ -345,7 +345,9 @@ export { useQuoteCalculation } from './useQuoteCalculation';
 
 ---
 
-### Phase 2: Refactor Page Components to Use Hooks [STATUS: ✅ DONE]
+### Phase 2: Refactor Page Components to Use Hooks [STATUS: ✅ DONE — with intentional caveat]
+
+**Note (2026-04-03)**: `SupplierProductsPage` migrated to `useProducts` hook. `HomePage` intentionally kept with inline data fetching — it requires `pagination.totalPages` and a complex filters object (search, category, page, price range, MOQ, lead time, availability, specs) that `useProducts` does not expose. Migrating it would require extending the hook API, which is YAGNI at this scale. Leave `HomePage` inline fetching as-is.
 
 **Task 2.1: Refactor `MyQuotationsPage.tsx`**
 

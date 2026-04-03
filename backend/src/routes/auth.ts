@@ -60,7 +60,7 @@ router.post(
 );
 
 // POST /auth/logout
-router.post('/logout', authRateLimit, logout);
+router.post('/logout', authenticateJWT, authRateLimit, logout);
 
 // POST /auth/logout-all
 router.post('/logout-all', authenticateJWT, generalRateLimit, logoutAllDevices);

@@ -114,9 +114,11 @@ export const createQuotationValidation = [
 
 ## Refactoring Tasks
 
-### Phase 1: Create Repository Layer [STATUS: ✅ DONE]
+### Phase 1: Create Repository Layer [STATUS: ✅ DONE — with intentional caveat]
 
 **Completed**: `src/repositories/` contains `quotation.repository.ts`, `product.repository.ts`, `order.repository.ts`, and `index.ts`. All at 100% test coverage (except barrel index).
+
+**Architecture decision (2026-04-03)**: Services use direct Sequelize model access as the standard pattern (KISS/YAGNI). `quotation.service.ts` uses repositories as an example; the other 8 services access models directly and this is intentional. `order.repository.ts` exists but no service uses it — this is acceptable dead code at this project scale. Do NOT wire repositories into all services.
 
 **Task 1.1: Create `src/repositories/quotation.repository.ts`**
 
@@ -568,9 +570,9 @@ export const getCustomerQuotations = asyncHandler(
 
 ---
 
-### Phase 5: Convert Static Services to Injectable Classes [STATUS: 🔲 NOT STARTED]
+### Phase 5: Convert Static Services to Injectable Classes [STATUS: ⏸ DEFERRED — YAGNI]
 
-**Why**: Static methods are harder to mock in tests. Instance-based services with constructor injection are more testable.
+**Decision (2026-04-03)**: Static/plain-object services are sufficient at this project's scale. Dependency injection adds complexity without immediate benefit. Revisit only if test isolation becomes a real problem.
 
 **Task 5.1: Refactor `QuoteService` from static to instance-based**
 
@@ -654,14 +656,18 @@ npm run lint         # Lint code
 
 ---
 
-## Known Issues (Updated 2026-03-28)
+## Known Issues (Updated 2026-04-03)
 
 ### Fixed (historical)
 - Build errors, test compile, Dockerfiles, module system, endpoint protection, rate limiting, header leaks, `.env.test` in git, Redis migration, express-validator v7 — all resolved
+- `POST /auth/logout` missing `authenticateJWT` — fixed
+- JWT fallback secret active in staging/QA — fixed (now `development`-only)
+- Rating PUT/DELETE lacked role restriction — fixed
 
 ### Open
-1. **Tests OOM**: `jest --runInBand` hits heap limit without `--max-old-space-size=4096`
-2. **Lint errors**: 10 errors — 8x `fail` not defined in `ratingsService.test.ts`, unused `req` in `rateLimiting.ts:131`, stale eslint-disable in `productsController.test.ts:832`
-3. **Architecture**: 8/9 services bypass repository layer; `order.repository.ts` is dead code — decision needed: wire or delete
-4. **DRY**: `authController.ts` has 4x identical `generateTokenPair` payload construction — extract `buildTokenPayload(user)` helper
-5. **Vulnerabilities**: 36 npm audit findings (1 critical, 20 high) — most fixable via `npm audit fix`
+1. **Tests OOM**: `jest --runInBand` hits heap limit without `--max-old-space-size=4096` in `backend/package.json` test script (CI has it via `NODE_OPTIONS`)
+2. **Lint errors**: 8x `fail` not defined in `ratingsService.test.ts`, unused `req` in `rateLimiting.ts:131`, stale eslint-disable in `productsController.test.ts:832`
+3. **Architecture (intentional)**: Services use direct model access — see Phase 1 note above. `order.repository.ts` is intentionally unused.
+4. **DRY**: `authController.ts` has 5x identical `generateTokenPair` payload construction — extract `buildTokenPayload(user)` helper
+5. **Vulnerabilities**: npm audit findings (1 critical, 20 high) — run `npm audit fix` and add `overrides` for unfixable deps
+6. **Docker**: Backend Dockerfile runs as root; DB/Redis ports exposed on all interfaces

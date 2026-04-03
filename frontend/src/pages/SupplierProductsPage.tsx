@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -52,6 +52,7 @@ import {
 import { Product } from '@shared/types';
 import { productsService } from '../services/productsService';
 import { useAuth } from '../contexts/AuthContext';
+import { useProducts } from '../hooks';
 import toast from 'react-hot-toast';
 
 interface ProductFormData {
@@ -87,9 +88,8 @@ const initialFormData: ProductFormData = {
 };
 
 const SupplierProductsPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const { products, loading, refetch: loadProducts } = useProducts();
   const [categories, setCategories] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [selectedTab, setSelectedTab] = useState(0);
 
@@ -109,23 +109,6 @@ const SupplierProductsPage: React.FC = () => {
     loadCategories();
   }, []);
 
-  const loadProducts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await productsService.getAllProducts({
-        search: searchTerm || undefined,
-        category: selectedCategory || undefined,
-        availability: availabilityFilter ? [availabilityFilter] : undefined,
-      });
-      setProducts(response.products);
-    } catch (_error) {
-      console.error('Error loading products:', _error);
-      toast.error('Error loading products');
-    } finally {
-      setLoading(false);
-    }
-  }, [searchTerm, selectedCategory, availabilityFilter]);
-
   const loadCategories = async () => {
     try {
       const categoriesData = await productsService.getCategories();
@@ -134,14 +117,6 @@ const SupplierProductsPage: React.FC = () => {
       console.error('Error loading categories:', _error);
     }
   };
-
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      loadProducts();
-    }, 300);
-
-    return () => clearTimeout(debounceTimer);
-  }, [loadProducts]);
 
   const handleCreateProduct = () => {
     setEditingProduct(null);
@@ -161,7 +136,7 @@ const SupplierProductsPage: React.FC = () => {
       minimumOrderQuantity: product.minimumOrderQuantity,
       leadTime: product.leadTime,
       availability: product.availability,
-      specifications: product.specifications as Record<string, string> || {},
+      specifications: (product.specifications as Record<string, string>) || {},
       tierPricing: product.tierPricing || [],
     });
     setDialogOpen(true);
@@ -512,7 +487,14 @@ const SupplierProductsPage: React.FC = () => {
                           <Box mt={1} mb={1}>
                             <Chip
                               label={product.availability.replace('_', ' ')}
-                              color={getAvailabilityColor(product.availability) as 'success' | 'warning' | 'error' | 'info' | 'default'}
+                              color={
+                                getAvailabilityColor(product.availability) as
+                                  | 'success'
+                                  | 'warning'
+                                  | 'error'
+                                  | 'info'
+                                  | 'default'
+                              }
                               size='small'
                               icon={getAvailabilityIcon(product.availability) ?? undefined}
                             />
@@ -582,7 +564,14 @@ const SupplierProductsPage: React.FC = () => {
                           <TableCell>
                             <Chip
                               label={product.availability.replace('_', ' ')}
-                              color={getAvailabilityColor(product.availability) as 'success' | 'warning' | 'error' | 'info' | 'default'}
+                              color={
+                                getAvailabilityColor(product.availability) as
+                                  | 'success'
+                                  | 'warning'
+                                  | 'error'
+                                  | 'info'
+                                  | 'default'
+                              }
                               size='small'
                             />
                           </TableCell>
@@ -618,7 +607,9 @@ const SupplierProductsPage: React.FC = () => {
                 fullWidth
                 label='Product Name'
                 value={formData.name}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 required
               />
             </Grid>
@@ -645,7 +636,9 @@ const SupplierProductsPage: React.FC = () => {
                 rows={3}
                 label='Description'
                 value={formData.description}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 required
               />
             </Grid>
@@ -655,7 +648,9 @@ const SupplierProductsPage: React.FC = () => {
                 type='number'
                 label='Price (R$)'
                 value={formData.price}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, price: Number(e.target.value) })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, price: Number(e.target.value) })
+                }
                 required
               />
             </Grid>
@@ -665,7 +660,9 @@ const SupplierProductsPage: React.FC = () => {
                 type='number'
                 label='Unit Price (R$)'
                 value={formData.unitPrice}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, unitPrice: Number(e.target.value) })
+                }
                 required
               />
             </Grid>
@@ -687,7 +684,9 @@ const SupplierProductsPage: React.FC = () => {
                 type='number'
                 label='Lead Time (days)'
                 value={formData.leadTime}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, leadTime: Number(e.target.value) })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, leadTime: Number(e.target.value) })
+                }
                 required
               />
             </Grid>
@@ -697,7 +696,16 @@ const SupplierProductsPage: React.FC = () => {
                 <Select
                   value={formData.availability}
                   label='Availability'
-                  onChange={e => setFormData({ ...formData, availability: e.target.value as 'in_stock' | 'out_of_stock' | 'limited' | 'custom_order' })}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      availability: e.target.value as
+                        | 'in_stock'
+                        | 'out_of_stock'
+                        | 'limited'
+                        | 'custom_order',
+                    })
+                  }
                 >
                   <MenuItem value='in_stock'>In Stock</MenuItem>
                   <MenuItem value='limited'>Limited</MenuItem>
@@ -711,7 +719,9 @@ const SupplierProductsPage: React.FC = () => {
                 fullWidth
                 label='Image URL'
                 value={formData.imageUrl}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, imageUrl: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, imageUrl: e.target.value })
+                }
               />
             </Grid>
           </Grid>

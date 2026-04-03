@@ -52,6 +52,9 @@ RUN chmod +x ./wait-for-it.sh ./start.sh
 # Install sequelize-cli globally to run migrations
 RUN npm install -g sequelize-cli
 
+RUN chown -R node:node /usr/src/app
+USER node
+
 # Expose port
 EXPOSE 3001
 
