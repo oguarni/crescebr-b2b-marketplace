@@ -19,6 +19,7 @@ pnpm-lock.yaml
 # ──────────────────────────────────────────────
 **/dist/
 **/build/
+shared/dist/
 .next/
 out/
 
@@ -65,6 +66,9 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+.env.test
+.env.staging
+.env.production
 
 # ──────────────────────────────────────────────
 # Uploads & user content
@@ -73,7 +77,7 @@ uploads/
 backend/uploads/
 
 # ──────────────────────────────────────────────
-# Git internals & git artifacts
+# Git internals & artifacts
 # ──────────────────────────────────────────────
 .git/
 .git-rewrite/
@@ -100,17 +104,23 @@ filter-repo/
 *.woff2
 *.ttf
 *.eot
+*.mp4
+*.webm
+*.pdf
 
 # ──────────────────────────────────────────────
-# Husky internals (boilerplate scripts)
+# Husky (boilerplate hooks)
 # ──────────────────────────────────────────────
-.husky/_/
+.husky/
 
 # ──────────────────────────────────────────────
 # Docker
 # ──────────────────────────────────────────────
 docker-data/
 .docker/
+Dockerfile*
+**/Dockerfile*
+docker-compose.yml
 
 # ──────────────────────────────────────────────
 # GitHub workflows (CI config, not code logic)
@@ -118,14 +128,26 @@ docker-data/
 .github/workflows/
 
 # ──────────────────────────────────────────────
-# Docs (design prompts, image prompts, logos — not code)
+# Docs (design prompts, images, non-code)
 # ──────────────────────────────────────────────
 docs/
 
 # ──────────────────────────────────────────────
-# Shared build output (generated from source)
+# Migrations & seeders (generated SQL boilerplate)
 # ──────────────────────────────────────────────
-shared/dist/
+backend/migrations/
+backend/seeders/
+
+# ──────────────────────────────────────────────
+# Config files (boilerplate, not code logic)
+# ──────────────────────────────────────────────
+.prettierrc.json
+.prettierignore
+LICENSE
+*.example
+**/.env.example
+backend/config/
+backend/nodemon.json
 
 # ──────────────────────────────────────────────
 # Claude memory (private, not code context)
@@ -134,6 +156,6 @@ shared/dist/
 .claude/todos/
 
 # ──────────────────────────────────────────────
-# Husky hooks (boilerplate, not code context)
+# Migration scripts (one-time, not core logic)
 # ──────────────────────────────────────────────
-.husky/
+backend/scripts/

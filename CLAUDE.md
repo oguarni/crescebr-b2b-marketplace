@@ -199,32 +199,18 @@ After completing any refactoring task:
 
 ---
 
-## Known Issues (Updated 2026-03-27)
+## Known Issues (Updated 2026-03-28)
 
-### Fixed
-- ~~CORS allows all origins~~ → Now environment-aware (production restricted)
-- ~~404 handler commented out~~ → Active
-- ~~Middleware at 17.7% coverage~~ → 100% coverage
-- ~~Backend 52% overall~~ → 94.16% overall
-- ~~Architecture: authController and ordersController still have direct Model access~~ → Phase 4 complete: authService.ts, orderService.ts created; adminService expanded
-- ~~TypeScript error: productsService.ts imageUrl non-nullable~~ → Fixed: parameter typed as `string | null`
-- ~~Backend test compile: quotationsController.test.ts TS2345~~ → Suite now compiles and passes (45 tests)
-- ~~Dockerfiles on node:18~~ → Updated to node:20-alpine (all 4 Dockerfiles)
-- ~~Backend module system conflict (`type:module` + commonjs tsconfig)~~ → Removed `"type": "module"` from backend/package.json
-- ~~X-User-Permissions header leak~~ → Removed (guarded by NODE_ENV=development in addPermissionsToResponse)
-- ~~403 responses leak userRole/userStatus~~ → Removed from requirePermission, requireAnyPermission, requireAllPermissions
-- ~~Unprotected import endpoints~~ → `/products/import/stats` and `/products/import/sample` now require auth + role + rate limit
-- ~~Unauthenticated logout route~~ → `POST /auth/logout` now rate-limited with authRateLimit
-- ~~Hardcoded admin email rate-limit bypass~~ → Removed `admin@crescebr.com` hardcoded bypass; dev-only skip retained
-- ~~`backend/.env.test` committed to git~~ → Untracked; `.gitignore` now excludes `.env.test`, `.env.staging`, `.env.production`
-- ~~Engine constraint `>=16`~~ → Was already `>=20` in package.json; Dockerfiles now aligned to node:20
-
-- ~~In-memory refresh token store~~ → Migrated to Redis (`ioredis`, `refresh:<token>` + `refresh:user:<id>` SET, TTL-based cleanup)
-- ~~In-memory rate limit store~~ → Migrated to Redis (INCR + EXPIRE pattern, fail-open on errors)
-- ~~`express-validator` v6.x EOL~~ → Upgraded to v7.x; `handleValidationErrors` centralizes boilerplate; `e.param` → `e.path`; `checkFalsy` → `values: 'falsy'`
-- ~~Frontend Dockerfile `--legacy-peer-deps`~~ → Removed; root `package-lock.json` copied into build context
+### Fixed (historical — see git log for details)
+- CORS, 404 handler, middleware coverage, backend coverage, service extraction, Dockerfiles, module system, header leaks, import endpoints, rate limiting, Redis migration, express-validator v7, frontend Dockerfile — all resolved
 
 ### Open
-1. **Frontend tests**: 12 failing across 6 suites (timeouts, label mismatches)
-2. **Architecture**: 8/9 services bypass repository layer — `order.repository.ts` is dead code → Decision needed: wire or delete
-3. **Backend tests**: `adminController.test.ts` has 29 pre-existing failures (service mock shape mismatches)
+1. **CI broken**: `cache-dependency-path` in `.github/workflows/ci.yml` points to `backend/package-lock.json` and `frontend/package-lock.json` which don't exist (only root `package-lock.json` exists). Also, `npm ci` runs in subdirectories but workspaces require install from root. Shared types not built before dependent jobs.
+2. **Git-tracked secret**: `backend/.env.test` is tracked by git despite `.gitignore` — needs `git rm --cached backend/.env.test`
+3. **Backend tests OOM**: `jest --runInBand` hits heap limit on default Node memory. Needs `--max-old-space-size=4096` or test sharding.
+4. **Lint errors**: Backend 10 errors (8x `fail` not defined in ratingsService.test.ts, 1 unused `req` param, 1 stale eslint-disable). Frontend 38 errors (unused imports, `any` types).
+5. **Frontend tests**: 45 failing across 14 suites (mostly timeouts — 438/483 pass). Regression from 12 fails; likely timeout sensitivity
+6. **Architecture**: 8/9 services bypass repository layer — `order.repository.ts` is dead code
+7. **DRY violation**: `authController.ts` has 4x identical `generateTokenPair` payload construction (lines 81-89, 111-119, 141-149, 216-224)
+8. **Bundle size**: `AdminTransactionMonitoringPage` 338KB, `index.js` 529KB (exceeds Vite 500KB warning)
+9. **Vulnerabilities**: 36 npm audit findings (1 critical in form-data, 20 high) — most fixable via `npm audit fix`

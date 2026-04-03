@@ -4,7 +4,7 @@ Run a full project diagnostic covering build, lint, tests, and security. Report 
 
 1. **Build check**: Run `npm run build` in both backend/ and frontend/ directories. Report any TypeScript errors.
 2. **Lint check**: Run `npm run lint` in both backend/ and frontend/. Report violations count.
-3. **Backend tests**: Run `cd backend && NODE_ENV=test npx jest --coverage --runInBand --forceExit --detectOpenHandles`. Report:
+3. **Backend tests**: Run `cd backend && NODE_ENV=test node --max-old-space-size=4096 ../node_modules/.bin/jest --coverage --runInBand --forceExit --detectOpenHandles`. Report:
    - Total tests passed/failed
    - Coverage percentages by directory
    - Files with 0% coverage

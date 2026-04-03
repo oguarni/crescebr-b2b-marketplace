@@ -654,22 +654,14 @@ npm run lint         # Lint code
 
 ---
 
-## Known Issues
+## Known Issues (Updated 2026-03-28)
 
-### Fixed (2026-03-27)
-- ~~Build: productsService.ts imageUrl TS error~~ → Parameter typed as `imageUrl?: string | null`
-- ~~Test compile: quotationsController.test.ts:1066 TS2345~~ → Suite compiles and passes (45 tests)
-- ~~Dockerfiles on node:18~~ → Updated to node:20-alpine
-- ~~`"type": "module"` in package.json conflicts with commonjs tsconfig~~ → Removed
-- ~~`GET /products/import/stats` and `/import/sample` unprotected~~ → Now require auth + requireRole('supplier', 'admin') + rate limit
-- ~~`POST /auth/logout` unrate-limited~~ → authRateLimit added
-- ~~Hardcoded `admin@crescebr.com` rate-limit bypass~~ → Removed
-- ~~403 responses leak userRole/userStatus~~ → Removed from RBAC middleware
-- ~~`backend/.env.test` in git~~ → Untracked; `.gitignore` updated
+### Fixed (historical)
+- Build errors, test compile, Dockerfiles, module system, endpoint protection, rate limiting, header leaks, `.env.test` in git, Redis migration, express-validator v7 — all resolved
 
 ### Open
-1. **Security**: In-memory refresh token store (`src/utils/jwt.ts:20-30`) — lost on restart, memory leak, no horizontal scaling
-2. **Security**: In-memory rate limit store (`src/middleware/rateLimiting.ts:19`) — same issues
-3. **Dependencies**: `express-validator` v6.x EOL — upgrade to v7.x (breaking API change required)
-4. **Architecture**: 8/9 services bypass repository layer; `order.repository.ts` is dead code
-5. **Tests**: `adminController.test.ts` has 29 pre-existing failures (service mock shape mismatches)
+1. **Tests OOM**: `jest --runInBand` hits heap limit without `--max-old-space-size=4096`
+2. **Lint errors**: 10 errors — 8x `fail` not defined in `ratingsService.test.ts`, unused `req` in `rateLimiting.ts:131`, stale eslint-disable in `productsController.test.ts:832`
+3. **Architecture**: 8/9 services bypass repository layer; `order.repository.ts` is dead code — decision needed: wire or delete
+4. **DRY**: `authController.ts` has 4x identical `generateTokenPair` payload construction — extract `buildTokenPayload(user)` helper
+5. **Vulnerabilities**: 36 npm audit findings (1 critical, 20 high) — most fixable via `npm audit fix`

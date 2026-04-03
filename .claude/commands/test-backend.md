@@ -2,7 +2,7 @@ Run backend tests with coverage and report results.
 
 ## Steps
 
-1. Run: `cd backend && NODE_ENV=test npx jest --coverage --runInBand --forceExit --detectOpenHandles`
+1. Run: `cd backend && NODE_ENV=test node --max-old-space-size=4096 ../node_modules/.bin/jest --coverage --runInBand --forceExit --detectOpenHandles`
 2. Report:
    - Pass/fail summary
    - Any failing tests with error messages
@@ -13,4 +13,4 @@ Run backend tests with coverage and report results.
 
 - `$ARGUMENTS` - Optional: specific test file pattern (e.g., "auth" to run only auth tests)
 
-If arguments provided, run: `cd backend && NODE_ENV=test npx jest --coverage --runInBand --forceExit --detectOpenHandles --testPathPattern "$ARGUMENTS"`
+If arguments provided, run: `cd backend && NODE_ENV=test node --max-old-space-size=4096 ../node_modules/.bin/jest --coverage --runInBand --forceExit --detectOpenHandles --testPathPattern "$ARGUMENTS"`

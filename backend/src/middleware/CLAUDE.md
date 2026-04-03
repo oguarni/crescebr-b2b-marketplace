@@ -140,10 +140,9 @@ All middleware files at 100% statement coverage (auth.ts, rbac.ts, rateLimiting.
 
 ### Remaining Warnings
 
-- **Duplicate role guards**: `auth.ts` exports `isAdmin`/`isSupplier`/`isCustomer`/`hasRole` (lines 36-158) AND `rbac.ts` exports `requireRole` (lines 255-275). Consolidate to `requireRole` only.
-- **Permission header leak**: `rbac.ts:310` sends `X-User-Permissions` header to client — remove or restrict to dev mode.
-- **In-memory rate limiter**: `rateLimiting.ts:18-103` uses in-memory store. Replace with Redis before horizontal scaling.
+- **Duplicate role guards**: `auth.ts` exports `isAdmin`/`isSupplier`/`isCustomer`/`hasRole` AND `rbac.ts` exports `requireRole`. Routes use `requireRole` — the auth.ts guards are legacy dead code candidates.
 - **DB hits in middleware**: `requirePermission`, `isApprovedSupplier`, `canModifyProduct`, `canAccessOrder` all hit DB. Consider request-level caching.
+- **Lint error**: `rateLimiting.ts:131` — `req` param should be `_req` (unused in adminRateLimit skipIf)
 
 ---
 

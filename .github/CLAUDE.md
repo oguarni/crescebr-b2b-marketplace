@@ -32,6 +32,13 @@ Both jobs upload coverage artifacts on completion.
 **Network**: `crescebr-net` (bridge)
 **Volume**: `postgres_data` (persistent)
 
+## Known Issues (2026-03-28)
+
+1. **Cache path bug**: `cache-dependency-path` points to `backend/package-lock.json` and `frontend/package-lock.json` — these don't exist. Only root `package-lock.json` exists. Fix: change both to `package-lock.json`.
+2. **Workspace install**: `npm ci` runs in subdirectories (`working-directory: backend`) but npm workspaces require install from root. Fix: install from root, then run lint/build/test in subdirectories.
+3. **Missing shared build**: Backend and frontend depend on `@shared/types` but CI doesn't build shared first. Fix: add `npm run shared:build` step before backend/frontend jobs, or restructure as a single job with ordered steps.
+4. **Backend tests OOM**: May need `NODE_OPTIONS=--max-old-space-size=4096` environment variable in CI.
+
 ## Rules
 
 1. **Never commit secrets** to workflow files — use GitHub Secrets

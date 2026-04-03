@@ -2,7 +2,7 @@ Fix failing tests in the project.
 
 ## Steps
 
-1. Run backend tests: `cd backend && NODE_ENV=test npx jest --runInBand --forceExit --detectOpenHandles --verbose 2>&1`
+1. Run backend tests: `cd backend && NODE_ENV=test node --max-old-space-size=4096 ../node_modules/.bin/jest --runInBand --forceExit --detectOpenHandles --verbose 2>&1`
 2. Run frontend tests: `cd frontend && npx vitest run 2>&1`
 3. For each failing test:
    - Read the test file and the source file it tests

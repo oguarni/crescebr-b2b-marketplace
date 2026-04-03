@@ -2,7 +2,7 @@ Generate and analyze test coverage for the entire project.
 
 ## Steps
 
-1. **Backend coverage**: Run `cd backend && NODE_ENV=test npx jest --coverage --runInBand --forceExit --detectOpenHandles`
+1. **Backend coverage**: Run `cd backend && NODE_ENV=test node --max-old-space-size=4096 ../node_modules/.bin/jest --coverage --runInBand --forceExit --detectOpenHandles`
 2. **Frontend coverage**: Run `cd frontend && npx vitest run --coverage`
 3. **Analysis**: For each layer, report:
    - Current coverage percentage

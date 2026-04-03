@@ -77,14 +77,14 @@ src/
 
 ### Zero-Coverage Files
 
-1. **controllers/quotationsController.ts** - 0% (test suite fails to compile — TS2345 type mismatch in mock at line 1066)
-2. **repositories/index.ts** - 0% (re-export barrel, low priority)
+1. **repositories/index.ts** - 0% (re-export barrel, low priority)
 
-### Failing Tests (1 suite, 0 test failures)
+### Known Test Issues
 
-`quotationsController.test.ts` fails to compile due to a TypeScript error: mock for `getMultipleSupplierQuotes` returns an incomplete `QuoteCalculationResult` type. All 936 individual tests pass.
+1. **OOM**: Default heap size insufficient for full test suite. Run with: `NODE_ENV=test node --max-old-space-size=4096 ../node_modules/.bin/jest --runInBand --forceExit`
+2. **Lint errors in tests**: `ratingsService.test.ts` uses `fail()` (8 occurrences) without importing from Jest globals — add `import { fail } from '@jest/globals'` or replace with `expect(...).rejects.toThrow()`
 
-Check current status: `cd backend && NODE_ENV=test npx jest --runInBand --forceExit`
+Check current status: `cd backend && NODE_ENV=test node --max-old-space-size=4096 ../node_modules/.bin/jest --runInBand --forceExit`
 
 ---
 
