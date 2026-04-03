@@ -6,8 +6,8 @@
 
 <h1 align="center">CresceBR — B2B Marketplace</h1>
 <p align="center">
-  A structured procurement platform built for the Brazilian industrial market.<br />
-  Verified companies. Volume-based quotations. Full order lifecycle management.
+  Structured procurement for the Brazilian industrial market.<br />
+  Verified companies. Volume-based quotations. Full order lifecycle.
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
@@ -28,19 +28,21 @@
 
 ## Why CresceBR
 
-Brazilian B2B procurement still relies heavily on phone calls, spreadsheets, and informal channels. CresceBR brings structure to that process: every company is CNPJ-verified before it can transact, quotations follow tier-based volume pricing, and orders are tracked from request to delivery. The result is a transparent, auditable procurement workflow that works for buyers, suppliers, and platform administrators alike.
+Brazilian B2B procurement runs on phone calls, spreadsheets, and informal channels. CresceBR replaces that friction with a structured workflow: every company is CNPJ-verified before it can transact, quotations follow tier-based volume pricing, and orders are tracked from request through delivery.
+
+The result is a transparent, auditable procurement platform where buyers find verified suppliers, suppliers manage quotations at scale, and administrators maintain full visibility over every transaction.
 
 ---
 
 ## Key Features
 
-- **CNPJ Verification** — Real-time company validation via Brasil API ensures only legitimate businesses participate
+- **CNPJ Verification** — Real-time company validation via Brasil API; only legitimate businesses participate
 - **Role-based Access Control** — Granular permissions for Buyer, Supplier, and Admin roles enforced at the middleware level
 - **Quotation Engine** — Tier-based volume pricing with automated tax and shipping calculations
 - **Order Lifecycle** — Full status tracking from pending through confirmed, shipped, and delivered
-- **Bulk CSV Import** — Suppliers can onboard large product catalogs in a single operation
+- **Bulk CSV Import** — Suppliers onboard large product catalogs in a single operation
 - **Admin Dashboard** — Company verification queue, platform analytics, and user management
-- **Security Hardened** — JWT authentication with Helmet headers, rate limiting, and bcrypt hashing
+- **Security Hardened** — JWT authentication, Helmet headers, rate limiting, and bcrypt hashing
 
 ---
 
@@ -103,28 +105,28 @@ crescebr-b2b-marketplace/
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                  ROUTES + MIDDLEWARE                         │
-│           (auth, rbac, validation, rate-limit)               │
+│                  ROUTES + MIDDLEWARE                        │
+│           (auth, rbac, validation, rate-limit)              │
 ├─────────────────────────────────────────────────────────────┤
-│                     CONTROLLERS                              │
-│              HTTP request/response handling                   │
+│                     CONTROLLERS                             │
+│              HTTP request/response handling                 │
 ├─────────────────────────────────────────────────────────────┤
-│                      SERVICES                                │
-│              Business logic and orchestration                 │
+│                      SERVICES                               │
+│              Business logic and orchestration               │
 ├─────────────────────────────────────────────────────────────┤
-│                    REPOSITORIES                              │
-│              Data access patterns and queries                 │
+│                    REPOSITORIES                             │
+│              Data access patterns and queries               │
 ├─────────────────────────────────────────────────────────────┤
-│                  MODELS (Sequelize ORM)                      │
-│              Schema definitions and associations              │
+│                  MODELS (Sequelize ORM)                     │
+│              Schema definitions and associations            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ```text
-┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│  React Frontend  │    │  Express Backend  │    │   PostgreSQL     │
-│   (Port 5173)    │◄──►│   (Port 3001)     │◄──►│   (Port 5432)    │
-└──────────────────┘    └──────────────────┘    └──────────────────┘
+┌──────────────────┐    ┌───────────────────┐     ┌──────────────────┐
+│  React Frontend  │    │  Express Backend  │     │   PostgreSQL     │
+│   (Port 5173)    │◄──►│   (Port 3001)     │◄──► │   (Port 5432)    │
+└──────────────────┘    └───────────────────┘     └──────────────────┘
                                 │
                                 ▼
                         ┌──────────────────┐
@@ -192,6 +194,18 @@ These accounts are seeded automatically in the development database. **Do not us
 
 ---
 
+## Documentation
+
+Design specs, operational history, and tooling references live in [`docs/`](docs/):
+
+| Document | Purpose |
+| -------- | ------- |
+| [Maturity Improvements](docs/MATURITY_IMPROVEMENTS.md) | Security fixes, testing, and business logic enhancements |
+| [Prioritized Action Plan](docs/prioritized-action-plan.md) | Current backlog ranked by priority |
+| [Frontend Design Spec](docs/design-prompt.md) | Visual language and page layouts |
+
+---
+
 ## Contributing
 
 1. Fork the repository
@@ -201,7 +215,7 @@ These accounts are seeded automatically in the development database. **Do not us
 5. Commit with a clear, descriptive message in English
 6. Open a Pull Request against `main`
 
-Please follow the existing code conventions: TypeScript strict mode, ESLint + Prettier formatting, and the layered architecture described above.
+Follow the existing conventions: TypeScript strict mode, ESLint + Prettier formatting, and the layered architecture described above. Domain-specific guidance is available in `backend/CLAUDE.md` and `frontend/CLAUDE.md`.
 
 ---
 
@@ -211,44 +225,32 @@ Licensed under [CC BY-NC-SA 4.0](LICENSE).
 
 ---
 
-<h2 id="visao-geral">Visão Geral</h2>
+<h2 id="visao-geral">Português</h2>
 
 **CresceBR** é uma plataforma de marketplace B2B para o mercado industrial brasileiro. Conecta empresas compradoras e fornecedoras por meio de cotações estruturadas com precificação por volume, verificação de CNPJ em tempo real e rastreamento completo do ciclo de pedidos.
 
-### Funcionalidades Principais
+### Destaques
 
 - **Verificação de CNPJ** — Validação em tempo real via Brasil API
-- **Controle de Acesso por Papel** — Permissões granulares para Comprador, Fornecedor e Administrador
+- **Controle de Acesso** — Permissões granulares para Comprador, Fornecedor e Administrador
 - **Motor de Cotação** — Precificação por volume com cálculo automático de impostos e frete
-- **Ciclo de Pedidos** — Rastreamento completo: pendente, confirmado, enviado, entregue
+- **Ciclo de Pedidos** — Rastreamento completo do pedido até a entrega
 - **Importação CSV** — Catálogo de produtos em massa
 - **Painel Administrativo** — Verificação de empresas, analytics e gestão de usuários
 
-### Tech Stack
-
-| Camada         | Tecnologia                        |
-| -------------- | --------------------------------- |
-| Frontend       | React 19, TypeScript, MUI, Vite   |
-| Backend        | Node.js, Express 5, TypeScript    |
-| Banco de dados | PostgreSQL 15, Sequelize ORM      |
-| Segurança      | JWT, RBAC, Helmet                 |
-| Infraestrutura | Docker, Docker Compose            |
-
-### Primeiros Passos
+### Como começar
 
 ```bash
 git clone https://github.com/oguarni/CresceBR.git crescebr-b2b-marketplace
 cd crescebr-b2b-marketplace
-
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
-
 docker-compose up --build
 ```
 
 **Acesso:** `http://localhost:5173` (frontend) | `http://localhost:3001/api/v1` (API)
 
-Para instruções detalhadas de desenvolvimento local, consulte as seções em inglês acima.
+Para instruções detalhadas de desenvolvimento, consulte as seções em inglês acima.
 
 ---
 
