@@ -16,19 +16,9 @@ import {
 import { authenticateJWT } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
 import { errorHandler } from '../../middleware/errorHandler';
-import User from '../../models/User';
-import Product from '../../models/Product';
-import Order from '../../models/Order';
-import Quotation from '../../models/Quotation';
-import { CNPJService } from '../../services/cnpjService';
 import { adminService } from '../../services/adminService';
 
-// Mock the models
-jest.mock('../../models/User');
-jest.mock('../../models/Product');
-jest.mock('../../models/Order');
-jest.mock('../../models/Quotation');
-jest.mock('../../services/cnpjService');
+// Mock the admin service
 jest.mock('../../services/adminService');
 
 // Mock middleware
@@ -44,7 +34,7 @@ jest.mock('../../middleware/rbac', () => {
   return { requireRole: requireRoleMock };
 });
 jest.mock('../../middleware/errorHandler', () => ({
-  errorHandler: jest.fn((err, req, res, next) => {
+  errorHandler: jest.fn((err: any, req: any, res: any, _next: any) => {
     res.status(500).json({ error: err.message });
   }),
   asyncHandler: jest.fn(
@@ -52,12 +42,42 @@ jest.mock('../../middleware/errorHandler', () => ({
   ),
 }));
 
-const MockUser = User as jest.Mocked<typeof User>;
-const MockProduct = Product as jest.Mocked<typeof Product>;
-const MockOrder = Order as jest.Mocked<typeof Order>;
-const MockQuotation = Quotation as jest.Mocked<typeof Quotation>;
-const MockCNPJService = CNPJService as jest.Mocked<typeof CNPJService>;
 const MockAdminService = adminService as jest.Mocked<typeof adminService>;
+
+// Helper factories
+function createMockUser(overrides: any = {}) {
+  return {
+    id: 1,
+    email: 'test@test.com',
+    role: 'supplier',
+    status: 'pending',
+    companyName: 'Test Company',
+    cnpj: '12.345.678/0001-90',
+    cnpjValidated: false,
+    industrySector: 'technology',
+    ...overrides,
+  };
+}
+
+function createMockProduct(overrides: any = {}) {
+  return {
+    id: 1,
+    name: 'Test Product',
+    price: 100,
+    category: 'electronics',
+    ...overrides,
+  };
+}
+
+function createMockOrder(overrides: any = {}) {
+  return {
+    id: 'order-1',
+    totalAmount: 100,
+    status: 'delivered',
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
 
 // Create Express app for testing
 const app = express();
@@ -129,28 +149,24 @@ describe('Admin Controller', () => {
   describe('GET /api/admin/companies/pending', () => {
     it('should return list of pending companies', async () => {
       const mockCompanies = [
-        createMockUser({ id: 1, role: 'supplier', status: 'pending' }),
-        createMockUser({ id: 2, role: 'supplier', status: 'pending' }),
+        createMockUser({ id: 1, status: 'pending' }),
+        createMockUser({ id: 2, status: 'pending' }),
       ];
 
-      MockUser.findAll.mockResolvedValue(mockCompanies as any);
+      MockAdminService.getPendingCompanies.mockResolvedValue(mockCompanies as any);
 
       const response = await request(app).get('/api/admin/companies/pending').expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveLength(2);
-      expect(MockUser.findAll).toHaveBeenCalledWith({
-        where: { role: 'supplier', status: 'pending' },
-      });
+      expect(MockAdminService.getPendingCompanies).toHaveBeenCalled();
     });
   });
 
   describe('PUT /api/admin/companies/:userId/verify', () => {
     it('should successfully approve a company', async () => {
-      const mockUser = createMockUser({ id: 1, role: 'supplier', status: 'pending' });
-      mockUser.save = jest.fn().mockResolvedValue(mockUser);
-
-      MockUser.findOne.mockResolvedValue(mockUser as any);
+      const mockUser = createMockUser({ id: 1, status: 'approved' });
+      MockAdminService.verifyCompany.mockResolvedValue(mockUser as any);
 
       const response = await request(app)
         .put('/api/admin/companies/1/verify')
@@ -159,14 +175,12 @@ describe('Admin Controller', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.status).toBe('approved');
-      expect(mockUser.save).toHaveBeenCalled();
+      expect(MockAdminService.verifyCompany).toHaveBeenCalledWith('1', 'approved', undefined, true);
     });
 
     it('should successfully reject a company', async () => {
-      const mockUser = createMockUser({ id: 1, role: 'supplier', status: 'pending' });
-      mockUser.save = jest.fn().mockResolvedValue(mockUser);
-
-      MockUser.findOne.mockResolvedValue(mockUser as any);
+      const mockUser = createMockUser({ id: 1, status: 'rejected' });
+      MockAdminService.verifyCompany.mockResolvedValue(mockUser as any);
 
       const response = await request(app)
         .put('/api/admin/companies/1/verify')
@@ -175,7 +189,6 @@ describe('Admin Controller', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.status).toBe('rejected');
-      expect(mockUser.save).toHaveBeenCalled();
     });
 
     it('should return 403 when user is not an admin', async () => {
@@ -195,7 +208,7 @@ describe('Admin Controller', () => {
     });
 
     it('should return 404 when userId does not exist', async () => {
-      MockUser.findOne.mockResolvedValue(null);
+      MockAdminService.verifyCompany.mockRejectedValue(new Error('Supplier not found'));
 
       const response = await request(app)
         .put('/api/admin/companies/999/verify')
@@ -224,10 +237,8 @@ describe('Admin Controller', () => {
     });
 
     it('should include reason in success message when reason is provided', async () => {
-      const mockUser = createMockUser({ id: 1, role: 'supplier', status: 'pending' });
-      mockUser.save = jest.fn().mockResolvedValue(mockUser);
-
-      MockUser.findOne.mockResolvedValue(mockUser as any);
+      const mockUser = createMockUser({ id: 1, status: 'rejected' });
+      MockAdminService.verifyCompany.mockResolvedValue(mockUser as any);
 
       const response = await request(app)
         .put('/api/admin/companies/1/verify')
@@ -236,6 +247,48 @@ describe('Admin Controller', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('Missing documentation');
+      expect(MockAdminService.verifyCompany).toHaveBeenCalledWith(
+        '1',
+        'rejected',
+        'Missing documentation',
+        false
+      );
+    });
+
+    it('should return 400 when CNPJ validation fails', async () => {
+      MockAdminService.verifyCompany.mockRejectedValue(new Error('CNPJ validation failed'));
+
+      const response = await request(app)
+        .put('/api/admin/companies/1/verify')
+        .send({ status: 'approved', validateCNPJ: true })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('CNPJ validation failed');
+    });
+
+    it('should return 500 when CNPJ validation throws an unexpected error', async () => {
+      MockAdminService.verifyCompany.mockRejectedValue(new Error('CNPJ service unavailable'));
+
+      const response = await request(app)
+        .put('/api/admin/companies/1/verify')
+        .send({ status: 'approved', validateCNPJ: true })
+        .expect(500);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('CNPJ service unavailable');
+    });
+
+    it('should use fallback message when non-Error is thrown', async () => {
+      MockAdminService.verifyCompany.mockRejectedValue('service timeout');
+
+      const response = await request(app)
+        .put('/api/admin/companies/1/verify')
+        .send({ status: 'approved', validateCNPJ: true })
+        .expect(500);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to verify company');
     });
   });
 
@@ -246,22 +299,20 @@ describe('Admin Controller', () => {
         createMockProduct({ id: 2, name: 'Product 2' }),
       ];
 
-      MockProduct.findAll.mockResolvedValue(mockProducts as any);
+      MockAdminService.getAllProducts.mockResolvedValue(mockProducts as any);
 
       const response = await request(app).get('/api/admin/products').expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveLength(2);
-      expect(MockProduct.findAll).toHaveBeenCalledWith({
-        order: [['createdAt', 'DESC']],
-      });
+      expect(MockAdminService.getAllProducts).toHaveBeenCalled();
     });
   });
 
   describe('PUT /api/admin/products/:productId/moderate', () => {
     it('should approve a product', async () => {
       const mockProduct = createMockProduct({ id: 1, name: 'Test Product' });
-      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+      MockAdminService.moderateProduct.mockResolvedValue(mockProduct as any);
 
       const response = await request(app)
         .put('/api/admin/products/1/moderate')
@@ -274,7 +325,7 @@ describe('Admin Controller', () => {
 
     it('should reject a product', async () => {
       const mockProduct = createMockProduct({ id: 1, name: 'Test Product' });
-      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+      MockAdminService.moderateProduct.mockResolvedValue(mockProduct as any);
 
       const response = await request(app)
         .put('/api/admin/products/1/moderate')
@@ -286,9 +337,7 @@ describe('Admin Controller', () => {
     });
 
     it('should remove a product', async () => {
-      const mockProduct = createMockProduct({ id: 1, name: 'Test Product' });
-      mockProduct.destroy = jest.fn().mockResolvedValue(true);
-      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+      MockAdminService.moderateProduct.mockResolvedValue(null);
 
       const response = await request(app)
         .put('/api/admin/products/1/moderate')
@@ -297,11 +346,10 @@ describe('Admin Controller', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Product removed successfully');
-      expect(mockProduct.destroy).toHaveBeenCalled();
     });
 
     it('should return 404 when product not found', async () => {
-      MockProduct.findByPk.mockResolvedValue(null);
+      MockAdminService.moderateProduct.mockRejectedValue(new Error('Product not found'));
 
       const response = await request(app)
         .put('/api/admin/products/999/moderate')
@@ -321,16 +369,43 @@ describe('Admin Controller', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBe('Invalid action provided');
     });
+
+    it('should return 400 when no action is provided', async () => {
+      const response = await request(app)
+        .put('/api/admin/products/1/moderate')
+        .send({})
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Invalid action provided');
+    });
+
+    it('should use fallback message when non-Error is thrown', async () => {
+      MockAdminService.moderateProduct.mockRejectedValue('db timeout');
+
+      const response = await request(app)
+        .put('/api/admin/products/1/moderate')
+        .send({ action: 'approve' })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to moderate product');
+    });
   });
 
   describe('GET /api/admin/transactions', () => {
     it('should return transaction monitoring data', async () => {
-      const mockOrders = [
-        createMockOrder({ id: 'order-1', totalAmount: 100, status: 'delivered' }),
-        createMockOrder({ id: 'order-2', totalAmount: 200, status: 'processing' }),
-      ];
+      const mockData = {
+        orders: [
+          createMockOrder({ id: 'order-1', totalAmount: 100, status: 'delivered' }),
+          createMockOrder({ id: 'order-2', totalAmount: 200, status: 'processing' }),
+        ],
+        totalRevenue: 300,
+        totalOrders: 2,
+        ordersByStatus: { delivered: 1, processing: 1 },
+      };
 
-      MockOrder.findAll.mockResolvedValue(mockOrders as any);
+      MockAdminService.getTransactionMonitoring.mockResolvedValue(mockData as any);
 
       const response = await request(app).get('/api/admin/transactions').expect(200);
 
@@ -344,69 +419,79 @@ describe('Admin Controller', () => {
       });
     });
 
-    it('should filter by date range', async () => {
+    it('should pass date range filters to service', async () => {
       const startDate = '2023-01-01';
       const endDate = '2023-12-31';
 
-      MockOrder.findAll.mockResolvedValue([]);
+      MockAdminService.getTransactionMonitoring.mockResolvedValue({
+        orders: [],
+        totalRevenue: 0,
+        totalOrders: 0,
+        ordersByStatus: {},
+      } as any);
 
       await request(app).get('/api/admin/transactions').query({ startDate, endDate }).expect(200);
 
-      expect(MockOrder.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            createdAt: expect.any(Object),
-          }),
-        })
-      );
+      expect(MockAdminService.getTransactionMonitoring).toHaveBeenCalledWith({
+        startDate,
+        endDate,
+        status: undefined,
+      });
     });
 
-    it('should filter by status', async () => {
-      MockOrder.findAll.mockResolvedValue([]);
+    it('should pass status filter to service', async () => {
+      MockAdminService.getTransactionMonitoring.mockResolvedValue({
+        orders: [],
+        totalRevenue: 0,
+        totalOrders: 0,
+        ordersByStatus: {},
+      } as any);
 
       await request(app).get('/api/admin/transactions').query({ status: 'delivered' }).expect(200);
 
-      expect(MockOrder.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            status: 'delivered',
-          }),
-        })
-      );
+      expect(MockAdminService.getTransactionMonitoring).toHaveBeenCalledWith({
+        startDate: undefined,
+        endDate: undefined,
+        status: 'delivered',
+      });
     });
   });
 
   describe('GET /api/admin/companies/:userId', () => {
     it('should return company details', async () => {
       const mockCompany = createMockUser({ id: 1, role: 'supplier' });
-      MockUser.findOne.mockResolvedValue(mockCompany as any);
+      MockAdminService.getCompanyDetails.mockResolvedValue(mockCompany as any);
 
       const response = await request(app).get('/api/admin/companies/1').expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.id).toBe(1);
-      expect(MockUser.findOne).toHaveBeenCalledWith({
-        where: { id: '1', role: 'supplier' },
-        attributes: { exclude: ['password'] },
-      });
+      expect(MockAdminService.getCompanyDetails).toHaveBeenCalledWith('1');
     });
 
     it('should return 404 when company not found', async () => {
-      MockUser.findOne.mockResolvedValue(null);
+      MockAdminService.getCompanyDetails.mockRejectedValue(new Error('Company not found'));
 
       const response = await request(app).get('/api/admin/companies/999').expect(404);
 
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBe('Company not found');
     });
+
+    it('should use fallback message when non-Error is thrown', async () => {
+      MockAdminService.getCompanyDetails.mockRejectedValue('db error');
+
+      const response = await request(app).get('/api/admin/companies/1').expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to get company details');
+    });
   });
 
   describe('PUT /api/admin/companies/:userId/status', () => {
     it('should update company status successfully', async () => {
-      const mockCompany = createMockUser({ id: 1, role: 'supplier', status: 'pending' });
-      mockCompany.save = jest.fn().mockResolvedValue(mockCompany);
-
-      MockUser.findOne.mockResolvedValue(mockCompany as any);
+      const mockCompany = createMockUser({ id: 1, status: 'approved' });
+      MockAdminService.updateCompanyStatus.mockResolvedValue(mockCompany as any);
 
       const response = await request(app)
         .put('/api/admin/companies/1/status')
@@ -416,7 +501,7 @@ describe('Admin Controller', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data.status).toBe('approved');
       expect(response.body.message).toContain('All documents verified');
-      expect(mockCompany.save).toHaveBeenCalled();
+      expect(MockAdminService.updateCompanyStatus).toHaveBeenCalledWith('1', 'approved');
     });
 
     it('should return 400 when status is invalid', async () => {
@@ -430,7 +515,7 @@ describe('Admin Controller', () => {
     });
 
     it('should return 404 when company not found', async () => {
-      MockUser.findOne.mockResolvedValue(null);
+      MockAdminService.updateCompanyStatus.mockRejectedValue(new Error('Company not found'));
 
       const response = await request(app)
         .put('/api/admin/companies/999/status')
@@ -442,10 +527,8 @@ describe('Admin Controller', () => {
     });
 
     it('should omit reason from message when reason is not provided', async () => {
-      const mockCompany = createMockUser({ id: 1, role: 'supplier', status: 'pending' });
-      mockCompany.save = jest.fn().mockResolvedValue(mockCompany);
-
-      MockUser.findOne.mockResolvedValue(mockCompany as any);
+      const mockCompany = createMockUser({ id: 1, status: 'approved' });
+      MockAdminService.updateCompanyStatus.mockResolvedValue(mockCompany as any);
 
       const response = await request(app)
         .put('/api/admin/companies/1/status')
@@ -455,120 +538,28 @@ describe('Admin Controller', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Company status updated to approved');
     });
-  });
 
-  describe('PUT /api/admin/companies/:userId/verify - CNPJ validation on approval', () => {
-    it('should validate CNPJ when approving a company with validateCNPJ=true', async () => {
-      const mockUser = createMockUser({
-        id: 1,
-        role: 'supplier',
-        status: 'pending',
-        cnpj: '12.345.678/0001-90',
-      });
-      mockUser.save = jest.fn().mockResolvedValue(mockUser);
-      mockUser.reload = jest.fn().mockResolvedValue(mockUser);
-
-      MockUser.findOne.mockResolvedValue(mockUser as any);
-      MockCNPJService.validateAndUpdateCompany.mockResolvedValue({
-        valid: true,
-        companyName: 'Test Company',
-      });
+    it('should use fallback message when non-Error is thrown', async () => {
+      MockAdminService.updateCompanyStatus.mockRejectedValue('db error');
 
       const response = await request(app)
-        .put('/api/admin/companies/1/verify')
-        .send({ status: 'approved', validateCNPJ: true })
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(MockCNPJService.validateAndUpdateCompany).toHaveBeenCalledWith(
-        '12.345.678/0001-90',
-        1
-      );
-      expect(mockUser.reload).toHaveBeenCalled();
-    });
-
-    it('should return 400 when CNPJ validation fails on approval', async () => {
-      const mockUser = createMockUser({
-        id: 1,
-        role: 'supplier',
-        status: 'pending',
-        cnpj: '12.345.678/0001-90',
-      });
-
-      MockUser.findOne.mockResolvedValue(mockUser as any);
-      MockCNPJService.validateAndUpdateCompany.mockResolvedValue({
-        valid: false,
-        error: 'CNPJ not found in government database',
-      });
-
-      const response = await request(app)
-        .put('/api/admin/companies/1/verify')
-        .send({ status: 'approved', validateCNPJ: true })
+        .put('/api/admin/companies/1/status')
+        .send({ status: 'approved' })
         .expect(400);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('CNPJ validation failed');
-    });
-
-    it('should return 500 when CNPJ validation throws an error', async () => {
-      const mockUser = createMockUser({
-        id: 1,
-        role: 'supplier',
-        status: 'pending',
-        cnpj: '12.345.678/0001-90',
-      });
-
-      MockUser.findOne.mockResolvedValue(mockUser as any);
-      MockCNPJService.validateAndUpdateCompany.mockRejectedValue(
-        new Error('CNPJ service unavailable')
-      );
-
-      const response = await request(app)
-        .put('/api/admin/companies/1/verify')
-        .send({ status: 'approved', validateCNPJ: true })
-        .expect(500);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to validate CNPJ');
-      expect(response.body.details).toBe('CNPJ service unavailable');
-    });
-
-    it('should use "Unknown error" details when non-Error is thrown during CNPJ validation', async () => {
-      const mockUser = createMockUser({
-        id: 1,
-        role: 'supplier',
-        status: 'pending',
-        cnpj: '12.345.678/0001-90',
-      });
-
-      MockUser.findOne.mockResolvedValue(mockUser as any);
-      MockCNPJService.validateAndUpdateCompany.mockRejectedValue('service timeout');
-
-      const response = await request(app)
-        .put('/api/admin/companies/1/verify')
-        .send({ status: 'approved', validateCNPJ: true })
-        .expect(500);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to validate CNPJ');
-      expect(response.body.details).toBe('Unknown error');
+      expect(response.body.error).toBe('Failed to update company status');
     });
   });
 
   describe('POST /api/admin/companies/:userId/validate-cnpj', () => {
     it('should validate supplier CNPJ successfully', async () => {
-      const mockUser = createMockUser({
-        id: 1,
-        role: 'supplier',
-        cnpj: '12.345.678/0001-90',
-      });
-      mockUser.reload = jest.fn().mockResolvedValue(mockUser);
-
-      MockUser.findOne.mockResolvedValue(mockUser as any);
-      MockCNPJService.validateAndUpdateCompany.mockResolvedValue({
-        valid: true,
-        companyName: 'Test Company',
-      });
+      const mockUser = createMockUser({ id: 1, cnpj: '12.345.678/0001-90' });
+      const mockResult = {
+        user: mockUser,
+        cnpjValidation: { valid: true, companyName: 'Test Company' },
+      };
+      MockAdminService.validateSupplierCNPJ.mockResolvedValue(mockResult as any);
 
       const response = await request(app).post('/api/admin/companies/1/validate-cnpj').expect(200);
 
@@ -577,11 +568,11 @@ describe('Admin Controller', () => {
         valid: true,
         companyName: 'Test Company',
       });
-      expect(mockUser.reload).toHaveBeenCalled();
+      expect(MockAdminService.validateSupplierCNPJ).toHaveBeenCalledWith('1');
     });
 
     it('should return 404 when supplier not found', async () => {
-      MockUser.findOne.mockResolvedValue(null);
+      MockAdminService.validateSupplierCNPJ.mockRejectedValue(new Error('Supplier not found'));
 
       const response = await request(app)
         .post('/api/admin/companies/999/validate-cnpj')
@@ -592,13 +583,9 @@ describe('Admin Controller', () => {
     });
 
     it('should return 400 when supplier has no CNPJ', async () => {
-      const mockUser = createMockUser({
-        id: 1,
-        role: 'supplier',
-        cnpj: null,
-      });
-
-      MockUser.findOne.mockResolvedValue(mockUser as any);
+      MockAdminService.validateSupplierCNPJ.mockRejectedValue(
+        new Error('Supplier has no CNPJ to validate')
+      );
 
       const response = await request(app).post('/api/admin/companies/1/validate-cnpj').expect(400);
 
@@ -606,40 +593,22 @@ describe('Admin Controller', () => {
       expect(response.body.error).toBe('Supplier has no CNPJ to validate');
     });
 
-    it('should return 500 when CNPJ validation throws', async () => {
-      const mockUser = createMockUser({
-        id: 1,
-        role: 'supplier',
-        cnpj: '12.345.678/0001-90',
-      });
-
-      MockUser.findOne.mockResolvedValue(mockUser as any);
-      MockCNPJService.validateAndUpdateCompany.mockRejectedValue(
-        new Error('External service down')
-      );
+    it('should return 500 when CNPJ validation throws unexpected error', async () => {
+      MockAdminService.validateSupplierCNPJ.mockRejectedValue(new Error('External service down'));
 
       const response = await request(app).post('/api/admin/companies/1/validate-cnpj').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to validate CNPJ');
-      expect(response.body.details).toBe('External service down');
+      expect(response.body.error).toBe('External service down');
     });
 
-    it('should use "Unknown error" details when non-Error is thrown during CNPJ validation', async () => {
-      const mockUser = createMockUser({
-        id: 1,
-        role: 'supplier',
-        cnpj: '12.345.678/0001-90',
-      });
-
-      MockUser.findOne.mockResolvedValue(mockUser as any);
-      MockCNPJService.validateAndUpdateCompany.mockRejectedValue({ code: 'ECONNREFUSED' });
+    it('should use fallback message when non-Error is thrown', async () => {
+      MockAdminService.validateSupplierCNPJ.mockRejectedValue({ code: 'ECONNREFUSED' });
 
       const response = await request(app).post('/api/admin/companies/1/validate-cnpj').expect(500);
 
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBe('Failed to validate CNPJ');
-      expect(response.body.details).toBe('Unknown error');
     });
   });
 
@@ -702,15 +671,17 @@ describe('Admin Controller', () => {
 
   describe('GET /api/admin/verification-queue', () => {
     it('should return verification queue with pagination', async () => {
-      const mockCompanies = [
-        createMockUser({ id: 1, role: 'supplier', status: 'pending' }),
-        createMockUser({ id: 2, role: 'supplier', status: 'pending' }),
-      ];
+      const mockData = {
+        companies: [
+          createMockUser({ id: 1, status: 'pending' }),
+          createMockUser({ id: 2, status: 'pending' }),
+        ],
+        totalCount: 2,
+        currentPage: 1,
+        totalPages: 1,
+      };
 
-      MockUser.findAndCountAll.mockResolvedValue({
-        rows: mockCompanies,
-        count: 2,
-      } as any);
+      MockAdminService.getVerificationQueue.mockResolvedValue(mockData as any);
 
       const response = await request(app)
         .get('/api/admin/verification-queue')
@@ -724,10 +695,12 @@ describe('Admin Controller', () => {
       expect(response.body.data.totalPages).toBe(1);
     });
 
-    it('should filter by pending status', async () => {
-      MockUser.findAndCountAll.mockResolvedValue({
-        rows: [],
-        count: 0,
+    it('should pass pending filter to service', async () => {
+      MockAdminService.getVerificationQueue.mockResolvedValue({
+        companies: [],
+        totalCount: 0,
+        currentPage: 1,
+        totalPages: 0,
       } as any);
 
       await request(app)
@@ -735,20 +708,15 @@ describe('Admin Controller', () => {
         .query({ filter: 'pending' })
         .expect(200);
 
-      expect(MockUser.findAndCountAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            role: 'supplier',
-            status: 'pending',
-          }),
-        })
-      );
+      expect(MockAdminService.getVerificationQueue).toHaveBeenCalledWith(1, 10, 'pending');
     });
 
-    it('should filter by unvalidated CNPJ', async () => {
-      MockUser.findAndCountAll.mockResolvedValue({
-        rows: [],
-        count: 0,
+    it('should pass unvalidated_cnpj filter to service', async () => {
+      MockAdminService.getVerificationQueue.mockResolvedValue({
+        companies: [],
+        totalCount: 0,
+        currentPage: 1,
+        totalPages: 0,
       } as any);
 
       await request(app)
@@ -756,30 +724,36 @@ describe('Admin Controller', () => {
         .query({ filter: 'unvalidated_cnpj' })
         .expect(200);
 
-      expect(MockUser.findAndCountAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            role: 'supplier',
-            cnpjValidated: false,
-          }),
-        })
-      );
+      expect(MockAdminService.getVerificationQueue).toHaveBeenCalledWith(1, 10, 'unvalidated_cnpj');
     });
 
     it('should use default pagination values', async () => {
-      MockUser.findAndCountAll.mockResolvedValue({
-        rows: [],
-        count: 0,
+      MockAdminService.getVerificationQueue.mockResolvedValue({
+        companies: [],
+        totalCount: 0,
+        currentPage: 1,
+        totalPages: 0,
       } as any);
 
       await request(app).get('/api/admin/verification-queue').expect(200);
 
-      expect(MockUser.findAndCountAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          limit: 10,
-          offset: 0,
-        })
-      );
+      expect(MockAdminService.getVerificationQueue).toHaveBeenCalledWith(1, 10, 'all');
+    });
+
+    it('should pass custom pagination values', async () => {
+      MockAdminService.getVerificationQueue.mockResolvedValue({
+        companies: [],
+        totalCount: 0,
+        currentPage: 2,
+        totalPages: 0,
+      } as any);
+
+      await request(app)
+        .get('/api/admin/verification-queue')
+        .query({ page: 2, limit: 5 })
+        .expect(200);
+
+      expect(MockAdminService.getVerificationQueue).toHaveBeenCalledWith(2, 5, 'all');
     });
   });
 

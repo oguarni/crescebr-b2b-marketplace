@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import CartPage from '../CartPage';
@@ -228,6 +228,53 @@ describe('CartPage', () => {
     await user.click(checkoutButton);
 
     expect(mockNavigate).toHaveBeenCalledWith('/checkout');
+  });
+
+  it('should update quantity when typing in quantity input', async () => {
+    mockCartItems = [mockCartItemsList[0]];
+    mockTotalPrice = 3000.0;
+
+    await renderCartPage();
+
+    // The quantity text field
+    const qtyInputs = document.querySelectorAll('input[type="text"]');
+    // The quantity field for the cart item
+    const qtyInput = Array.from(qtyInputs).find(input => (input as HTMLInputElement).value === '2');
+    if (qtyInput) {
+      fireEvent.change(qtyInput, { target: { value: '5' } });
+      expect(mockUpdateQuantity).toHaveBeenCalledWith(101, 5);
+    }
+  });
+
+  it('should truncate long product description', async () => {
+    mockCartItems = [
+      {
+        ...mockCartItemsList[0],
+        product: {
+          ...mockCartItemsList[0].product,
+          description: 'A'.repeat(150),
+        },
+      },
+    ];
+    mockTotalPrice = 3000.0;
+
+    await renderCartPage();
+
+    // Description is truncated to 100 chars + "..."
+    expect(screen.getByText(`${'A'.repeat(100)}...`)).toBeInTheDocument();
+  });
+
+  it('should trigger image onError fallback in cart items', async () => {
+    mockCartItems = [mockCartItemsList[0]];
+    mockTotalPrice = 3000.0;
+
+    await renderCartPage();
+
+    const imgs = document.querySelectorAll('img');
+    if (imgs.length > 0) {
+      fireEvent.error(imgs[0]);
+      expect(imgs[0].src).toContain('data:image');
+    }
   });
 
   it('should navigate to login when unauthenticated user clicks checkout', async () => {

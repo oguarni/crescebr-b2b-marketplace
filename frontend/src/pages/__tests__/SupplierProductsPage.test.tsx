@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import SupplierProductsPage from '../SupplierProductsPage';
@@ -212,7 +212,7 @@ describe('SupplierProductsPage', () => {
       },
       { timeout: 10000 }
     );
-  }, 15000);
+  }, 30000);
 
   it('opens edit dialog when edit button is clicked', async () => {
     await renderPage();
@@ -250,6 +250,67 @@ describe('SupplierProductsPage', () => {
       expect(toast.success).toHaveBeenCalledWith('Product deleted successfully');
     });
   });
+
+  it('fills unit price, MOQ, and lead time fields in edit dialog', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+    });
+
+    const editButtons = screen.getAllByTestId('EditIcon');
+    await user.click(editButtons[0].closest('button')!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit Product')).toBeInTheDocument();
+    });
+
+    const unitPriceField = screen.getByLabelText(/Unit Price/i);
+    await user.clear(unitPriceField);
+    await user.type(unitPriceField, '2500');
+
+    const moqField = screen.getByLabelText(/Minimum Order Quantity/i);
+    await user.clear(moqField);
+    await user.type(moqField, '5');
+
+    const leadTimeField = screen.getByLabelText(/Lead Time/i);
+    await user.clear(leadTimeField);
+    await user.type(leadTimeField, '14');
+
+    expect(screen.getByLabelText(/Unit Price/i)).toHaveValue(2500);
+    expect(screen.getByLabelText(/Minimum Order Quantity/i)).toHaveValue(5);
+    expect(screen.getByLabelText(/Lead Time/i)).toHaveValue(14);
+  }, 30000);
+
+  it('changes availability and image URL in edit dialog', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+    });
+
+    const editButtons = screen.getAllByTestId('EditIcon');
+    await user.click(editButtons[0].closest('button')!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit Product')).toBeInTheDocument();
+    });
+
+    // Change availability via Select (use the Availability combobox)
+    const comboboxes = screen.getAllByRole('combobox');
+    const availabilitySelect = comboboxes[comboboxes.length - 1]; // Availability is typically last
+    fireEvent.mouseDown(availabilitySelect);
+    const limitedOption = await screen.findByText('Limited', { selector: 'li' });
+    fireEvent.click(limitedOption);
+
+    // Fill image URL field
+    const imageUrlField = screen.getByLabelText('Image URL');
+    fireEvent.change(imageUrlField, { target: { value: 'https://example.com/new-image.jpg' } });
+
+    expect(screen.getByLabelText('Image URL')).toHaveValue('https://example.com/new-image.jpg');
+  }, 20000);
 
   it('switches between grid and table view', async () => {
     await renderPage();

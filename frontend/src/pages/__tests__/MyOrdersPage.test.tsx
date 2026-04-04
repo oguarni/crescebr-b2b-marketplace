@@ -244,6 +244,46 @@ describe('MyOrdersPage', () => {
     expect(screen.getByRole('button', { name: 'Go to page 2' })).toBeInTheDocument();
   });
 
+  it('shows trackingNumber and estimatedDeliveryDate in timeline dialog', async () => {
+    const orderWithTracking = {
+      ...mockOrders[0],
+      trackingNumber: 'TRACK001',
+      estimatedDeliveryDate: new Date('2026-03-01T00:00:00Z'),
+    };
+    const historyWithTracking = {
+      order: orderWithTracking,
+      timeline: [
+        {
+          status: 'shipped',
+          description: 'Pedido enviado',
+          date: new Date('2026-01-20T10:00:00Z'),
+          canTransitionTo: ['delivered'],
+        },
+      ],
+    };
+
+    vi.mocked(ordersService.getUserOrders).mockResolvedValue({
+      orders: [orderWithTracking],
+      pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
+    });
+    vi.mocked(ordersService.getOrderHistory).mockResolvedValue(historyWithTracking);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('#abc12345')).toBeInTheDocument();
+    });
+
+    const timelineButtons = screen.getAllByLabelText('Ver Timeline');
+    fireEvent.click(timelineButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Código de Rastreamento')).toBeInTheDocument();
+      expect(screen.getAllByText('TRACK001').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Entrega Estimada').length).toBeGreaterThan(0);
+    });
+  });
+
   // Loading spinner test runs LAST to avoid contaminating other tests
   // with a never-resolving promise that hangs act() in React 19
   it('shows loading spinner while fetching orders', () => {

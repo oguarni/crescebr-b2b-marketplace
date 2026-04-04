@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import SupplierOrdersPage from '../SupplierOrdersPage';
@@ -205,6 +205,95 @@ describe('SupplierOrdersPage', () => {
     });
   });
 
+  it('shows trackingNumber in details dialog for order with tracking', async () => {
+    // ORD-002 has trackingNumber: 'TRK-123', click its Details button
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #ORD-002')).toBeInTheDocument();
+    });
+
+    const detailsButtons = screen.getAllByText('Details');
+    await user.click(detailsButtons[1]); // Second order (ORD-002) has TRK-123
+
+    await waitFor(() => {
+      expect(screen.getByText('Customer Information')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText(/Tracking: TRK-123/).length).toBeGreaterThan(0);
+  });
+
+  it('shows notes in details dialog for order with notes', async () => {
+    const ordersWithNotes = [
+      {
+        ...mockOrders[0],
+        notes: 'Handle with care',
+      },
+    ];
+    vi.mocked(ordersService.getUserOrders).mockResolvedValue({ orders: ordersWithNotes });
+
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
+    });
+
+    const detailsButtons = screen.getAllByText('Details');
+    await user.click(detailsButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Notes: Handle with care')).toBeInTheDocument();
+    });
+  });
+
+  it('shows +N more chip when order has more than 3 items', async () => {
+    const orderWith4Items = {
+      ...mockOrders[0],
+      items: [
+        { product: { name: 'Item 1', supplierId: 1 }, quantity: 1, price: 100, totalPrice: 100 },
+        { product: { name: 'Item 2', supplierId: 1 }, quantity: 1, price: 100, totalPrice: 100 },
+        { product: { name: 'Item 3', supplierId: 1 }, quantity: 1, price: 100, totalPrice: 100 },
+        { product: { name: 'Item 4', supplierId: 1 }, quantity: 1, price: 100, totalPrice: 100 },
+      ],
+    };
+    vi.mocked(ordersService.getUserOrders).mockResolvedValue({ orders: [orderWith4Items] });
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('+1 more')).toBeInTheDocument();
+    });
+  });
+
+  it('shows empty state when switching to delivered tab with no delivered orders', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
+    });
+
+    // Switch to Delivered tab (index 4)
+    const tabs = screen.getAllByRole('tab');
+    await user.click(tabs[4]); // Delivered tab
+
+    await waitFor(() => {
+      expect(screen.getByText('No delivered orders found.')).toBeInTheDocument();
+    });
+  });
+
+  it('shows empty state alert for all orders tab when no orders', async () => {
+    vi.mocked(ordersService.getUserOrders).mockResolvedValue({ orders: [] });
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('No orders found.')).toBeInTheDocument();
+    });
+  });
+
   it('displays statistics cards with correct counts', async () => {
     await renderPage();
 
@@ -213,6 +302,79 @@ describe('SupplierOrdersPage', () => {
       expect(screen.getByText('Pending')).toBeInTheDocument();
       expect(screen.getByText('Processing')).toBeInTheDocument();
       expect(screen.getByText('Shipped')).toBeInTheDocument();
+    });
+  });
+
+  it('fills notes field in status update dialog', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
+    });
+
+    const updateButtons = screen.getAllByText('Update');
+    await user.click(updateButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Notes (optional)')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByLabelText('Notes (optional)'), 'Handle with care');
+    expect(screen.getByLabelText('Notes (optional)')).toHaveValue('Handle with care');
+  });
+
+  it('changes status in status update dialog and shows tracking number field', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
+    });
+
+    const updateButtons = screen.getAllByText('Update');
+    await user.click(updateButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Update Order Status')).toBeInTheDocument();
+    });
+
+    // Change status to 'shipped' via the Select
+    const statusSelect = screen.getByRole('combobox');
+    fireEvent.mouseDown(statusSelect);
+
+    const shippedOption = await screen.findByRole('option', { name: /shipped/i });
+    fireEvent.click(shippedOption);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Tracking Number')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByLabelText('Tracking Number'), 'TRK-NEW-001');
+    expect(screen.getByLabelText('Tracking Number')).toHaveValue('TRK-NEW-001');
+  });
+
+  it('shows company phone in details dialog when present', async () => {
+    const ordersWithPhone = [
+      {
+        ...mockOrders[0],
+        company: { companyName: 'Buyer Corp', email: 'buyer@corp.com', phone: '11999999999' },
+      },
+    ];
+    vi.mocked(ordersService.getUserOrders).mockResolvedValue({ orders: ordersWithPhone });
+
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
+    });
+
+    const detailsButtons = screen.getAllByText('Details');
+    await user.click(detailsButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('11999999999')).toBeInTheDocument();
     });
   });
 });

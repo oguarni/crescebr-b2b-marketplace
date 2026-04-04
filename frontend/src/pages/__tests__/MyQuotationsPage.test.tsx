@@ -17,8 +17,9 @@ vi.mock('../../services/ordersService', () => ({
   },
 }));
 
+let mockUserRole = 'customer';
 vi.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 1, role: 'customer' }, isAuthenticated: true }),
+  useAuth: () => ({ user: { id: 1, role: mockUserRole }, isAuthenticated: true }),
 }));
 
 const mockNavigate = vi.fn();
@@ -121,6 +122,7 @@ describe('MyQuotationsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockClear();
+    mockUserRole = 'customer';
   });
 
   it('shows loading spinner while fetching quotations', async () => {
@@ -213,6 +215,38 @@ describe('MyQuotationsPage', () => {
     });
   });
 
+  it('shows access denied for non-customer users', async () => {
+    mockUserRole = 'supplier';
+    vi.mocked(quotationsService.getCustomerQuotations).mockResolvedValue([]);
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Apenas clientes podem visualizar cotações/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows generic error when createOrderFromQuotation fails with non-Error', async () => {
+    vi.mocked(quotationsService.getCustomerQuotations).mockResolvedValue(mockQuotations);
+    vi.mocked(ordersService.createOrderFromQuotation).mockRejectedValue('string error');
+
+    const toast = (await import('react-hot-toast')).default;
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Create Order')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Create Order'));
+    });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to create order');
+    });
+  });
+
   it('shows error toast when loading quotations fails', async () => {
     const toast = (await import('react-hot-toast')).default;
     vi.mocked(quotationsService.getCustomerQuotations).mockRejectedValue(
@@ -224,5 +258,129 @@ describe('MyQuotationsPage', () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Erro ao carregar cotações');
     });
+  });
+
+  it('renders completed and unknown status quotations', async () => {
+    const completedQuotation = {
+      ...mockQuotations[0],
+      id: 10,
+      status: 'completed',
+      adminNotes: null,
+      items: [{ ...mockQuotations[0].items[0] }],
+    };
+    const unknownStatusQuotation = {
+      ...mockQuotations[0],
+      id: 11,
+      status: 'unknown_status',
+      adminNotes: null,
+      items: [{ ...mockQuotations[0].items[0] }],
+    };
+    vi.mocked(quotationsService.getCustomerQuotations).mockResolvedValue([
+      completedQuotation,
+      unknownStatusQuotation,
+    ]);
+
+    await renderPage();
+
+    await waitFor(() => {
+      // completed → 'Concluída' label
+      expect(screen.getByText('Concluída')).toBeInTheDocument();
+      // unknown_status → returns status as-is
+      expect(screen.getByText('unknown_status')).toBeInTheDocument();
+    });
+  });
+
+  it('shows +N more items when quotation has more than 3 items', async () => {
+    const quotationWith4Items = {
+      ...mockQuotations[0],
+      items: [
+        {
+          id: 1,
+          quotationId: 1,
+          productId: 10,
+          product: {
+            id: 10,
+            name: 'Item 1',
+            imageUrl: '/img/1.jpg',
+            price: 1,
+            description: '',
+            category: '',
+            companyId: 2,
+          },
+          quantity: 1,
+        },
+        {
+          id: 2,
+          quotationId: 1,
+          productId: 11,
+          product: {
+            id: 11,
+            name: 'Item 2',
+            imageUrl: '/img/2.jpg',
+            price: 1,
+            description: '',
+            category: '',
+            companyId: 2,
+          },
+          quantity: 1,
+        },
+        {
+          id: 3,
+          quotationId: 1,
+          productId: 12,
+          product: {
+            id: 12,
+            name: 'Item 3',
+            imageUrl: '/img/3.jpg',
+            price: 1,
+            description: '',
+            category: '',
+            companyId: 2,
+          },
+          quantity: 1,
+        },
+        {
+          id: 4,
+          quotationId: 1,
+          productId: 13,
+          product: {
+            id: 13,
+            name: 'Item 4',
+            imageUrl: '/img/4.jpg',
+            price: 1,
+            description: '',
+            category: '',
+            companyId: 2,
+          },
+          quantity: 1,
+        },
+      ],
+    };
+
+    vi.mocked(quotationsService.getCustomerQuotations).mockResolvedValue([quotationWith4Items]);
+
+    await renderPage();
+
+    await waitFor(() => {
+      // Component renders "+1 item adicionai" (singular root without 'l' suffix)
+      expect(screen.getByText(/\+1 item/)).toBeInTheDocument();
+    });
+  });
+
+  it('triggers image onError fallback in Avatar', async () => {
+    vi.mocked(quotationsService.getCustomerQuotations).mockResolvedValue(mockQuotations);
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Parafuso M8')).toBeInTheDocument();
+    });
+
+    const imgs = document.querySelectorAll('img');
+    if (imgs.length > 0) {
+      fireEvent.error(imgs[0]);
+      // After onError the src is replaced with base64 fallback
+      expect(imgs[0].src).toContain('data:image');
+    }
   });
 });

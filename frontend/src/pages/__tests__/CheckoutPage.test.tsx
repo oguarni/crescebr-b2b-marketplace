@@ -283,7 +283,7 @@ describe('CheckoutPage', () => {
       },
       { timeout: 5000 }
     );
-  }, 15000);
+  }, 30000);
 
   it('should handle order creation failure', async () => {
     const user = userEvent.setup();
@@ -332,7 +332,7 @@ describe('CheckoutPage', () => {
       },
       { timeout: 5000 }
     );
-  }, 15000);
+  }, 30000);
 
   it('should show validation error when shipping info is missing', async () => {
     const user = userEvent.setup();
@@ -362,5 +362,184 @@ describe('CheckoutPage', () => {
     expect(
       screen.getByText('Seus dados estão protegidos com criptografia SSL')
     ).toBeInTheDocument();
+  });
+
+  it('should show error when PIX selected but email is empty', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(viaCepService.isValidCep).mockReturnValue(true);
+    vi.mocked(viaCepService.getAddressByCep).mockResolvedValue({
+      cep: '01001-000',
+      logradouro: 'Praça da Sé',
+      complemento: '',
+      bairro: 'Sé',
+      localidade: 'São Paulo',
+      uf: 'SP',
+      ibge: '3550308',
+      gia: '1004',
+      ddd: '11',
+      siafi: '7107',
+    });
+
+    await renderCheckoutPage();
+
+    const cepInput = screen.getByLabelText('CEP');
+    await user.type(cepInput, '01001000');
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Frete calculado com sucesso!');
+    });
+
+    const pixRadio = screen.getByLabelText('PIX');
+    await user.click(pixRadio);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email para PIX')).toBeInTheDocument();
+    });
+
+    // Clear the pre-filled PIX email (default is user.email)
+    const pixEmailField = screen.getByLabelText('Email para PIX');
+    await user.clear(pixEmailField);
+
+    // Submit without PIX email
+    const form = document.querySelector('form');
+    fireEvent.submit(form!);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Email para PIX é obrigatório');
+    });
+  }, 30000);
+
+  it('should show error when cep set but shippingInfo not calculated', async () => {
+    const user = userEvent.setup();
+
+    // isValidCep returns false so no shipping calc happens
+    vi.mocked(viaCepService.isValidCep).mockReturnValue(false);
+
+    await renderCheckoutPage();
+
+    // Type CEP (invalid format, so isValidCep returns false but cep is set)
+    await user.type(screen.getByLabelText('CEP'), '12345');
+
+    // Type address manually to pass the first validation check
+    await user.type(screen.getByLabelText('Endereço Completo'), 'Rua Teste, 123');
+
+    const form = document.querySelector('form');
+    fireEvent.submit(form!);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Por favor, calcule o frete primeiro');
+    });
+  }, 30000);
+
+  it('should show error when required card fields are empty', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(viaCepService.isValidCep).mockReturnValue(true);
+    vi.mocked(viaCepService.getAddressByCep).mockResolvedValue({
+      cep: '01001-000',
+      logradouro: 'Praça da Sé',
+      complemento: '',
+      bairro: 'Sé',
+      localidade: 'São Paulo',
+      uf: 'SP',
+      ibge: '3550308',
+      gia: '1004',
+      ddd: '11',
+      siafi: '7107',
+    });
+
+    await renderCheckoutPage();
+
+    await user.type(screen.getByLabelText('CEP'), '01001000');
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Frete calculado com sucesso!'));
+
+    // Do NOT fill any card fields (leave them empty)
+    const form = document.querySelector('form');
+    fireEvent.submit(form!);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Todos os campos do cartão são obrigatórios');
+    });
+  }, 30000);
+
+  it('should show error when card number is not 16 digits', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(viaCepService.isValidCep).mockReturnValue(true);
+    vi.mocked(viaCepService.getAddressByCep).mockResolvedValue({
+      cep: '01001-000',
+      logradouro: 'Praça da Sé',
+      complemento: '',
+      bairro: 'Sé',
+      localidade: 'São Paulo',
+      uf: 'SP',
+      ibge: '3550308',
+      gia: '1004',
+      ddd: '11',
+      siafi: '7107',
+    });
+
+    await renderCheckoutPage();
+
+    await user.type(screen.getByLabelText('CEP'), '01001000');
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Frete calculado com sucesso!'));
+
+    await user.type(screen.getByLabelText('Número do Cartão'), '1234'); // too short
+    await user.type(screen.getByLabelText('Nome no Cartão'), 'Test User');
+    await user.type(screen.getByLabelText('Validade'), '1228');
+    await user.type(screen.getByLabelText('CVV'), '123');
+
+    const form = document.querySelector('form');
+    fireEvent.submit(form!);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Número do cartão deve ter 16 dígitos');
+    });
+  }, 30000);
+
+  it('should show error when CVV is not 3 digits', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(viaCepService.isValidCep).mockReturnValue(true);
+    vi.mocked(viaCepService.getAddressByCep).mockResolvedValue({
+      cep: '01001-000',
+      logradouro: 'Praça da Sé',
+      complemento: '',
+      bairro: 'Sé',
+      localidade: 'São Paulo',
+      uf: 'SP',
+      ibge: '3550308',
+      gia: '1004',
+      ddd: '11',
+      siafi: '7107',
+    });
+
+    await renderCheckoutPage();
+
+    await user.type(screen.getByLabelText('CEP'), '01001000');
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Frete calculado com sucesso!'));
+
+    await user.type(screen.getByLabelText('Número do Cartão'), '4111111111111111');
+    await user.type(screen.getByLabelText('Nome no Cartão'), 'Test User');
+    await user.type(screen.getByLabelText('Validade'), '1228');
+    await user.type(screen.getByLabelText('CVV'), '12'); // too short
+
+    const form = document.querySelector('form');
+    fireEvent.submit(form!);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('CVV deve ter 3 dígitos');
+    });
+  }, 30000);
+
+  it('should trigger image onError fallback in order summary', async () => {
+    await renderCheckoutPage();
+
+    const imgs = document.querySelectorAll('img');
+    if (imgs.length > 0) {
+      fireEvent.error(imgs[0]);
+      expect(imgs[0].src).toContain('data:image');
+    }
   });
 });

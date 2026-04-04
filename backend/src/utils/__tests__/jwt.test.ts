@@ -125,7 +125,8 @@ describe('JWT Utilities', () => {
       };
       const expectedToken = 'fallback-jwt-token';
 
-      // Unset environment variables
+      // Unset environment variables (must be in development to use fallback)
+      process.env.NODE_ENV = 'development';
       delete process.env.JWT_SECRET;
       delete process.env.JWT_EXPIRES_IN;
 
@@ -260,6 +261,7 @@ describe('JWT Utilities', () => {
         companyType: 'both',
       };
 
+      process.env.NODE_ENV = 'development';
       delete process.env.JWT_SECRET;
       mockJwt.verify.mockReturnValue(expectedPayload as any);
 
@@ -1195,8 +1197,30 @@ describe('TokenManager', () => {
         companyType: 'both',
       };
 
-      await expect(gtp(prodPayload)).rejects.toThrow(
-        'JWT_SECRET environment variable is required in production'
+      await expect(gtp(prodPayload)).rejects.toThrow('JWT_SECRET environment variable is required');
+
+      process.env.NODE_ENV = 'test';
+    });
+
+    it('should return dev fallback secret when NODE_ENV is development and JWT_SECRET is not set', () => {
+      process.env.NODE_ENV = 'development';
+      delete process.env.JWT_SECRET;
+
+      mockJwt.sign.mockReturnValue('dev-fallback-token' as any);
+
+      const result = generateToken({
+        id: 1,
+        email: 'dev@example.com',
+        cnpj: '00.000.000/0001-00',
+        role: 'admin',
+        companyType: 'both',
+      });
+
+      expect(result).toBe('dev-fallback-token');
+      expect(mockJwt.sign).toHaveBeenCalledWith(
+        expect.any(Object),
+        'dev-only-insecure-secret-do-not-use-in-production',
+        expect.any(Object)
       );
 
       process.env.NODE_ENV = 'test';

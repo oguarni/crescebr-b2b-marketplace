@@ -3,6 +3,7 @@ import User from '../../models/User';
 import Product from '../../models/Product';
 import Order from '../../models/Order';
 import Quotation from '../../models/Quotation';
+import { CNPJService } from '../cnpjService';
 
 // Mock models using the same pattern as other service tests
 jest.mock('../../models/User');
@@ -11,11 +12,13 @@ jest.mock('../../models/Order');
 jest.mock('../../models/Quotation');
 jest.mock('../../models/QuotationItem');
 jest.mock('../../models/Rating');
+jest.mock('../cnpjService');
 
 const MockUser = User as jest.Mocked<typeof User>;
 const MockProduct = Product as jest.Mocked<typeof Product>;
 const MockOrder = Order as jest.Mocked<typeof Order>;
 const MockQuotation = Quotation as jest.Mocked<typeof Quotation>;
+const MockCNPJService = CNPJService as jest.Mocked<typeof CNPJService>;
 
 // Product.sequelize and Quotation.sequelize are accessed in the source
 (MockProduct as any).sequelize = { fn: jest.fn(), col: jest.fn() };
@@ -500,6 +503,408 @@ describe('adminService', () => {
       const result = await adminService.getSupplierMetrics('1');
 
       expect(result.metrics.totalRevenue).toBeCloseTo(400, 2);
+    });
+  });
+
+  describe('getPendingCompanies', () => {
+    it('should return all pending supplier companies', async () => {
+      const pending = [
+        { id: 1, role: 'supplier', status: 'pending' },
+        { id: 2, role: 'supplier', status: 'pending' },
+      ];
+      MockUser.findAll.mockResolvedValue(pending as any);
+
+      const result = await adminService.getPendingCompanies();
+
+      expect(result).toHaveLength(2);
+      expect(MockUser.findAll).toHaveBeenCalledWith({
+        where: { role: 'supplier', status: 'pending' },
+      });
+    });
+
+    it('should return empty array when no pending companies', async () => {
+      MockUser.findAll.mockResolvedValue([] as any);
+
+      const result = await adminService.getPendingCompanies();
+
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('verifyCompany', () => {
+    function makeMockUser(overrides: any = {}) {
+      return {
+        id: 1,
+        role: 'supplier',
+        status: 'pending',
+        cnpj: '12.345.678/0001-90',
+        save: jest.fn().mockResolvedValue(undefined),
+        reload: jest.fn().mockResolvedValue(undefined),
+        ...overrides,
+      };
+    }
+
+    it('should approve a company and save', async () => {
+      const user = makeMockUser();
+      MockUser.findOne.mockResolvedValue(user as any);
+
+      const result = await adminService.verifyCompany('1', 'approved', undefined, false);
+
+      expect(result.status).toBe('approved');
+      expect(user.save).toHaveBeenCalled();
+    });
+
+    it('should reject a company and save', async () => {
+      const user = makeMockUser();
+      MockUser.findOne.mockResolvedValue(user as any);
+
+      const result = await adminService.verifyCompany('1', 'rejected', 'Docs missing', false);
+
+      expect(result.status).toBe('rejected');
+      expect(user.save).toHaveBeenCalled();
+    });
+
+    it('should throw when supplier not found', async () => {
+      MockUser.findOne.mockResolvedValue(null);
+
+      await expect(adminService.verifyCompany('999', 'approved')).rejects.toThrow(
+        'Supplier not found'
+      );
+    });
+
+    it('should validate CNPJ when approving with validateCNPJ=true and CNPJ exists', async () => {
+      const user = makeMockUser();
+      MockUser.findOne.mockResolvedValue(user as any);
+      MockCNPJService.validateAndUpdateCompany.mockResolvedValue({ valid: true });
+
+      await adminService.verifyCompany('1', 'approved', undefined, true);
+
+      expect(MockCNPJService.validateAndUpdateCompany).toHaveBeenCalledWith(
+        '12.345.678/0001-90',
+        1
+      );
+      expect(user.reload).toHaveBeenCalled();
+    });
+
+    it('should throw when CNPJ validation returns valid=false with error', async () => {
+      const user = makeMockUser();
+      MockUser.findOne.mockResolvedValue(user as any);
+      MockCNPJService.validateAndUpdateCompany.mockResolvedValue({
+        valid: false,
+        error: 'CNPJ not found',
+      });
+
+      await expect(adminService.verifyCompany('1', 'approved', undefined, true)).rejects.toThrow(
+        'CNPJ not found'
+      );
+    });
+
+    it('should throw default CNPJ error when no error message provided', async () => {
+      const user = makeMockUser();
+      MockUser.findOne.mockResolvedValue(user as any);
+      MockCNPJService.validateAndUpdateCompany.mockResolvedValue({ valid: false });
+
+      await expect(adminService.verifyCompany('1', 'approved', undefined, true)).rejects.toThrow(
+        'CNPJ validation failed'
+      );
+    });
+
+    it('should skip CNPJ validation when user has no CNPJ', async () => {
+      const user = makeMockUser({ cnpj: null });
+      MockUser.findOne.mockResolvedValue(user as any);
+
+      await adminService.verifyCompany('1', 'approved', undefined, true);
+
+      expect(MockCNPJService.validateAndUpdateCompany).not.toHaveBeenCalled();
+      expect(user.save).toHaveBeenCalled();
+    });
+
+    it('should skip CNPJ validation when validateCNPJ=false', async () => {
+      const user = makeMockUser();
+      MockUser.findOne.mockResolvedValue(user as any);
+
+      await adminService.verifyCompany('1', 'approved', undefined, false);
+
+      expect(MockCNPJService.validateAndUpdateCompany).not.toHaveBeenCalled();
+    });
+
+    it('should skip CNPJ validation when rejecting', async () => {
+      const user = makeMockUser();
+      MockUser.findOne.mockResolvedValue(user as any);
+
+      await adminService.verifyCompany('1', 'rejected', undefined, true);
+
+      expect(MockCNPJService.validateAndUpdateCompany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getAllProducts', () => {
+    it('should return all products ordered by createdAt DESC', async () => {
+      const products = [
+        { id: 1, name: 'Product A' },
+        { id: 2, name: 'Product B' },
+      ];
+      MockProduct.findAll.mockResolvedValue(products as any);
+
+      const result = await adminService.getAllProducts();
+
+      expect(result).toHaveLength(2);
+      expect(MockProduct.findAll).toHaveBeenCalledWith({ order: [['createdAt', 'DESC']] });
+    });
+
+    it('should return empty array when no products', async () => {
+      MockProduct.findAll.mockResolvedValue([] as any);
+
+      const result = await adminService.getAllProducts();
+
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('moderateProduct', () => {
+    it('should return product when action is approve', async () => {
+      const product = { id: 1, name: 'Test', destroy: jest.fn() };
+      MockProduct.findByPk.mockResolvedValue(product as any);
+
+      const result = await adminService.moderateProduct('1', 'approve');
+
+      expect(result).toEqual(product);
+      expect(product.destroy).not.toHaveBeenCalled();
+    });
+
+    it('should return product when action is reject', async () => {
+      const product = { id: 1, name: 'Test', destroy: jest.fn() };
+      MockProduct.findByPk.mockResolvedValue(product as any);
+
+      const result = await adminService.moderateProduct('1', 'reject');
+
+      expect(result).toEqual(product);
+      expect(product.destroy).not.toHaveBeenCalled();
+    });
+
+    it('should destroy and return null when action is remove', async () => {
+      const product = { id: 1, name: 'Test', destroy: jest.fn().mockResolvedValue(undefined) };
+      MockProduct.findByPk.mockResolvedValue(product as any);
+
+      const result = await adminService.moderateProduct('1', 'remove');
+
+      expect(result).toBeNull();
+      expect(product.destroy).toHaveBeenCalled();
+    });
+
+    it('should throw when product not found', async () => {
+      MockProduct.findByPk.mockResolvedValue(null);
+
+      await expect(adminService.moderateProduct('999', 'approve')).rejects.toThrow(
+        'Product not found'
+      );
+    });
+  });
+
+  describe('getTransactionMonitoring', () => {
+    it('should return orders with computed revenue and status counts', async () => {
+      const orders = [
+        { totalAmount: '100.00', status: 'delivered' },
+        { totalAmount: '200.00', status: 'processing' },
+      ];
+      MockOrder.findAll.mockResolvedValue(orders as any);
+
+      const result = await adminService.getTransactionMonitoring({});
+
+      expect(result.orders).toHaveLength(2);
+      expect(result.totalRevenue).toBeCloseTo(300, 2);
+      expect(result.totalOrders).toBe(2);
+      expect(result.ordersByStatus.delivered).toBe(1);
+      expect(result.ordersByStatus.processing).toBe(1);
+    });
+
+    it('should build date range filter when both startDate and endDate provided', async () => {
+      MockOrder.findAll.mockResolvedValue([] as any);
+
+      await adminService.getTransactionMonitoring({
+        startDate: '2023-01-01',
+        endDate: '2023-12-31',
+      });
+
+      expect(MockOrder.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ createdAt: expect.any(Object) }),
+        })
+      );
+    });
+
+    it('should add status filter when status provided', async () => {
+      MockOrder.findAll.mockResolvedValue([] as any);
+
+      await adminService.getTransactionMonitoring({ status: 'delivered' });
+
+      expect(MockOrder.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: 'delivered' }),
+        })
+      );
+    });
+
+    it('should not add date filter when only startDate provided (no endDate)', async () => {
+      MockOrder.findAll.mockResolvedValue([] as any);
+
+      await adminService.getTransactionMonitoring({ startDate: '2023-01-01' });
+
+      const call = MockOrder.findAll.mock.calls[0][0] as any;
+      expect(call.where.createdAt).toBeUndefined();
+    });
+
+    it('should handle empty orders', async () => {
+      MockOrder.findAll.mockResolvedValue([] as any);
+
+      const result = await adminService.getTransactionMonitoring({});
+
+      expect(result.totalRevenue).toBe(0);
+      expect(result.totalOrders).toBe(0);
+      expect(result.ordersByStatus).toEqual({});
+    });
+  });
+
+  describe('getCompanyDetails', () => {
+    it('should return company when found', async () => {
+      const company = { id: 1, role: 'supplier', email: 'sup@test.com' };
+      MockUser.findOne.mockResolvedValue(company as any);
+
+      const result = await adminService.getCompanyDetails('1');
+
+      expect(result).toEqual(company);
+      expect(MockUser.findOne).toHaveBeenCalledWith({
+        where: { id: '1', role: 'supplier' },
+        attributes: { exclude: ['password'] },
+      });
+    });
+
+    it('should throw when company not found', async () => {
+      MockUser.findOne.mockResolvedValue(null);
+
+      await expect(adminService.getCompanyDetails('999')).rejects.toThrow('Company not found');
+    });
+  });
+
+  describe('updateCompanyStatus', () => {
+    it('should update status and save company', async () => {
+      const company = { id: 1, status: 'pending', save: jest.fn().mockResolvedValue(undefined) };
+      MockUser.findOne.mockResolvedValue(company as any);
+
+      const result = await adminService.updateCompanyStatus('1', 'approved');
+
+      expect(result.status).toBe('approved');
+      expect(company.save).toHaveBeenCalled();
+    });
+
+    it('should throw when company not found', async () => {
+      MockUser.findOne.mockResolvedValue(null);
+
+      await expect(adminService.updateCompanyStatus('999', 'approved')).rejects.toThrow(
+        'Company not found'
+      );
+    });
+  });
+
+  describe('validateSupplierCNPJ', () => {
+    it('should validate CNPJ and return user and cnpjValidation', async () => {
+      const user = {
+        id: 1,
+        cnpj: '12.345.678/0001-90',
+        reload: jest.fn().mockResolvedValue(undefined),
+      };
+      MockUser.findOne.mockResolvedValue(user as any);
+      MockCNPJService.validateAndUpdateCompany.mockResolvedValue({
+        valid: true,
+        companyName: 'Test Co',
+      });
+
+      const result = await adminService.validateSupplierCNPJ('1');
+
+      expect(result.user).toEqual(user);
+      expect(result.cnpjValidation.valid).toBe(true);
+      expect(result.cnpjValidation.companyName).toBe('Test Co');
+      expect(user.reload).toHaveBeenCalled();
+    });
+
+    it('should throw when supplier not found', async () => {
+      MockUser.findOne.mockResolvedValue(null);
+
+      await expect(adminService.validateSupplierCNPJ('999')).rejects.toThrow('Supplier not found');
+    });
+
+    it('should throw when supplier has no CNPJ', async () => {
+      const user = { id: 1, cnpj: null };
+      MockUser.findOne.mockResolvedValue(user as any);
+
+      await expect(adminService.validateSupplierCNPJ('1')).rejects.toThrow(
+        'Supplier has no CNPJ to validate'
+      );
+    });
+  });
+
+  describe('getVerificationQueue', () => {
+    it('should return paginated companies with correct metadata', async () => {
+      MockUser.findAndCountAll.mockResolvedValue({
+        rows: [{ id: 1 }, { id: 2 }],
+        count: 10,
+      } as any);
+
+      const result = await adminService.getVerificationQueue(1, 5, 'all');
+
+      expect(result.companies).toHaveLength(2);
+      expect(result.totalCount).toBe(10);
+      expect(result.currentPage).toBe(1);
+      expect(result.totalPages).toBe(2);
+      expect(MockUser.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { role: 'supplier' },
+          limit: 5,
+          offset: 0,
+        })
+      );
+    });
+
+    it('should filter by pending status', async () => {
+      MockUser.findAndCountAll.mockResolvedValue({ rows: [], count: 0 } as any);
+
+      await adminService.getVerificationQueue(1, 10, 'pending');
+
+      expect(MockUser.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ role: 'supplier', status: 'pending' }),
+        })
+      );
+    });
+
+    it('should filter by unvalidated_cnpj', async () => {
+      MockUser.findAndCountAll.mockResolvedValue({ rows: [], count: 0 } as any);
+
+      await adminService.getVerificationQueue(1, 10, 'unvalidated_cnpj');
+
+      expect(MockUser.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ role: 'supplier', cnpjValidated: false }),
+        })
+      );
+    });
+
+    it('should calculate correct offset for page 2', async () => {
+      MockUser.findAndCountAll.mockResolvedValue({ rows: [], count: 0 } as any);
+
+      await adminService.getVerificationQueue(2, 10, 'all');
+
+      expect(MockUser.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 10 })
+      );
+    });
+
+    it('should return totalPages=0 when count is 0', async () => {
+      MockUser.findAndCountAll.mockResolvedValue({ rows: [], count: 0 } as any);
+
+      const result = await adminService.getVerificationQueue(1, 10, 'all');
+
+      expect(result.totalPages).toBe(0);
     });
   });
 });

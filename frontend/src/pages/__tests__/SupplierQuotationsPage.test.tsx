@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import SupplierQuotationsPage from '../SupplierQuotationsPage';
@@ -212,6 +212,388 @@ describe('SupplierQuotationsPage', () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Error loading quotations');
+    });
+  });
+
+  it('opens response dialog when Respond button is clicked', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    const respondButton = screen.getByText('Respond');
+    await user.click(respondButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Respond to Quote Request #1')).toBeInTheDocument();
+    });
+  });
+
+  it('closes response dialog when Cancel is clicked', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Respond'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Respond to Quote Request #1')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Cancel'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Respond to Quote Request #1')).not.toBeInTheDocument();
+    });
+  });
+
+  it('submits response when Submit Quote is clicked', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Respond'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Submit Quote')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Submit Quote'));
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Quotation response submitted successfully');
+    });
+  });
+
+  it('handles Accept button click', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Accept')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Accept'));
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Quotation accepted successfully');
+    });
+  });
+
+  it('handles Decline button click', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Decline')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Decline'));
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Quotation rejected');
+    });
+  });
+
+  it('switches to Pending tab and shows only pending quotations', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    const tabs = screen.getAllByRole('tab');
+    await user.click(tabs[1]); // Pending tab
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Quote Request #2')).not.toBeInTheDocument();
+  });
+
+  it('shows empty state when Rejected tab has no items', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    const tabs = screen.getAllByRole('tab');
+    await user.click(tabs[4]); // Rejected tab
+
+    await waitFor(() => {
+      expect(screen.getByText('No rejected quotations found.')).toBeInTheDocument();
+    });
+  });
+
+  it('shows empty state when Processed tab is selected and filtered', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    const tabs = screen.getAllByRole('tab');
+    await user.click(tabs[2]); // Processed tab
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #2')).toBeInTheDocument();
+    });
+  });
+
+  it('switches to Completed tab', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    const tabs = screen.getAllByRole('tab');
+    await user.click(tabs[3]); // Completed tab
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #3')).toBeInTheDocument();
+    });
+  });
+
+  it('closes details dialog when Close is clicked', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    const detailsButtons = screen.getAllByText('Details');
+    await user.click(detailsButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Customer Information')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Close'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Quotation Details - #1')).not.toBeInTheDocument();
+    });
+  });
+
+  it('filters quotations by search term', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByPlaceholderText('Search quotations...');
+    await user.type(searchInput, 'Buyer Corp');
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Quote Request #2')).not.toBeInTheDocument();
+  });
+
+  it('shows empty state for processed tab when no processed quotations', async () => {
+    const pendingOnly = [mockQuotations[0]]; // only pending
+    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue(pendingOnly);
+
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    const tabs = screen.getAllByRole('tab');
+    await user.click(tabs[2]); // Processed tab
+
+    await waitFor(() => {
+      expect(screen.getByText('No processed quotations found.')).toBeInTheDocument();
+    });
+  });
+
+  it('shows empty state for completed tab when no completed quotations', async () => {
+    const pendingOnly = [mockQuotations[0]];
+    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue(pendingOnly);
+
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    const tabs = screen.getAllByRole('tab');
+    await user.click(tabs[3]); // Completed tab
+
+    await waitFor(() => {
+      expect(screen.getByText('No completed quotations found.')).toBeInTheDocument();
+    });
+  });
+
+  it('shows Not specified when quotation has no requestedDeliveryDate in response dialog', async () => {
+    const quotationWithoutDeliveryDate = {
+      ...mockQuotations[0],
+      requestedDeliveryDate: undefined,
+    };
+    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([quotationWithoutDeliveryDate]);
+
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Respond'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Customer Information')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Not specified/)).toBeInTheDocument();
+  });
+
+  it('shows "Urgent" priority for quotation with delivery < 7 days', async () => {
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Urgent')).toBeInTheDocument();
+    });
+  });
+
+  it('shows "Low" priority for quotation with delivery > 30 days', async () => {
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Low')).toBeInTheDocument();
+    });
+  });
+
+  it('fills all response dialog fields', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Respond'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Delivery Terms')).toBeInTheDocument();
+    });
+
+    // validUntil field (date input - not accessible via getByLabelText in jsdom)
+    const dateInput = document.querySelector('input[type="date"]');
+    if (dateInput) {
+      fireEvent.change(dateInput, { target: { value: '2026-12-31' } });
+    }
+
+    // paymentTerms starts as 'Net 30'
+    const paymentField = screen.getByLabelText('Payment Terms');
+    await user.clear(paymentField);
+    await user.type(paymentField, 'Net 60');
+
+    // deliveryTerms starts as 'FOB Origin'
+    const deliveryField = screen.getByLabelText('Delivery Terms');
+    await user.clear(deliveryField);
+    await user.type(deliveryField, 'CIF');
+
+    // notes starts as ''
+    const notesField = screen.getByLabelText('Additional Notes');
+    await user.type(notesField, 'In stock');
+
+    expect(screen.getByLabelText('Delivery Terms')).toHaveValue('CIF');
+    expect(screen.getByLabelText('Payment Terms')).toHaveValue('Net 60');
+    expect(screen.getByLabelText('Additional Notes')).toHaveValue('In stock');
+  });
+
+  it('shows adminNotes in details dialog', async () => {
+    const quotationWithNotes = {
+      ...mockQuotations[0],
+      adminNotes: 'Approved by admin',
+    };
+    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([quotationWithNotes]);
+
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    const detailsButtons = screen.getAllByText('Details');
+    await user.click(detailsButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Notes: Approved by admin')).toBeInTheDocument();
+    });
+  });
+
+  it('shows product specifications in details dialog', async () => {
+    const quotationWithSpecs = {
+      ...mockQuotations[0],
+      items: [
+        {
+          ...mockQuotations[0].items[0],
+          product: {
+            ...mockQuotations[0].items[0].product,
+            specifications: { material: 'Steel', pressure: '10 bar' },
+          },
+        },
+      ],
+    };
+    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([quotationWithSpecs]);
+
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    const detailsButtons = screen.getAllByText('Details');
+    await user.click(detailsButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('material: Steel')).toBeInTheDocument();
+      expect(screen.getByText('pressure: 10 bar')).toBeInTheDocument();
+    });
+  });
+
+  it('closes response dialog via Escape key (onClose handler)', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Respond'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Respond to Quote Request #1')).toBeInTheDocument();
+    });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(screen.queryByText('Respond to Quote Request #1')).not.toBeInTheDocument();
     });
   });
 });

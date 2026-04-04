@@ -567,7 +567,99 @@ describe('QuotationRequestPage', () => {
           /Calculando preços com descontos por volume|Preços com desconto por volume aplicado/i
         )
       ).toBeInTheDocument();
+    });
+  });
 
+  describe('Price Calculations Display', () => {
+    beforeEach(() => {
+      mockQuotationContext.items = mockQuotationItems;
+      mockQuotationContext.totalItems = 35;
+    });
+
+    it('shows price calculation table when calculations are available', async () => {
+      vi.mocked(quotationsService.calculateQuote).mockResolvedValue({
+        calculations: {
+          items: [
+            {
+              productId: 1,
+              basePrice: 1500,
+              quantity: 10,
+              tierDiscount: 0,
+              unitPriceAfterDiscount: 1500,
+              subtotal: 15000,
+              savings: 0,
+              appliedTier: null,
+            },
+          ],
+          totalSubtotal: 15000,
+          totalSavings: 0,
+          grandTotal: 15000,
+        },
+      } as any);
+
+      renderQuotationRequestPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Subtotal')).toBeInTheDocument();
+        expect(screen.getByText('Total Estimado')).toBeInTheDocument();
+      });
+    });
+
+    it('shows savings row when totalSavings > 0', async () => {
+      vi.mocked(quotationsService.calculateQuote).mockResolvedValue({
+        calculations: {
+          items: [
+            {
+              productId: 1,
+              basePrice: 1500,
+              quantity: 10,
+              tierDiscount: 0.1,
+              unitPriceAfterDiscount: 1350,
+              subtotal: 13500,
+              savings: 1500,
+              appliedTier: { minQuantity: 10, maxQuantity: null, discount: 0.1 },
+            },
+          ],
+          totalSubtotal: 15000,
+          totalSavings: 1500,
+          grandTotal: 13500,
+        },
+      } as any);
+
+      renderQuotationRequestPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Economia Total')).toBeInTheDocument();
+        expect(screen.getByText(/Preços com desconto por volume aplicado/i)).toBeInTheDocument();
+      });
+    });
+
+    it('shows tier discount chip when calculation has tierDiscount > 0', async () => {
+      vi.mocked(quotationsService.calculateQuote).mockResolvedValue({
+        calculations: {
+          items: [
+            {
+              productId: 1,
+              basePrice: 1500,
+              quantity: 10,
+              tierDiscount: 0.1,
+              unitPriceAfterDiscount: 1350,
+              subtotal: 13500,
+              savings: 1500,
+              appliedTier: { minQuantity: 10, maxQuantity: null, discount: 0.1 },
+            },
+          ],
+          totalSubtotal: 15000,
+          totalSavings: 1500,
+          grandTotal: 13500,
+        },
+      } as any);
+
+      renderQuotationRequestPage();
+
+      await waitFor(() => {
+        expect(screen.getByText(/10\.0% OFF/)).toBeInTheDocument();
+      });
     });
   });
 });

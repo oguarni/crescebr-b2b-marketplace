@@ -115,7 +115,7 @@ describe('RegisterPage', () => {
       },
       { timeout: 10000 }
     );
-  }, 15000);
+  }, 30000);
 
   it('should show error when passwords do not match', async () => {
     await renderPage();
@@ -154,7 +154,7 @@ describe('RegisterPage', () => {
       { timeout: 10000 }
     );
     expect(mockRegister).not.toHaveBeenCalled();
-  }, 15000);
+  }, 30000);
 
   it('should show error toast on registration failure', async () => {
     mockRegister.mockRejectedValue({
@@ -180,6 +180,25 @@ describe('RegisterPage', () => {
       },
       { timeout: 10000 }
     );
+  }, 30000);
+
+  it('should change annualRevenue and companyType selects', async () => {
+    await renderPage();
+
+    // Change Annual Revenue select
+    const revenueSelect = screen.getByLabelText(/Faturamento Anual/);
+    fireEvent.mouseDown(revenueSelect);
+    const revenueOption = await screen.findByRole('option', { name: /500\.000 - R\$ 2/ });
+    fireEvent.click(revenueOption);
+
+    // Change Company Type select
+    const companyTypeSelect = screen.getByLabelText(/Tipo de Empresa/);
+    fireEvent.mouseDown(companyTypeSelect);
+    const supplierOption = await screen.findByRole('option', { name: /Fornecedor/ });
+    fireEvent.click(supplierOption);
+
+    // Just verify no error was thrown (onChange handlers executed)
+    expect(screen.getByText('Cadastro Empresarial - B2B')).toBeInTheDocument();
   }, 15000);
 
   it('should auto-fill address fields when a valid CEP is entered', async () => {

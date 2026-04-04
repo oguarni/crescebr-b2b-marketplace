@@ -196,4 +196,121 @@ describe('AdminQuotationsPage', () => {
       expect(screen.getByText('Nenhuma cotação encontrada')).toBeInTheDocument();
     });
   });
+
+  it('shows loading spinner while fetching', () => {
+    mockGetAllQuotations.mockImplementation(
+      () => new Promise(resolve => setTimeout(() => resolve(mockQuotations), 500))
+    );
+    renderPage();
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+  });
+
+  it('handles accept quotation when window.confirm is true', async () => {
+    mockGetAllQuotations.mockResolvedValue(mockQuotations);
+    mockUpdateQuotation.mockResolvedValue({ ...mockQuotations[0], status: 'completed' });
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('#1')).toBeInTheDocument();
+    });
+
+    const acceptButtons = screen.getAllByText('Aceitar');
+    fireEvent.click(acceptButtons[0]);
+
+    await waitFor(() => {
+      expect(mockUpdateQuotation).toHaveBeenCalledWith(1, {
+        status: 'completed',
+        adminNotes: '',
+      });
+      expect(mockToast.success).toHaveBeenCalledWith('Cotação aceita com sucesso!');
+    });
+
+    vi.restoreAllMocks();
+  });
+
+  it('skips accept when window.confirm is false', async () => {
+    mockGetAllQuotations.mockResolvedValue(mockQuotations);
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('#1')).toBeInTheDocument();
+    });
+
+    const acceptButtons = screen.getAllByText('Aceitar');
+    fireEvent.click(acceptButtons[0]);
+
+    expect(mockUpdateQuotation).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('handles reject quotation when window.confirm is true', async () => {
+    mockGetAllQuotations.mockResolvedValue(mockQuotations);
+    mockUpdateQuotation.mockResolvedValue({ ...mockQuotations[0], status: 'rejected' });
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('#1')).toBeInTheDocument();
+    });
+
+    const rejectButtons = screen.getAllByText('Recusar');
+    fireEvent.click(rejectButtons[0]);
+
+    await waitFor(() => {
+      expect(mockUpdateQuotation).toHaveBeenCalledWith(1, {
+        status: 'rejected',
+        adminNotes: '',
+      });
+      expect(mockToast.success).toHaveBeenCalledWith('Cotação recusada com sucesso!');
+    });
+
+    vi.restoreAllMocks();
+  });
+
+  it('shows +N more label when quotation has more than 2 items', async () => {
+    const quotationWith3Items = {
+      ...mockQuotations[0],
+      items: [
+        { ...mockQuotations[0].items[0], id: 1 },
+        { ...mockQuotations[0].items[0], id: 2 },
+        { ...mockQuotations[0].items[0], id: 3 },
+      ],
+    };
+    mockGetAllQuotations.mockResolvedValue([quotationWith3Items]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('+1')).toBeInTheDocument();
+    });
+  });
+
+  it('handles accept quotation error', async () => {
+    mockGetAllQuotations.mockResolvedValue(mockQuotations);
+    mockUpdateQuotation.mockRejectedValue(new Error('Accept failed'));
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('#1')).toBeInTheDocument();
+    });
+
+    const acceptButtons = screen.getAllByText('Aceitar');
+    fireEvent.click(acceptButtons[0]);
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('Accept failed');
+    });
+
+    vi.restoreAllMocks();
+  });
 });

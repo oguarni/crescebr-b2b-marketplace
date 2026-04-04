@@ -170,4 +170,174 @@ describe('AdminTransactionMonitoringPage', () => {
       );
     });
   });
+
+  it('opens order detail dialog when Visibility icon is clicked', async () => {
+    mockAdminRequest.mockResolvedValue({ data: mockTransactionData });
+    render(<AdminTransactionMonitoringPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Buyer Corp')).toBeInTheDocument();
+    });
+
+    const visibilityButtons = screen.getAllByTitle('Ver detalhes');
+    fireEvent.click(visibilityButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('TR123456')).toBeInTheDocument();
+      expect(screen.getAllByText('Empresa').length).toBeGreaterThan(0);
+      expect(screen.getByText('Número de Rastreamento')).toBeInTheDocument();
+      expect(screen.getByText('ID da Cotação')).toBeInTheDocument();
+    });
+  });
+
+  it('shows Não definida when order has no estimatedDeliveryDate', async () => {
+    const dataWithoutDelivery = {
+      ...mockTransactionData,
+      orders: [{ ...mockTransactionData.orders[1], estimatedDeliveryDate: undefined }],
+    };
+    mockAdminRequest.mockResolvedValue({ data: dataWithoutDelivery });
+    render(<AdminTransactionMonitoringPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Another Corp')).toBeInTheDocument();
+    });
+
+    const visibilityButtons = screen.getAllByTitle('Ver detalhes');
+    fireEvent.click(visibilityButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Não definida')).toBeInTheDocument();
+      expect(screen.getByText('Não disponível')).toBeInTheDocument();
+    });
+  });
+
+  it('closes order detail dialog when Fechar is clicked', async () => {
+    mockAdminRequest.mockResolvedValue({ data: mockTransactionData });
+    render(<AdminTransactionMonitoringPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Buyer Corp')).toBeInTheDocument();
+    });
+
+    const visibilityButtons = screen.getAllByTitle('Ver detalhes');
+    fireEvent.click(visibilityButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Fechar')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Fechar'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Fechar')).not.toBeInTheDocument();
+    });
+  });
+
+  it('exports data when Exportar button is clicked', async () => {
+    mockAdminRequest.mockResolvedValue({ data: mockTransactionData });
+
+    const mockUrl = 'blob:mock-url';
+    const mockClick = vi.fn();
+    const mockCreateObjectURL = vi.fn().mockReturnValue(mockUrl);
+    const mockRevokeObjectURL = vi.fn();
+
+    global.URL.createObjectURL = mockCreateObjectURL;
+    global.URL.revokeObjectURL = mockRevokeObjectURL;
+
+    render(<AdminTransactionMonitoringPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Exportar')).toBeInTheDocument();
+    });
+
+    // Mock createElement after render so React's internal calls are not affected
+    const mockCreateElement = vi.spyOn(document, 'createElement').mockImplementationOnce(() => {
+      return { href: '', download: '', click: mockClick } as unknown as HTMLAnchorElement;
+    });
+
+    fireEvent.click(screen.getByText('Exportar'));
+
+    expect(mockCreateObjectURL).toHaveBeenCalled();
+    expect(mockClick).toHaveBeenCalled();
+    expect(mockRevokeObjectURL).toHaveBeenCalledWith(mockUrl);
+
+    mockCreateElement.mockRestore();
+  });
+
+  it('shows empty state when no orders', async () => {
+    mockAdminRequest.mockResolvedValue({
+      data: { ...mockTransactionData, orders: [], totalOrders: 0 },
+    });
+    render(<AdminTransactionMonitoringPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Nenhuma transação encontrada')).toBeInTheDocument();
+    });
+  });
+
+  it('changes status filter select', async () => {
+    mockAdminRequest.mockResolvedValue({ data: mockTransactionData });
+    render(<AdminTransactionMonitoringPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Filtros')).toBeInTheDocument();
+    });
+
+    const statusSelect = screen.getByRole('combobox');
+    fireEvent.mouseDown(statusSelect);
+
+    const processingOption = await screen.findByRole('option', { name: 'Processando' });
+    fireEvent.click(processingOption);
+
+    // Verify the select now shows the selected value (Processando not already in table)
+    expect(screen.getAllByText('Processando').length).toBeGreaterThan(0);
+  });
+
+  it('changes date range filter inputs', async () => {
+    mockAdminRequest.mockResolvedValue({ data: mockTransactionData });
+    render(<AdminTransactionMonitoringPage />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Data Inicial')).toBeInTheDocument();
+    });
+
+    const startDateInput = screen.getByLabelText('Data Inicial');
+    fireEvent.change(startDateInput, { target: { value: '2026-01-01' } });
+
+    const endDateInput = screen.getByLabelText('Data Final');
+    fireEvent.change(endDateInput, { target: { value: '2026-03-31' } });
+
+    expect(startDateInput).toHaveValue('2026-01-01');
+    expect(endDateInput).toHaveValue('2026-03-31');
+  });
+
+  it('covers processing and shipped status colors via order detail', async () => {
+    const dataWithAllStatuses = {
+      ...mockTransactionData,
+      orders: [
+        { ...mockTransactionData.orders[0], status: 'processing' },
+        { ...mockTransactionData.orders[1], status: 'shipped' },
+      ],
+    };
+    mockAdminRequest.mockResolvedValue({ data: dataWithAllStatuses });
+    render(<AdminTransactionMonitoringPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Processando')).toBeInTheDocument();
+      expect(screen.getByText('Enviado')).toBeInTheDocument();
+    });
+  });
+
+  it('covers cancelled status label', async () => {
+    const dataWithCancelled = {
+      ...mockTransactionData,
+      orders: [{ ...mockTransactionData.orders[0], status: 'cancelled' }],
+    };
+    mockAdminRequest.mockResolvedValue({ data: dataWithCancelled });
+    render(<AdminTransactionMonitoringPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Cancelado')).toBeInTheDocument();
+    });
+  });
 });

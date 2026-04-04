@@ -232,4 +232,98 @@ describe('useCart', () => {
 
     expect(result.current.isOpen).toBe(false);
   });
+
+  it('handles invalid JSON in localStorage gracefully', () => {
+    mockLocalStorage.getItem.mockReturnValueOnce('invalid-json{{{');
+
+    // Should not throw even with corrupted localStorage data
+    expect(() => {
+      renderHook(() => useCart(), { wrapper });
+    }).not.toThrow();
+  });
+
+  it('throws when useCart is used outside CartProvider', () => {
+    // Render without the CartProvider wrapper
+    expect(() => {
+      renderHook(() => useCart());
+    }).toThrow('useCart must be used within a CartProvider');
+  });
+
+  it('increments quantity of one item when cart has multiple products (covers map passthrough)', () => {
+    const { result } = renderHook(() => useCart(), { wrapper });
+
+    // Add two different products
+    act(() => {
+      result.current.addItem(mockProduct);
+    });
+    act(() => {
+      result.current.addItem(mockProduct2);
+    });
+
+    expect(result.current.items).toHaveLength(2);
+
+    // Add product1 again — map iterates both items, product2 hits the passthrough branch
+    act(() => {
+      result.current.addItem(mockProduct);
+    });
+
+    expect(result.current.items).toHaveLength(2);
+    const p1 = result.current.items.find(i => i.productId === mockProduct.id);
+    expect(p1?.quantity).toBe(2);
+    const p2 = result.current.items.find(i => i.productId === mockProduct2.id);
+    expect(p2?.quantity).toBe(1);
+  });
+
+  it('updates quantity of one item when cart has multiple products (covers UPDATE_QUANTITY map passthrough)', () => {
+    let callCount = 0;
+    const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => 1000 + callCount++);
+
+    const { result } = renderHook(() => useCart(), { wrapper });
+
+    // Add two different products with distinct Date.now() ids
+    act(() => {
+      result.current.addItem(mockProduct);
+    });
+    act(() => {
+      result.current.addItem(mockProduct2);
+    });
+
+    expect(result.current.items).toHaveLength(2);
+
+    const item1 = result.current.items.find(i => i.productId === mockProduct.id)!;
+    const item2 = result.current.items.find(i => i.productId === mockProduct2.id)!;
+    expect(item1.id).not.toBe(item2.id); // ensure distinct ids
+
+    // Update quantity of product1 — map iterates both items, product2 hits the passthrough branch
+    act(() => {
+      result.current.updateQuantity(item1.id, 10);
+    });
+
+    const p1 = result.current.items.find(i => i.productId === mockProduct.id);
+    expect(p1?.quantity).toBe(10);
+    const p2 = result.current.items.find(i => i.productId === mockProduct2.id);
+    expect(p2?.quantity).toBe(1); // unchanged
+
+    dateSpy.mockRestore();
+  });
+
+  it('loads cart from localStorage on mount', () => {
+    const savedItems: import('@shared/types').CartItem[] = [
+      {
+        id: 999,
+        productId: mockProduct.id,
+        product: mockProduct,
+        quantity: 3,
+        totalPrice: mockProduct.price * 3,
+      },
+    ];
+    mockLocalStorage.getItem.mockReturnValueOnce(JSON.stringify(savedItems));
+
+    const { result } = renderHook(() => useCart(), { wrapper });
+
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.items[0].id).toBe(999);
+    expect(result.current.totalItems).toBe(3);
+    expect(result.current.totalPrice).toBe(mockProduct.price * 3);
+  });
 });
