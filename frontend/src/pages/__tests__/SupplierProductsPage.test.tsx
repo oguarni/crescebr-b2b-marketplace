@@ -374,7 +374,7 @@ describe('SupplierProductsPage', () => {
   it('shows no products found message on All tab when all products filtered out', async () => {
     vi.mocked(productsService.getAllProducts).mockResolvedValue({ products: [] });
     await renderPage();
-    const user = userEvent.setup();
+    const _user = userEvent.setup();
 
     await waitFor(() => {
       expect(
@@ -512,7 +512,7 @@ describe('SupplierProductsPage', () => {
       ...mockProducts[0],
       id: 100,
       name: 'Unknown Availability Product',
-      availability: 'unknown_value' as any,
+      availability: 'unknown_value' as unknown as (typeof mockProducts)[0]['availability'],
     };
     vi.mocked(productsService.getAllProducts).mockResolvedValue({
       products: [unknownAvailabilityProduct],

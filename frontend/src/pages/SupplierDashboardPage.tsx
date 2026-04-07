@@ -63,10 +63,6 @@ const SupplierDashboardPage: React.FC = () => {
   // lowStockProducts not shown in the current UI but kept for backend completeness if needed
   const [, setLowStockProducts] = useState<Product[]>([]);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
   const loadDashboardData = async () => {
     setLoading(true);
     try {
@@ -83,6 +79,11 @@ const SupplierDashboardPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadMetrics = async () => {
     try {

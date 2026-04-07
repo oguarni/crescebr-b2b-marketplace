@@ -89,7 +89,7 @@ export const ApprovedSupplierOnly: React.FC<{
   </PermissionGuard>
 );
 
-// Hook for permission-based styles or classes
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePermissionStyles = () => {
   const permissions = usePermissions();
 

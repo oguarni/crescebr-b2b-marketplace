@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -60,7 +60,7 @@ const QuotationRequestPage: React.FC = () => {
   const [priceCalculations, setPriceCalculations] = useState<QuoteComparisonResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
 
-  const calculateRealTimePricing = async () => {
+  const calculateRealTimePricing = useCallback(async () => {
     if (items.length === 0) {
       setPriceCalculations(null);
       return;
@@ -80,11 +80,11 @@ const QuotationRequestPage: React.FC = () => {
     } finally {
       setIsCalculating(false);
     }
-  };
+  }, [items]);
 
   useEffect(() => {
     calculateRealTimePricing();
-  }, [items]);
+  }, [calculateRealTimePricing]);
 
   const handleQuantityChange = (itemId: number, newQuantity: number) => {
     if (newQuantity <= 0) {

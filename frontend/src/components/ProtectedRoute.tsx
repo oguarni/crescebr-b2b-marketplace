@@ -91,7 +91,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
 export default ProtectedRoute;
 
-// Higher-order component for conditional rendering based on permissions
+// eslint-disable-next-line react-refresh/only-export-components
 export const withPermissions = (
   allowedRoles: UserRole[],
   fallback?: React.ComponentType | React.ReactElement
@@ -114,7 +114,7 @@ export const withPermissions = (
   };
 };
 
-// Hook for checking permissions
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePermissions = () => {
   const { user } = useAuth();
 
