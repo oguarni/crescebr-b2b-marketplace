@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Remove a variável PREFIX para evitar conflito com NVM no GitHub Desktop
 unset PREFIX
 
