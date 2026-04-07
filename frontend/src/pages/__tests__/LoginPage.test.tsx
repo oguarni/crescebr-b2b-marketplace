@@ -19,12 +19,14 @@ vi.mock('../../contexts/AuthContext', () => ({
   }),
 }));
 
+let mockLocationState: { from?: { pathname: string } } | null = null;
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
-    useLocation: () => ({ state: null, pathname: '/login' }),
+    useLocation: () => ({ state: mockLocationState, pathname: '/login' }),
   };
 });
 
@@ -45,6 +47,7 @@ const renderPage = async () => {
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLocationState = null;
   });
 
   it('should render the login form', async () => {
@@ -121,6 +124,49 @@ describe('LoginPage', () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Credenciais inválidas');
+    });
+  });
+
+  it('should use axiosErr.message when response.data.error is absent', async () => {
+    const user = userEvent.setup();
+    mockLogin.mockRejectedValue({ message: 'Network Error' });
+    await renderPage();
+
+    await user.type(screen.getByLabelText(/CNPJ/), '11.222.333/0001-81');
+    await user.type(screen.getByLabelText(/Senha/), 'wrong');
+    await user.click(screen.getByRole('button', { name: /Entrar/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Network Error');
+    });
+  });
+
+  it('should use default message when no error details available', async () => {
+    const user = userEvent.setup();
+    mockLogin.mockRejectedValue({});
+    await renderPage();
+
+    await user.type(screen.getByLabelText(/CNPJ/), '11.222.333/0001-81');
+    await user.type(screen.getByLabelText(/Senha/), 'wrong');
+    await user.click(screen.getByRole('button', { name: /Entrar/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Erro ao fazer login');
+    });
+  });
+
+  it('should redirect to from path when location state has from', async () => {
+    const user = userEvent.setup();
+    mockLocationState = { from: { pathname: '/dashboard' } };
+    mockLogin.mockResolvedValue({});
+    await renderPage();
+
+    await user.type(screen.getByLabelText(/CNPJ/), '11.222.333/0001-81');
+    await user.type(screen.getByLabelText(/Senha/), 'password123');
+    await user.click(screen.getByRole('button', { name: /Entrar/i }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true });
     });
   });
 

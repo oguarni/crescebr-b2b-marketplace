@@ -121,7 +121,7 @@ Also exports `asyncHandler` wrapper for async route handlers.
 
 ---
 
-## Known Issues (Diagnostic: 2026-03-26)
+## Known Issues (Updated: 2026-04-04)
 
 ### Test Coverage: ✅ EXCELLENT
 
@@ -133,11 +133,11 @@ All middleware files at 100% statement coverage (auth.ts, rbac.ts, rateLimiting.
 - ~~Auth middleware only 29.78%~~ → 100% coverage
 - ~~CORS `origin: true`~~ → Now environment-aware (`server.ts:20-30`)
 - ~~404 handler commented out~~ → Active (`server.ts:48-54`)
+- ~~Lint error: `rateLimiting.ts:131` — `req` param should be `_req`~~ → Fixed (2026-04-04)
 
 ### Remaining Warnings
 
 - **DB hits in middleware**: `requirePermission`, `isApprovedSupplier`, `canModifyProduct`, `canAccessOrder` all hit DB. Consider request-level caching if latency becomes an issue.
-- **Lint error**: `rateLimiting.ts:131` — `req` param should be `_req` (unused in adminRateLimit skipIf)
 - **`addPermissionsToResponse`**: Exported from `rbac.ts` but not wired into any route — safe, no production header leak.
 
 ---

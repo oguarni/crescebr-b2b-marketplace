@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import HomePage from '../HomePage';
@@ -570,6 +570,32 @@ describe('HomePage', () => {
     const cards = document.querySelectorAll('.MuiCard-root');
     expect(cards.length).toBeGreaterThanOrEqual(2);
   });
+
+  it('should show loading spinner when auth is loading', async () => {
+    const authModule = await import('../../contexts/AuthContext');
+    vi.spyOn(authModule, 'useAuth').mockReturnValue({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      user: null as any,
+      token: null,
+      isAuthenticated: false,
+      isLoading: true,
+      login: vi.fn(),
+      loginWithEmail: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+      fetchUser: vi.fn(),
+    });
+
+    await act(async () => {
+      render(
+        <BrowserRouter>
+          <HomePage />
+        </BrowserRouter>
+      );
+    });
+
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+  });
 });
 
 describe('HomePage - Admin View', () => {
@@ -588,6 +614,7 @@ describe('HomePage - Admin View', () => {
     // Override auth mock to admin role
     const authModule = await import('../../contexts/AuthContext');
     vi.spyOn(authModule, 'useAuth').mockReturnValue({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       user: { id: 1, role: 'admin', email: 'admin@test.com' } as any,
       token: 'mock-token',
       isAuthenticated: true,
@@ -611,6 +638,7 @@ describe('HomePage - Admin View', () => {
   it('should navigate to admin products page when Manage Products is clicked', async () => {
     const authModule = await import('../../contexts/AuthContext');
     vi.spyOn(authModule, 'useAuth').mockReturnValue({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       user: { id: 1, role: 'admin', email: 'admin@test.com' } as any,
       token: 'mock-token',
       isAuthenticated: true,
@@ -636,6 +664,7 @@ describe('HomePage - Admin View', () => {
   it('should navigate to admin quotations page when Manage Quotations is clicked', async () => {
     const authModule = await import('../../contexts/AuthContext');
     vi.spyOn(authModule, 'useAuth').mockReturnValue({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       user: { id: 1, role: 'admin', email: 'admin@test.com' } as any,
       token: 'mock-token',
       isAuthenticated: true,
@@ -674,6 +703,7 @@ describe('HomePage - Customer View', () => {
   it('should add to quotation request instead of cart for customer role', async () => {
     const authModule = await import('../../contexts/AuthContext');
     vi.spyOn(authModule, 'useAuth').mockReturnValue({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       user: { id: 2, role: 'customer', email: 'customer@test.com' } as any,
       token: 'mock-token',
       isAuthenticated: true,
@@ -704,5 +734,48 @@ describe('HomePage - Customer View', () => {
       await user.click(addButtons[0]);
       expect(mockAddToQuotationRequest).toHaveBeenCalled();
     }
+  });
+
+  it('should select and clear specs filter via Autocomplete', async () => {
+    vi.mocked(productsService.getAvailableSpecifications).mockResolvedValue({
+      color: ['red', 'blue', 'green'],
+    });
+
+    const user = userEvent.setup();
+    await renderHomePage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+    });
+
+    // Open advanced filters
+    const filterButton = screen
+      .getAllByRole('button')
+      .find(btn => btn.querySelector('[data-testid="TuneIcon"]'));
+    await user.click(filterButton!);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Color')).toBeInTheDocument();
+    });
+
+    // Type in the autocomplete to open the dropdown
+    const colorInput = screen.getByLabelText('Color');
+    await user.type(colorInput, 'red');
+
+    const option = await screen.findByRole('option', { name: 'red' });
+    await user.click(option);
+
+    // The active specs chip should appear
+    await waitFor(() => {
+      expect(screen.getByText('color: red')).toBeInTheDocument();
+    });
+
+    // Delete the chip via the CancelIcon (onDelete handler → removeSpecsFilter)
+    const cancelIcon = screen.getByTestId('CancelIcon');
+    fireEvent.click(cancelIcon);
+
+    await waitFor(() => {
+      expect(screen.queryByText('color: red')).not.toBeInTheDocument();
+    });
   });
 });

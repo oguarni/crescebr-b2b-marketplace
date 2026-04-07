@@ -335,26 +335,18 @@ describe('CheckoutPage', () => {
   }, 30000);
 
   it('should show validation error when shipping info is missing', async () => {
-    const user = userEvent.setup();
     await renderCheckoutPage();
 
-    // Fill card fields but skip CEP
-    await user.type(screen.getByLabelText('Número do Cartão'), '4111111111111111');
-    await user.type(screen.getByLabelText('Nome no Cartão'), 'Test User');
-    await user.type(screen.getByLabelText('Validade'), '1228');
-    await user.type(screen.getByLabelText('CVV'), '123');
-
-    // Button is disabled without shippingInfo; submit the form directly
+    // Submit the form directly without filling CEP/shipping info
     const form = document.querySelector('form');
-    fireEvent.submit(form!);
+    expect(form).not.toBeNull();
 
-    await waitFor(
-      () => {
-        expect(toast.error).toHaveBeenCalled();
-      },
-      { timeout: 10000 }
-    );
-  }, 15000);
+    await act(async () => {
+      fireEvent.submit(form!);
+    });
+
+    expect(toast.error).toHaveBeenCalledWith('Informações de entrega são obrigatórias');
+  });
 
   it('should display security information', async () => {
     await renderCheckoutPage();
@@ -541,5 +533,35 @@ describe('CheckoutPage', () => {
       fireEvent.error(imgs[0]);
       expect(imgs[0].src).toContain('data:image');
     }
+  });
+
+  it('should show error message when CEP lookup fails with Error instance', async () => {
+    const user = userEvent.setup();
+    vi.mocked(viaCepService.isValidCep).mockReturnValue(true);
+    vi.mocked(viaCepService.getAddressByCep).mockRejectedValue(new Error('CEP não encontrado'));
+
+    await renderCheckoutPage();
+
+    const cepInput = screen.getByLabelText('CEP');
+    await user.type(cepInput, '99999999');
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('CEP não encontrado');
+    });
+  });
+
+  it('should show default error message when CEP lookup fails with non-Error', async () => {
+    const user = userEvent.setup();
+    vi.mocked(viaCepService.isValidCep).mockReturnValue(true);
+    vi.mocked(viaCepService.getAddressByCep).mockRejectedValue('string error');
+
+    await renderCheckoutPage();
+
+    const cepInput = screen.getByLabelText('CEP');
+    await user.type(cepInput, '00000000');
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Erro ao calcular frete');
+    });
   });
 });

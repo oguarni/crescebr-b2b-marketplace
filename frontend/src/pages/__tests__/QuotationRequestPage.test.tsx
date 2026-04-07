@@ -595,6 +595,7 @@ describe('QuotationRequestPage', () => {
           totalSavings: 0,
           grandTotal: 15000,
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       renderQuotationRequestPage();
@@ -624,6 +625,7 @@ describe('QuotationRequestPage', () => {
           totalSavings: 1500,
           grandTotal: 13500,
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       renderQuotationRequestPage();
@@ -653,6 +655,7 @@ describe('QuotationRequestPage', () => {
           totalSavings: 1500,
           grandTotal: 13500,
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       renderQuotationRequestPage();

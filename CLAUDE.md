@@ -168,14 +168,19 @@ All backend endpoints are served under `API_PREFIX` (default: `/api/v1`).
 
 ## Custom Commands
 
-| Command            | Purpose                                                |
-| ------------------ | ------------------------------------------------------ |
-| `/diagnose`        | Full project diagnostic (build, lint, tests, security) |
-| `/test-backend`    | Run backend tests with coverage                        |
-| `/test-frontend`   | Run frontend tests with coverage                       |
-| `/security-audit`  | Security audit of middleware and routes                |
-| `/coverage-report` | Generate and analyze test coverage                     |
-| `/fix-tests`       | Find and fix failing tests                             |
+| Command             | Purpose                                                |
+| ------------------- | ------------------------------------------------------ |
+| `/diagnose`         | Full project diagnostic (build, lint, tests, security) |
+| `/test-backend`     | Run backend tests with coverage                        |
+| `/test-frontend`    | Run frontend tests with coverage                       |
+| `/security-audit`   | Security audit of middleware and routes                |
+| `/coverage-report`  | Generate and analyze test coverage                     |
+| `/fix-tests`        | Find and fix failing tests                             |
+| `/db-migrate`       | Run Sequelize migrations                               |
+| `/db-seed`          | Seed the database with test data                       |
+| `/docker-up`        | Start all Docker services                              |
+| `/docker-down`      | Stop all Docker services                               |
+| `/build-frontend`   | Production build + bundle size check                   |
 
 ---
 
@@ -199,7 +204,7 @@ After completing any refactoring task:
 
 ---
 
-## Known Issues (Updated 2026-04-03)
+## Known Issues (Updated 2026-04-04)
 
 ### Fixed (historical — see git log for details)
 - CORS, 404 handler, middleware coverage, backend coverage, service extraction, Dockerfiles, module system, header leaks, import endpoints, rate limiting, Redis migration, express-validator v7, frontend Dockerfile — all resolved
@@ -210,12 +215,13 @@ After completing any refactoring task:
 - `POST /auth/logout` missing `authenticateJWT` — fixed (2026-04-03)
 - JWT fallback secret active in staging/QA — tightened to `NODE_ENV === 'development'` only (2026-04-03)
 - Rating PUT/DELETE lacked role restriction — added `requireRole` middleware (2026-04-03)
+- Backend lint errors (`fail` in ratingsService, `_req` prefix, stale eslint-disable) — fixed (2026-04-04)
+- DRY violation: `authController.ts` `buildTokenPayload` extracted — fixed (2026-04-04)
+- Bundle size: `manualChunks` added to Vite config — fixed (2026-04-04)
+- Vulnerabilities: `sqlite3` upgraded to v6, root `overrides` added — 0 findings (2026-04-04)
+- Docker security: `USER node` in backend Dockerfile; DB/Redis ports bound to `127.0.0.1` — fixed (2026-04-04)
+- Test credentials visible in LoginPage UI — wrapped in `import.meta.env.DEV` (2026-04-04)
 
 ### Open
-1. **Backend lint errors**: 8x `fail` not defined in `ratingsService.test.ts`, 1 unused `req` in `rateLimiting.ts:131`, 1 stale eslint-disable in `productsController.test.ts`
-2. **Backend tests OOM**: `jest --runInBand` hits heap limit without `--max-old-space-size=4096` in `backend/package.json` test script (CI has it via `NODE_OPTIONS`)
-3. **Architecture (intentional)**: Services use direct Sequelize model access — this is the accepted pattern (KISS/YAGNI). `quotation.service.ts` uses repositories as an example, not a mandate. `order.repository.ts` exists but no service uses it — document and leave as-is.
-4. **DRY violation**: `authController.ts` has 5x identical `generateTokenPair` payload construction — extract `buildTokenPayload(user)` helper
-5. **Bundle size**: `AdminTransactionMonitoringPage` 338KB, `index.js` 529KB (exceeds Vite 500KB warning) — add `manualChunks` to Vite config
-6. **Vulnerabilities**: npm audit findings — run `npm audit fix` and add `overrides` for unfixable transitive deps
-7. **Docker security**: Backend Dockerfile runs as root (add `USER node`); DB/Redis ports bound to `0.0.0.0` (bind to `127.0.0.1`)
+1. **Backend tests OOM**: `jest --runInBand` hits heap limit without `--max-old-space-size=4096` in `backend/package.json` test script (CI has it via `NODE_OPTIONS`)
+2. **Architecture (intentional)**: Services use direct Sequelize model access — this is the accepted pattern (KISS/YAGNI). `quotation.service.ts` uses repositories as an example, not a mandate. `order.repository.ts` exists but no service uses it — document and leave as-is.

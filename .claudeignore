@@ -159,3 +159,10 @@ backend/nodemon.json
 # Migration scripts (one-time, not core logic)
 # ──────────────────────────────────────────────
 backend/scripts/
+
+# ──────────────────────────────────────────────
+# AI / prompt artifacts (not project source)
+# ──────────────────────────────────────────────
+*session-is-being-continued*.txt
+*-conversation*.txt
+Project Diagnostic.md

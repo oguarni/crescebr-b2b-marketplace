@@ -214,7 +214,6 @@ describe('AdminProductsPage', () => {
     });
 
     it('should create product successfully', async () => {
-      const user = userEvent.setup();
       await renderAdminProductsPage();
 
       await waitFor(() => {
@@ -222,9 +221,11 @@ describe('AdminProductsPage', () => {
       });
 
       const newProductButton = screen.getByRole('button', { name: /novo produto/i });
-      await user.click(newProductButton);
+      fireEvent.click(newProductButton);
 
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
 
       // Use fireEvent.change for faster form filling (avoids per-keystroke delays)
       fireEvent.change(screen.getByLabelText(/nome do produto/i), {
@@ -267,7 +268,7 @@ describe('AdminProductsPage', () => {
       });
 
       const saveButton = screen.getByRole('button', { name: /salvar/i });
-      await user.click(saveButton);
+      fireEvent.click(saveButton);
 
       await waitFor(() => {
         expect(productsService.createProduct).toHaveBeenCalledWith(
@@ -547,6 +548,88 @@ describe('AdminProductsPage', () => {
         expect(previewImage).toBeInTheDocument();
         expect(previewImage).toHaveAttribute('src', 'https://example.com/test.jpg');
       });
+    });
+
+    it('should truncate description longer than 50 chars in table', async () => {
+      const longDescProduct = {
+        ...mockProducts[0],
+        id: 99,
+        name: 'Long Description Product',
+        description: 'A'.repeat(60), // 60 chars - exceeds 50
+      };
+      vi.mocked(productsService.getAllProducts).mockResolvedValue({
+        products: [longDescProduct],
+        pagination: { total: 1, page: 1, limit: 100, totalPages: 1 },
+      });
+
+      await renderAdminProductsPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Long Description Product')).toBeInTheDocument();
+        // First 50 chars + '...'
+        expect(screen.getByText(`${'A'.repeat(50)}...`)).toBeInTheDocument();
+      });
+    });
+
+    it('should handle create product error gracefully', async () => {
+      const user = userEvent.setup();
+      vi.mocked(productsService.createProduct).mockRejectedValue(new Error('Server error'));
+
+      await renderAdminProductsPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /novo produto/i }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByLabelText(/nome do produto/i), {
+        target: { value: 'Test Product' },
+      });
+      fireEvent.change(screen.getByLabelText(/descrição/i), { target: { value: 'Test desc' } });
+      fireEvent.change(screen.getByLabelText(/preço/i), { target: { value: '100' } });
+      fireEvent.change(screen.getByLabelText(/url da imagem/i), {
+        target: { value: 'https://example.com/img.jpg' },
+      });
+
+      const categorySelect = screen.getByRole('combobox');
+      fireEvent.mouseDown(categorySelect);
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('option', { name: 'Industrial Equipment' }));
+
+      fireEvent.click(screen.getByRole('button', { name: /salvar/i }));
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('Server error');
+      });
+    }, 10000);
+
+    it('should trigger image onError in edit dialog', async () => {
+      const user = userEvent.setup();
+      await renderAdminProductsPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+      });
+
+      const editButtons = screen.getAllByTitle('Editar');
+      await user.click(editButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByAltText('Preview')).toBeInTheDocument();
+      });
+
+      const previewImg = screen.getByAltText('Preview');
+      fireEvent.error(previewImg);
+      // onError handler hides the image
+      expect(previewImg.style.display).toBe('none');
     });
 
     it('should handle new category creation', async () => {

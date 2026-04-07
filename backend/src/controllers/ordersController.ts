@@ -25,7 +25,7 @@ export const createOrderFromQuotation = asyncHandler(
 );
 
 export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { orderId } = req.params;
+  const orderId = req.params.orderId as string;
   const { status, trackingNumber, estimatedDeliveryDate, notes, nfeAccessKey, nfeUrl } = req.body;
   const companyId = req.user?.id!;
 
@@ -88,7 +88,7 @@ export const getUserOrders = asyncHandler(async (req: AuthenticatedRequest, res:
 });
 
 export const getOrderHistory = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { orderId } = req.params;
+  const orderId = req.params.orderId as string;
   const companyId = req.user?.id!;
   const userRole = req.user?.role!;
 
@@ -152,7 +152,7 @@ export const getOrderStats = asyncHandler(async (req: AuthenticatedRequest, res:
 });
 
 export const updateOrderNfe = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { orderId } = req.params;
+  const orderId = req.params.orderId as string;
   const { nfeAccessKey, nfeUrl } = req.body;
   const requesterId = req.user?.id!;
   const requesterRole = req.user?.role!;

@@ -184,6 +184,42 @@ describe('Rate Limiting Middleware', () => {
       );
     });
 
+    it('should use windowSeconds as fallback when ttl is zero', async () => {
+      mockRedis.ttl.mockResolvedValueOnce(0); // ttl <= 0
+      const windowMs = 60000;
+      const windowSeconds = windowMs / 1000;
+      const limiter = createCustomRateLimit({ windowMs, maxRequests: 5 });
+      const req = createMockReq({ ip: '200.1.0.1' });
+      const res = createMockRes();
+
+      await runMiddleware(limiter, req, res, mockNext);
+
+      const setCall = (res.set as jest.Mock).mock.calls[0][0];
+      const resetTime = Number(setCall['X-RateLimit-Reset']);
+      const expectedMin = Math.ceil(Date.now() / 1000) + windowSeconds - 1;
+      expect(resetTime).toBeGreaterThanOrEqual(expectedMin);
+      expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+
+    it('should use windowSeconds as retryAfter when ttl is negative on 429', async () => {
+      const windowMs = 60000;
+      const windowSeconds = windowMs / 1000;
+      const limiter = createCustomRateLimit({ windowMs, maxRequests: 1 });
+      const req = createMockReq({ ip: '200.1.0.2' });
+
+      // First request passes normally
+      await runMiddleware(limiter, req, createMockRes(), mockNext);
+
+      // Second request — ttl returns -1 (key expired or doesn't exist)
+      mockRedis.ttl.mockResolvedValueOnce(-1);
+      const res = createMockRes();
+      await runMiddleware(limiter, req, res, mockNext);
+
+      expect(res.status).toHaveBeenCalledWith(429);
+      const jsonCall = (res.json as jest.Mock).mock.calls[0][0];
+      expect(jsonCall.retryAfter).toBe(windowSeconds);
+    });
+
     it('should reset counter when store is cleared (window expiry simulation)', async () => {
       const limiter = createCustomRateLimit({ windowMs: 5000, maxRequests: 1 });
       const req = createMockReq({ ip: '200.0.0.6' });

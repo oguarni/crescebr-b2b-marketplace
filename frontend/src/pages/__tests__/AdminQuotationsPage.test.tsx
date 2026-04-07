@@ -313,4 +313,65 @@ describe('AdminQuotationsPage', () => {
 
     vi.restoreAllMocks();
   });
+
+  it('skips reject when window.confirm is false', async () => {
+    mockGetAllQuotations.mockResolvedValue(mockQuotations);
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('#1')).toBeInTheDocument();
+    });
+
+    const rejectButtons = screen.getAllByText('Recusar');
+    fireEvent.click(rejectButtons[0]);
+
+    expect(mockUpdateQuotation).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('handles reject quotation error', async () => {
+    mockGetAllQuotations.mockResolvedValue(mockQuotations);
+    mockUpdateQuotation.mockRejectedValue(new Error('Reject failed'));
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('#1')).toBeInTheDocument();
+    });
+
+    const rejectButtons = screen.getAllByText('Recusar');
+    fireEvent.click(rejectButtons[0]);
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('Reject failed');
+    });
+
+    vi.restoreAllMocks();
+  });
+
+  it('shows default error message when reject throws non-Error', async () => {
+    mockGetAllQuotations.mockResolvedValue(mockQuotations);
+    mockUpdateQuotation.mockRejectedValue('string-error');
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('#1')).toBeInTheDocument();
+    });
+
+    const rejectButtons = screen.getAllByText('Recusar');
+    fireEvent.click(rejectButtons[0]);
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('Erro ao recusar cotação');
+    });
+
+    vi.restoreAllMocks();
+  });
 });

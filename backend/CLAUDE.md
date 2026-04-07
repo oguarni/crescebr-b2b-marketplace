@@ -656,18 +656,18 @@ npm run lint         # Lint code
 
 ---
 
-## Known Issues (Updated 2026-04-03)
+## Known Issues (Updated 2026-04-04)
 
 ### Fixed (historical)
 - Build errors, test compile, Dockerfiles, module system, endpoint protection, rate limiting, header leaks, `.env.test` in git, Redis migration, express-validator v7 — all resolved
 - `POST /auth/logout` missing `authenticateJWT` — fixed
 - JWT fallback secret active in staging/QA — fixed (now `development`-only)
 - Rating PUT/DELETE lacked role restriction — fixed
+- Lint errors (`fail` in ratingsService, unused `req`, stale eslint-disable) — fixed (2026-04-04)
+- DRY: `buildTokenPayload` helper extracted in `authController.ts` — fixed (2026-04-04)
+- Vulnerabilities: `sqlite3` upgraded to v6 — 0 audit findings (2026-04-04)
+- Docker: `USER node` in backend Dockerfile; DB/Redis ports bound to `127.0.0.1` — fixed (2026-04-04)
 
 ### Open
 1. **Tests OOM**: `jest --runInBand` hits heap limit without `--max-old-space-size=4096` in `backend/package.json` test script (CI has it via `NODE_OPTIONS`)
-2. **Lint errors**: 8x `fail` not defined in `ratingsService.test.ts`, unused `req` in `rateLimiting.ts:131`, stale eslint-disable in `productsController.test.ts:832`
-3. **Architecture (intentional)**: Services use direct model access — see Phase 1 note above. `order.repository.ts` is intentionally unused.
-4. **DRY**: `authController.ts` has 5x identical `generateTokenPair` payload construction — extract `buildTokenPayload(user)` helper
-5. **Vulnerabilities**: npm audit findings (1 critical, 20 high) — run `npm audit fix` and add `overrides` for unfixable deps
-6. **Docker**: Backend Dockerfile runs as root; DB/Redis ports exposed on all interfaces
+2. **Architecture (intentional)**: Services use direct model access — see Phase 1 note above. `order.repository.ts` is intentionally unused.

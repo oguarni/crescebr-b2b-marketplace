@@ -410,6 +410,66 @@ describe('Navbar', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/admin/analytics');
   });
 
+  it('navigates to admin company verification when menu item clicked', async () => {
+    mockAuthContext.isAuthenticated = true;
+    mockAuthContext.user = {
+      id: 3,
+      email: 'admin@example.com',
+      cpf: '123',
+      address: '',
+      role: 'admin',
+      companyName: 'Admin Co',
+      corporateName: 'Admin Co',
+      cnpj: '12.345.678/0001-90',
+      cnpjValidated: true,
+      industrySector: 'tech',
+      companyType: 'both',
+      status: 'approved',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    renderNavbar();
+    fireEvent.click(screen.getByLabelText('account of current user'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Verificação de Empresas')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Verificação de Empresas'));
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/company-verification');
+  });
+
+  it('navigates to admin settings when menu item clicked', async () => {
+    mockAuthContext.isAuthenticated = true;
+    mockAuthContext.user = {
+      id: 3,
+      email: 'admin@example.com',
+      cpf: '123',
+      address: '',
+      role: 'admin',
+      companyName: 'Admin Co',
+      corporateName: 'Admin Co',
+      cnpj: '12.345.678/0001-90',
+      cnpjValidated: true,
+      industrySector: 'tech',
+      companyType: 'both',
+      status: 'approved',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    renderNavbar();
+    fireEvent.click(screen.getByLabelText('account of current user'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Configurações')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Configurações'));
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/settings');
+  });
+
   it('shows supplier (pending) label for pending supplier', async () => {
     mockAuthContext.isAuthenticated = true;
     mockAuthContext.user = {

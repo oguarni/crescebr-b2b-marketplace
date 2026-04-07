@@ -32,12 +32,48 @@ Both jobs upload coverage artifacts on completion.
 **Network**: `crescebr-net` (bridge)
 **Volume**: `postgres_data` (persistent)
 
-## Known Issues (2026-03-28)
+## Database
 
-1. **Cache path bug**: `cache-dependency-path` points to `backend/package-lock.json` and `frontend/package-lock.json` — these don't exist. Only root `package-lock.json` exists. Fix: change both to `package-lock.json`.
-2. **Workspace install**: `npm ci` runs in subdirectories (`working-directory: backend`) but npm workspaces require install from root. Fix: install from root, then run lint/build/test in subdirectories.
-3. **Missing shared build**: Backend and frontend depend on `@shared/types` but CI doesn't build shared first. Fix: add `npm run shared:build` step before backend/frontend jobs, or restructure as a single job with ordered steps.
-4. **Backend tests OOM**: May need `NODE_OPTIONS=--max-old-space-size=4096` environment variable in CI.
+**Migrations**: `backend/src/migrations/` — Sequelize CLI migrations for schema changes
+
+Run migrations: `cd backend && npm run db:migrate`
+Undo last migration: `cd backend && npm run db:migrate:undo`
+
+**Seeders**: `backend/src/seeders/` — test data for development
+
+Seed all: `cd backend && npm run db:seed`
+Undo all seeds: `cd backend && npm run db:seed:undo`
+
+**Migration order matters**: migrations run in filename-timestamp order. Always `db:migrate` before `db:seed`.
+
+---
+
+## Redis
+
+Used for rate limiting. Connection via `REDIS_URL` env var (default: `redis://localhost:6379`).
+
+Rate limiter **fails open** on Redis errors — intentional tradeoff (availability > strict limiting).
+
+---
+
+## Port Reference
+
+| Service    | Dev Port | Docker Port | Notes                   |
+| ---------- | -------- | ----------- | ----------------------- |
+| Frontend   | 5173     | 8080        | Vite dev / Nginx prod   |
+| Backend    | 3001     | 3001        | Express API             |
+| PostgreSQL | 5432     | 5432        | Bind `127.0.0.1` in prod|
+| Redis      | 6379     | 6379        | Bind `127.0.0.1` in prod|
+
+---
+
+## Known Issues (Updated 2026-04-04)
+
+### Fixed
+1. ~~Cache path bug~~ — Only root `package-lock.json` exists; subdirectory paths removed
+2. ~~Workspace install~~ — Install from root, run build/test in subdirectories
+3. ~~Missing shared build~~ — `npm run shared:build` added before backend/frontend jobs
+4. **Backend tests OOM**: `NODE_OPTIONS=--max-old-space-size=4096` set in CI `env`
 
 ## Rules
 

@@ -11,7 +11,7 @@ export const getAllPendingCompanies = asyncHandler(
 );
 
 export const verifyCompany = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { userId } = req.params;
+  const userId = req.params.userId as string;
   const { status, reason, validateCNPJ = true } = req.body;
 
   if (!status || !['approved', 'rejected'].includes(status)) {
@@ -42,7 +42,7 @@ export const getAllProducts = asyncHandler(async (req: AuthenticatedRequest, res
 });
 
 export const moderateProduct = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { productId } = req.params;
+  const productId = req.params.productId as string;
   const { action } = req.body;
 
   if (!action || !['approve', 'reject', 'remove'].includes(action)) {
@@ -76,7 +76,7 @@ export const getTransactionMonitoring = asyncHandler(
 
 export const getCompanyDetails = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const company = await adminService.getCompanyDetails(req.params.userId);
+    const company = await adminService.getCompanyDetails(req.params.userId as string);
     res.status(200).json({ success: true, data: company });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to get company details';
@@ -87,7 +87,7 @@ export const getCompanyDetails = asyncHandler(async (req: AuthenticatedRequest, 
 
 export const updateCompanyStatus = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { userId } = req.params;
+    const userId = req.params.userId as string;
     const { status, reason } = req.body;
 
     if (!status || !['approved', 'rejected'].includes(status)) {
@@ -112,7 +112,9 @@ export const updateCompanyStatus = asyncHandler(
 export const validateSupplierCNPJ = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { user, cnpjValidation } = await adminService.validateSupplierCNPJ(req.params.userId);
+      const { user, cnpjValidation } = await adminService.validateSupplierCNPJ(
+        req.params.userId as string
+      );
       res.status(200).json({ success: true, data: { user, cnpjValidation } });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to validate CNPJ';
@@ -128,7 +130,7 @@ export const validateSupplierCNPJ = asyncHandler(
 
 export const getSupplierMetrics = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const data = await adminService.getSupplierMetrics(req.params.userId);
+    const data = await adminService.getSupplierMetrics(req.params.userId as string);
     res.status(200).json({ success: true, data });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to get supplier metrics';

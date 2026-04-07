@@ -167,7 +167,9 @@ describe('RegisterPage', () => {
     const sectorSelect = screen.getByLabelText(/Setor da Indústria/);
     fireEvent.mouseDown(sectorSelect);
     const electronicsOption = await screen.findByRole('option', { name: 'Eletrônicos' });
-    fireEvent.click(electronicsOption);
+    await act(async () => {
+      fireEvent.click(electronicsOption);
+    });
 
     await act(async () => {
       const form = document.querySelector('form');
@@ -200,6 +202,137 @@ describe('RegisterPage', () => {
     // Just verify no error was thrown (onChange handlers executed)
     expect(screen.getByText('Cadastro Empresarial - B2B')).toBeInTheDocument();
   }, 15000);
+
+  it('should show error when industrySector is empty on submit', async () => {
+    await renderPage();
+
+    fillRequiredFields();
+    // Do NOT select a sector — industrySector remains ''
+
+    await act(async () => {
+      const form = document.querySelector('form');
+      fireEvent.submit(form!);
+    });
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('Setor da indústria é obrigatório')).toBeInTheDocument();
+      },
+      { timeout: 10000 }
+    );
+    expect(mockRegister).not.toHaveBeenCalled();
+  }, 30000);
+
+  it('should change companySize select value', async () => {
+    await renderPage();
+
+    const companySizeSelect = screen.getByLabelText(/Porte da Empresa/);
+    fireEvent.mouseDown(companySizeSelect);
+    const smallOption = await screen.findByRole('option', { name: 'Pequena' });
+    fireEvent.click(smallOption);
+
+    // onChange fires, state updates — no error expected
+    expect(screen.getByText('Cadastro Empresarial - B2B')).toBeInTheDocument();
+  }, 15000);
+
+  it('should return original value when CPF input exceeds 11 digits', async () => {
+    await renderPage();
+
+    const cpfField = screen.getByLabelText(/CPF/);
+    // Type a value with more than 11 digits (after stripping non-digits)
+    fireEvent.change(cpfField, { target: { value: '123456789012' } });
+
+    // The formatCpf function returns the original value when cleanValue.length > 11
+    // The field should contain the value as-is (no formatting applied)
+    expect(cpfField).toHaveValue('123456789012');
+  });
+
+  it('should return original value when CNPJ input exceeds 14 digits', async () => {
+    await renderPage();
+
+    const cnpjField = screen.getByLabelText(/CNPJ/);
+    // Type a value with more than 14 digits (after stripping non-digits)
+    fireEvent.change(cnpjField, { target: { value: '123456780001901' } });
+
+    // The formatCnpj function returns the original value when cleanValue.length > 14
+    expect(cnpjField).toHaveValue('123456780001901');
+  });
+
+  it('should show error when companyName is empty on submit', async () => {
+    await renderPage();
+
+    fireEvent.change(screen.getByLabelText(/Email/), { target: { value: 'test@company.com' } });
+    fireEvent.change(screen.getByLabelText('Senha *'), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText('Confirmar Senha *'), {
+      target: { value: 'password123' },
+    });
+    fireEvent.change(screen.getByLabelText(/CPF/), { target: { value: '12345678901' } });
+    fireEvent.change(screen.getByLabelText(/CNPJ/), { target: { value: '12345678000190' } });
+    // Leave companyName empty
+    fireEvent.change(screen.getByLabelText(/Nome da Empresa/), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText(/Razão Social/), {
+      target: { value: 'Test Company LTDA' },
+    });
+    fireEvent.change(screen.getByLabelText(/Endereço Completo/), {
+      target: { value: 'Rua Teste, 123' },
+    });
+
+    const sectorSelect = screen.getByLabelText(/Setor da Indústria/);
+    fireEvent.mouseDown(sectorSelect);
+    const electronicsOption = await screen.findByRole('option', { name: 'Eletrônicos' });
+    fireEvent.click(electronicsOption);
+
+    await act(async () => {
+      const form = document.querySelector('form');
+      fireEvent.submit(form!);
+    });
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('Nome da empresa é obrigatório')).toBeInTheDocument();
+      },
+      { timeout: 10000 }
+    );
+    expect(mockRegister).not.toHaveBeenCalled();
+  }, 30000);
+
+  it('should show error when corporateName is empty on submit', async () => {
+    await renderPage();
+
+    fireEvent.change(screen.getByLabelText(/Email/), { target: { value: 'test@company.com' } });
+    fireEvent.change(screen.getByLabelText('Senha *'), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText('Confirmar Senha *'), {
+      target: { value: 'password123' },
+    });
+    fireEvent.change(screen.getByLabelText(/CPF/), { target: { value: '12345678901' } });
+    fireEvent.change(screen.getByLabelText(/CNPJ/), { target: { value: '12345678000190' } });
+    fireEvent.change(screen.getByLabelText(/Nome da Empresa/), {
+      target: { value: 'Test Company' },
+    });
+    // Leave corporateName empty
+    fireEvent.change(screen.getByLabelText(/Razão Social/), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText(/Endereço Completo/), {
+      target: { value: 'Rua Teste, 123' },
+    });
+
+    const sectorSelect = screen.getByLabelText(/Setor da Indústria/);
+    fireEvent.mouseDown(sectorSelect);
+    const electronicsOption = await screen.findByRole('option', { name: 'Eletrônicos' });
+    fireEvent.click(electronicsOption);
+
+    await act(async () => {
+      const form = document.querySelector('form');
+      fireEvent.submit(form!);
+    });
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('Razão social é obrigatória')).toBeInTheDocument();
+      },
+      { timeout: 10000 }
+    );
+    expect(mockRegister).not.toHaveBeenCalled();
+  }, 30000);
 
   it('should auto-fill address fields when a valid CEP is entered', async () => {
     vi.mocked(viaCepService.isValidCep).mockReturnValue(true);

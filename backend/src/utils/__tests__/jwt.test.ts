@@ -1031,6 +1031,19 @@ describe('TokenManager', () => {
       const tokens = await getUserActiveTokens(99998);
       expect(tokens).toEqual([]);
     });
+
+    it('should skip token when redis data is null (dangling set member)', async () => {
+      const { getUserActiveTokens } = jest.requireActual<typeof import('../jwt')>('../jwt');
+
+      const userId = 55555;
+      const tokenKey = 'dangling-token-key';
+      // Add token key to user set but NOT to mockKVStore
+      mockSetStore[`refresh:user:${userId}`] = new Set([tokenKey]);
+      // mockKVStore intentionally does NOT have 'refresh:dangling-token-key'
+
+      const tokens = await getUserActiveTokens(userId);
+      expect(tokens).toHaveLength(0);
+    });
   });
 
   describe('getTokenStats', () => {
@@ -1086,6 +1099,49 @@ describe('TokenManager', () => {
       expect(stats.totalActiveTokens).toBe(0);
       expect(stats.activeUserCount).toBe(0);
       expect(stats.oldestToken).toBeNull();
+    });
+
+    it('should return null oldestToken when all tokens are expired', async () => {
+      const { getTokenStats } = jest.requireActual<typeof import('../jwt')>('../jwt');
+
+      // Inject a token that is already expired
+      mockKVStore['refresh:expired-only-token'] = JSON.stringify({
+        userId: 4444,
+        expiresAt: new Date(Date.now() - 1000).toISOString(),
+        createdAt: new Date('2022-01-01T00:00:00Z').toISOString(),
+        deviceInfo: null,
+      });
+
+      const stats = await getTokenStats();
+      expect(stats.totalActiveTokens).toBe(0);
+      expect(stats.oldestToken).toBeNull();
+    });
+
+    it('should correctly identify oldest token among multiple active tokens', async () => {
+      const { getTokenStats } = jest.requireActual<typeof import('../jwt')>('../jwt');
+
+      const futureExpiry = new Date(Date.now() + 86400000);
+      const olderDate = new Date('2020-01-01T00:00:00Z');
+      const newerDate = new Date('2023-06-01T00:00:00Z');
+
+      // Inject two tokens with distinct creation dates so the reduce callback runs both branches
+      mockKVStore['refresh:newer-token-stats'] = JSON.stringify({
+        userId: 1111,
+        expiresAt: futureExpiry.toISOString(),
+        createdAt: newerDate.toISOString(),
+        deviceInfo: null,
+      });
+      mockKVStore['refresh:older-token-stats'] = JSON.stringify({
+        userId: 1112,
+        expiresAt: futureExpiry.toISOString(),
+        createdAt: olderDate.toISOString(),
+        deviceInfo: null,
+      });
+
+      const stats = await getTokenStats();
+      expect(stats.totalActiveTokens).toBe(2);
+      expect(stats.oldestToken).not.toBeNull();
+      expect(stats.oldestToken!.getTime()).toBeLessThanOrEqual(olderDate.getTime());
     });
   });
 

@@ -233,6 +233,135 @@ describe('QuoteComparisonPage', () => {
     expect(screen.getByText('Nenhuma cotação encontrada')).toBeInTheDocument();
   });
 
+  it('shows Sem avaliações when supplier has no averageRating', async () => {
+    vi.mocked(productsService.getAllProducts).mockResolvedValue({
+      products: mockProducts,
+      pagination: { total: 2, page: 1, limit: 100, totalPages: 1 },
+    });
+    const quotesWithNoRating = {
+      quotes: [
+        {
+          ...mockQuotes.quotes[0],
+          supplier: { ...mockQuotes.quotes[0].supplier, averageRating: 0, totalRatings: 0 },
+        },
+      ],
+    };
+    vi.mocked(quotationsService.compareSupplierQuotes).mockResolvedValue(quotesWithNoRating);
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Comparar Cotações de Fornecedores')).toBeInTheDocument();
+    });
+
+    const productSelect = screen.getAllByRole('combobox')[0];
+    await act(async () => {
+      fireEvent.mouseDown(productSelect);
+    });
+    const productOption = await screen.findByRole('option', { name: 'Parafuso M8' });
+    await act(async () => {
+      fireEvent.click(productOption);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Comparar'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Sem avaliações')).toBeInTheDocument();
+    });
+  });
+
+  it('shows error alert when supplier quote is null', async () => {
+    vi.mocked(productsService.getAllProducts).mockResolvedValue({
+      products: mockProducts,
+      pagination: { total: 2, page: 1, limit: 100, totalPages: 1 },
+    });
+    const quotesWithError = {
+      quotes: [
+        {
+          supplier: mockQuotes.quotes[0].supplier,
+          quote: null,
+          error: 'Fornecedor indisponível',
+        },
+      ],
+    };
+    vi.mocked(quotationsService.compareSupplierQuotes).mockResolvedValue(quotesWithError);
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Comparar Cotações de Fornecedores')).toBeInTheDocument();
+    });
+
+    const productSelect = screen.getAllByRole('combobox')[0];
+    await act(async () => {
+      fireEvent.mouseDown(productSelect);
+    });
+    const productOption = await screen.findByRole('option', { name: 'Parafuso M8' });
+    await act(async () => {
+      fireEvent.click(productOption);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Comparar'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Fornecedor indisponível')).toBeInTheDocument();
+    });
+  });
+
+  it('toggles expanded quote row when expand button is clicked', async () => {
+    vi.mocked(productsService.getAllProducts).mockResolvedValue({
+      products: mockProducts,
+      pagination: { total: 2, page: 1, limit: 100, totalPages: 1 },
+    });
+    vi.mocked(quotationsService.compareSupplierQuotes).mockResolvedValue(mockQuotes);
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Comparar Cotações de Fornecedores')).toBeInTheDocument();
+    });
+
+    const productSelect = screen.getAllByRole('combobox')[0];
+    await act(async () => {
+      fireEvent.mouseDown(productSelect);
+    });
+    const productOption = await screen.findByRole('option', { name: 'Parafuso M8' });
+    await act(async () => {
+      fireEvent.click(productOption);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Comparar'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Fornecedor A')).toBeInTheDocument();
+    });
+
+    // Click expand button (ExpandMoreIcon) to expand
+    const expandButtons = screen.getAllByTestId('ExpandMoreIcon');
+    await act(async () => {
+      fireEvent.click(expandButtons[0].closest('button')!);
+    });
+
+    // Click again to collapse (ExpandLessIcon)
+    await waitFor(() => {
+      expect(screen.getAllByTestId('ExpandLessIcon').length).toBeGreaterThan(0);
+    });
+    const collapseButton = screen.getAllByTestId('ExpandLessIcon')[0].closest('button')!;
+    await act(async () => {
+      fireEvent.click(collapseButton);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('ExpandMoreIcon').length).toBeGreaterThan(0);
+    });
+  });
+
   it('shows loading spinner while products are loading', async () => {
     vi.mocked(productsService.getAllProducts).mockImplementation(() => new Promise(() => {}));
 

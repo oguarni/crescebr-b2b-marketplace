@@ -252,6 +252,7 @@ describe('AdminTransactionMonitoringPage', () => {
 
     // Mock createElement after render so React's internal calls are not affected
     const mockCreateElement = vi.spyOn(document, 'createElement').mockImplementationOnce(() => {
+      // eslint-disable-next-line no-undef
       return { href: '', download: '', click: mockClick } as unknown as HTMLAnchorElement;
     });
 
@@ -338,6 +339,20 @@ describe('AdminTransactionMonitoringPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Cancelado')).toBeInTheDocument();
+    });
+  });
+
+  it('covers default status color for unknown status', async () => {
+    const dataWithUnknown = {
+      ...mockTransactionData,
+      orders: [{ ...mockTransactionData.orders[0], status: 'unknown_status' }],
+    };
+    mockAdminRequest.mockResolvedValue({ data: dataWithUnknown });
+    render(<AdminTransactionMonitoringPage />);
+
+    await waitFor(() => {
+      // getStatusLabel returns the status as-is for unknown, getStatusColor returns 'default'
+      expect(screen.getByText('unknown_status')).toBeInTheDocument();
     });
   });
 });

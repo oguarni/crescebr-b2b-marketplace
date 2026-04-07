@@ -82,7 +82,7 @@ src/
 ### Known Test Issues
 
 1. **OOM**: Default heap size insufficient for full test suite. Run with: `NODE_ENV=test node --max-old-space-size=4096 ../node_modules/.bin/jest --runInBand --forceExit`
-2. **Lint errors in tests**: `ratingsService.test.ts` uses `fail()` (8 occurrences) without importing from Jest globals — add `import { fail } from '@jest/globals'` or replace with `expect(...).rejects.toThrow()`
+2. ~~**Lint errors in tests**: `ratingsService.test.ts` uses `fail()` (8 occurrences)~~ → Fixed (2026-04-04)
 
 Check current status: `cd backend && NODE_ENV=test node --max-old-space-size=4096 ../node_modules/.bin/jest --runInBand --forceExit`
 

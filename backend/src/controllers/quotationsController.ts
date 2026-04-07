@@ -37,7 +37,7 @@ export const getCustomerQuotations = asyncHandler(
 );
 
 export const getQuotationById = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   try {
     const quotation = await quotationService.getById(parseInt(id), req.user!.id, req.user!.role);
@@ -69,7 +69,7 @@ export const getAllQuotations = asyncHandler(async (req: AuthenticatedRequest, r
 });
 
 export const updateQuotation = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   const { status, adminNotes } = req.body;
 
   try {
@@ -123,7 +123,7 @@ export const calculateQuote = asyncHandler(async (req: AuthenticatedRequest, res
 
 export const getQuotationCalculations = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const companyId = req.user!.id;
     const userRole = req.user!.role;
 
@@ -158,7 +158,7 @@ export const getQuotationCalculations = asyncHandler(
 
 export const processQuotationWithCalculations = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     try {
       const result = await QuoteService.getQuotationWithCalculations(parseInt(id));

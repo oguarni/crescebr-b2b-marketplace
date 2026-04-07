@@ -45,7 +45,8 @@ const LoginPage: React.FC = () => {
       navigate(from, { replace: true });
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
-      const errorMessage = axiosErr.response?.data?.error || axiosErr.message || 'Erro ao fazer login';
+      const errorMessage =
+        axiosErr.response?.data?.error || axiosErr.message || 'Erro ao fazer login';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -185,17 +186,19 @@ const LoginPage: React.FC = () => {
             </Box>
           </Box>
 
-          <Box sx={{ mt: 4, p: 2, bgcolor: 'grey.50', borderRadius: 1, width: '100%' }}>
-            <Typography variant='body2' color='text.secondary' gutterBottom>
-              <strong>Contas de teste:</strong>
-            </Typography>
-            <Typography variant='body2' color='text.secondary'>
-              Admin (Email): admin@crescebr.com / admin123
-            </Typography>
-            <Typography variant='body2' color='text.secondary'>
-              Empresa (CNPJ): 11.222.333/0001-81 / empresa123
-            </Typography>
-          </Box>
+          {import.meta.env.DEV && (
+            <Box sx={{ mt: 4, p: 2, bgcolor: 'grey.50', borderRadius: 1, width: '100%' }}>
+              <Typography variant='body2' color='text.secondary' gutterBottom>
+                <strong>Contas de teste:</strong>
+              </Typography>
+              <Typography variant='body2' color='text.secondary'>
+                Admin (Email): admin@crescebr.com / admin123
+              </Typography>
+              <Typography variant='body2' color='text.secondary'>
+                Empresa (CNPJ): 11.222.333/0001-81 / empresa123
+              </Typography>
+            </Box>
+          )}
         </Paper>
       </Box>
     </Container>

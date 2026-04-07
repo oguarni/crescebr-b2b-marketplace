@@ -636,20 +636,24 @@ npm run lint         # Lint code
 
 ---
 
-## Test Coverage (2026-03-26)
+## Test Coverage (2026-04-04)
 
 **Framework**: Vitest 3.2 + React Testing Library
 
-**36 test files**, 483 tests (471 pass, 12 fail across 6 suites)
+**45 test files**, 703 tests (699 pass, 4 fail across 3 suites)
 
 ### Failing Test Suites
 
-- `SupplierProductsPage` — 3 fails (dialog label mismatch + timeout)
-- `RegisterPage` — 3 fails (timeouts in form submission tests)
-- `QuoteComparisonPage` — 3 fails (dropdown interaction + result display)
-- `CheckoutPage` — 1 fail (shipping validation)
-- `SupplierDashboardPage` — 1 fail (error handling timeout)
-- `HomePage` — 1 fail (category filter buttons)
+- `RegisterPage` — 1 fail (flaky timeout on error toast — `act` wrap added, 2026-04-04)
+- 2 other suites — 3 remaining fails under investigation
+
+### Previously Fixed
+
+- `SupplierProductsPage` — dialog label + timeout issues resolved
+- `QuoteComparisonPage` — dropdown interaction fixed
+- `CheckoutPage` — shipping validation fixed
+- `SupplierDashboardPage` — error handling timeout fixed
+- `HomePage` — category filter button query fixed
 
 ### Coverage Status
 

@@ -295,4 +295,19 @@ describe('CartPage', () => {
       state: { from: { pathname: '/checkout' } },
     });
   });
+
+  it('should fall back to 0 quantity when non-numeric value is typed', async () => {
+    mockCartItems = [mockCartItemsList[0]];
+    mockTotalPrice = 3000.0;
+
+    await renderCartPage();
+
+    const qtyInputs = document.querySelectorAll('input[type="text"]');
+    const qtyInput = Array.from(qtyInputs).find(input => (input as HTMLInputElement).value === '2');
+    if (qtyInput) {
+      fireEvent.change(qtyInput, { target: { value: 'abc' } });
+      // parseInt('abc') returns NaN, || 0 gives 0, which triggers removeItem
+      expect(mockRemoveItem).toHaveBeenCalledWith(101);
+    }
+  });
 });

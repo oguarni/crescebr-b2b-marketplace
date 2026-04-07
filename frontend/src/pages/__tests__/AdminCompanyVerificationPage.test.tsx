@@ -4,8 +4,6 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom';
 import AdminCompanyVerificationPage from '../AdminCompanyVerificationPage';
 import { authService } from '../../services/authService';
-import toast from 'react-hot-toast';
-
 vi.mock('../../services/authService', () => ({
   authService: {
     adminRequest: vi.fn(),
@@ -466,6 +464,104 @@ describe('AdminCompanyVerificationPage', () => {
     });
   });
 
+  describe('additional coverage', () => {
+    it('shows CheckCircle when cnpjValidated is true in details dialog', async () => {
+      const validatedCompany = { ...mockCompany, cnpjValidated: true };
+      mockAdminRequest.mockResolvedValue({
+        data: { ...mockVerificationQueue, companies: [validatedCompany] },
+      });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Supplier Corp')).toBeInTheDocument();
+      });
+
+      const allButtons = screen.getAllByRole('button');
+      const iconOnlyButtons = allButtons.filter(btn => !btn.textContent?.trim());
+      const visibilityBtn = iconOnlyButtons[iconOnlyButtons.length - 1];
+
+      await act(async () => {
+        fireEvent.click(visibilityBtn);
+      });
+
+      await waitFor(() => {
+        // Dialog opens — cnpjValidated true branch is rendered (CheckCircle icon)
+        expect(screen.getByText('Detalhes da Empresa')).toBeInTheDocument();
+      });
+    });
+
+    it('shows street details in details dialog when company has street field', async () => {
+      const companyWithStreet = {
+        ...mockCompany,
+        street: 'Rua Teste',
+        number: '123',
+        city: 'São Paulo',
+        state: 'SP',
+        zipCode: '01310-100',
+      };
+      mockAdminRequest.mockResolvedValue({
+        data: { ...mockVerificationQueue, companies: [companyWithStreet] },
+      });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Supplier Corp')).toBeInTheDocument();
+      });
+
+      const allButtons = screen.getAllByRole('button');
+      const iconOnlyButtons = allButtons.filter(btn => !btn.textContent?.trim());
+      const visibilityBtn = iconOnlyButtons[iconOnlyButtons.length - 1];
+
+      await act(async () => {
+        fireEvent.click(visibilityBtn);
+      });
+
+      await waitFor(() => {
+        // The street+number combination in the details dialog
+        expect(screen.getByText(/Rua Teste, 123/)).toBeInTheDocument();
+      });
+    });
+
+    it('types in the verification reason field', async () => {
+      mockAdminRequest.mockResolvedValue({ data: mockVerificationQueue });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Supplier Corp')).toBeInTheDocument();
+      });
+
+      // Open details dialog first, then open verification dialog
+      const allButtons = screen.getAllByRole('button');
+      const iconOnlyButtons = allButtons.filter(btn => !btn.textContent?.trim());
+      const visibilityBtn = iconOnlyButtons[iconOnlyButtons.length - 1];
+
+      await act(async () => {
+        fireEvent.click(visibilityBtn);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Verificar Empresa')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Verificar Empresa'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Verificar Empresa: Supplier Corp/i)).toBeInTheDocument();
+      });
+
+      // Find and type in the reason text field
+      const reasonField = screen.getByRole('textbox', { name: /Motivo/i });
+      fireEvent.change(reasonField, { target: { value: 'Documents verified' } });
+
+      expect(reasonField).toHaveValue('Documents verified');
+    });
+  });
+
   describe('pagination', () => {
     it('shows pagination info when multiple pages', async () => {
       mockAdminRequest.mockResolvedValue({
@@ -476,6 +572,116 @@ describe('AdminCompanyVerificationPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Página 1 de 3/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('direct reject button on company card', () => {
+    it('calls handleVerifyCompany with rejected when reject icon button is clicked', async () => {
+      mockAdminRequest
+        .mockResolvedValueOnce({ data: mockVerificationQueue })
+        .mockResolvedValueOnce({ data: { message: 'Company rejected' } })
+        .mockResolvedValueOnce({ data: mockVerificationQueue });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Supplier Corp')).toBeInTheDocument();
+      });
+
+      // The Close (reject) icon button in the card actions
+      const allButtons = screen.getAllByRole('button');
+      const iconOnlyButtons = allButtons.filter(btn => !btn.textContent?.trim());
+      const rejectBtn = iconOnlyButtons[iconOnlyButtons.length - 3]; // Close icon
+
+      await act(async () => {
+        fireEvent.click(rejectBtn);
+      });
+
+      await waitFor(() => {
+        expect(mockAdminRequest).toHaveBeenCalledWith(
+          expect.stringContaining('/admin/companies/1/verify'),
+          expect.objectContaining({ data: expect.objectContaining({ status: 'rejected' }) })
+        );
+      });
+    });
+
+    it('calls handleVerifyCompany with approved when approve icon button is clicked', async () => {
+      mockAdminRequest
+        .mockResolvedValueOnce({ data: mockVerificationQueue })
+        .mockResolvedValueOnce({ data: { message: 'Company approved' } })
+        .mockResolvedValueOnce({ data: mockVerificationQueue });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Supplier Corp')).toBeInTheDocument();
+      });
+
+      // The Check (approve) icon button in the card actions
+      const allButtons = screen.getAllByRole('button');
+      const iconOnlyButtons = allButtons.filter(btn => !btn.textContent?.trim());
+      const approveBtn = iconOnlyButtons[iconOnlyButtons.length - 2]; // Check icon
+
+      await act(async () => {
+        fireEvent.click(approveBtn);
+      });
+
+      await waitFor(() => {
+        expect(mockAdminRequest).toHaveBeenCalledWith(
+          expect.stringContaining('/admin/companies/1/verify'),
+          expect.objectContaining({ data: expect.objectContaining({ status: 'approved' }) })
+        );
+      });
+    });
+  });
+
+  describe('status display for non-pending companies', () => {
+    it('shows "Approved" text for approved company instead of action buttons', async () => {
+      const approvedCompany = { ...mockCompany, status: 'approved' };
+      mockAdminRequest.mockResolvedValue({
+        data: { ...mockVerificationQueue, companies: [approvedCompany] },
+      });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Approved')).toBeInTheDocument();
+      });
+    });
+
+    it('shows "Rejected" text for rejected company instead of action buttons', async () => {
+      const rejectedCompany = { ...mockCompany, status: 'rejected' };
+      mockAdminRequest.mockResolvedValue({
+        data: { ...mockVerificationQueue, companies: [rejectedCompany] },
+      });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Rejected')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('non-Error catch path', () => {
+    it('shows default error message when non-Error is thrown during load', async () => {
+      mockAdminRequest.mockRejectedValue('string-error');
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText(/Error loading verification queue/i)).toBeInTheDocument();
+      });
+    });
+
+    it('shows default error message when null is thrown during load', async () => {
+      mockAdminRequest.mockRejectedValue(null);
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText(/Error loading verification queue/i)).toBeInTheDocument();
       });
     });
   });

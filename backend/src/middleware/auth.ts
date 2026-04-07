@@ -130,7 +130,7 @@ export const canModifyProduct = async (
   if (req.user.role === 'supplier') {
     try {
       const Product = (await import('../models/Product')).default;
-      const productId = req.params.productId || req.params.id;
+      const productId = (req.params.productId || req.params.id) as string;
 
       if (!productId) {
         res.status(400).json({
@@ -195,7 +195,7 @@ export const canAccessOrder = async (
 
   try {
     const Order = (await import('../models/Order')).default;
-    const orderId = req.params.orderId || req.params.id;
+    const orderId = (req.params.orderId || req.params.id) as string;
 
     if (!orderId) {
       res.status(400).json({

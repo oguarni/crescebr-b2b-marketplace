@@ -576,6 +576,55 @@ describe('SupplierQuotationsPage', () => {
     });
   });
 
+  it('shows No pending quotations found when pending tab is empty', async () => {
+    // Only non-pending quotations
+    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([
+      mockQuotations[1],
+      mockQuotations[2],
+    ]);
+
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #2')).toBeInTheDocument();
+    });
+
+    const tabs = screen.getAllByRole('tab');
+    await user.click(tabs[1]); // Pending tab
+
+    await waitFor(() => {
+      expect(screen.getByText('No pending quotations found.')).toBeInTheDocument();
+    });
+  });
+
+  it('shows +N more chip when quotation has more than 3 items', async () => {
+    const quotationWith4Items = {
+      ...mockQuotations[0],
+      items: Array.from({ length: 4 }, (_, i) => ({
+        productId: i + 1,
+        quantity: 10,
+        product: {
+          name: `Product ${i + 1}`,
+          price: 100,
+          supplierId: 1,
+          category: 'Test',
+          unitPrice: 100,
+          leadTime: 7,
+          availability: 'in_stock',
+          specifications: {},
+        },
+      })),
+    };
+    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([quotationWith4Items]);
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('+1 more')).toBeInTheDocument();
+    });
+  });
+
   it('closes response dialog via Escape key (onClose handler)', async () => {
     await renderPage();
     const user = userEvent.setup();
@@ -594,6 +643,228 @@ describe('SupplierQuotationsPage', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('Respond to Quote Request #1')).not.toBeInTheDocument();
+    });
+  });
+
+  it('filters quotations by date range "today" and shows empty when none match', async () => {
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    // Open the Date Range select
+    // MUI v7 Select comboboxes lack accessible names; order: Status[0], Priority[1], Date Range[2]
+    const dateRangeSelect = screen.getAllByRole('combobox')[2];
+    fireEvent.mouseDown(dateRangeSelect);
+
+    // Click "Today" option
+    const todayOption = await screen.findByRole('option', { name: 'Today' });
+    fireEvent.click(todayOption);
+
+    // All mock quotations have dates from 2026-03-10 to 2026-03-15, which are not today
+    await waitFor(() => {
+      expect(screen.getByText('No quotation requests found.')).toBeInTheDocument();
+    });
+  });
+
+  it('filters quotations by date range "today" and shows matching quotations', async () => {
+    const todayQuotation = {
+      ...mockQuotations[0],
+      createdAt: new Date().toISOString(),
+    };
+    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([todayQuotation]);
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    // MUI v7 Select comboboxes: Status[0], Priority[1], Date Range[2]
+    const dateRangeSelect = screen.getAllByRole('combobox')[2];
+    fireEvent.mouseDown(dateRangeSelect);
+
+    const todayOption = await screen.findByRole('option', { name: 'Today' });
+    fireEvent.click(todayOption);
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+  });
+
+  it('filters quotations by date range "week"', async () => {
+    // Create a quotation from 3 days ago (within the week)
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const recentQuotation = {
+      ...mockQuotations[0],
+      createdAt: threeDaysAgo,
+    };
+    // mockQuotations[1] has createdAt from 2026-03-14 which is older than a week
+    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([
+      recentQuotation,
+      mockQuotations[1],
+    ]);
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    // MUI v7 Select comboboxes: Status[0], Priority[1], Date Range[2]
+    const dateRangeSelect = screen.getAllByRole('combobox')[2];
+    fireEvent.mouseDown(dateRangeSelect);
+
+    const weekOption = await screen.findByRole('option', { name: 'This Week' });
+    fireEvent.click(weekOption);
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+    // The old quotation should be filtered out
+    expect(screen.queryByText('Quote Request #2')).not.toBeInTheDocument();
+  });
+
+  it('filters quotations by date range "month"', async () => {
+    // Create a quotation from 10 days ago (within the month)
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const recentQuotation = {
+      ...mockQuotations[0],
+      createdAt: tenDaysAgo,
+    };
+    // Create a quotation from 60 days ago (outside the month)
+    const oldQuotation = {
+      ...mockQuotations[1],
+      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([
+      recentQuotation,
+      oldQuotation,
+    ]);
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    // MUI v7 Select comboboxes: Status[0], Priority[1], Date Range[2]
+    const dateRangeSelect = screen.getAllByRole('combobox')[2];
+    fireEvent.mouseDown(dateRangeSelect);
+
+    const monthOption = await screen.findByRole('option', { name: 'This Month' });
+    fireEvent.click(monthOption);
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Quote Request #2')).not.toBeInTheDocument();
+  });
+
+  it('filters quotations by priority "low"', async () => {
+    // mockQuotations[0] has delivery 5 days from now = Urgent
+    // mockQuotations[1] has delivery 45 days from now = Low
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+      expect(screen.getByText('Quote Request #2')).toBeInTheDocument();
+    });
+
+    // MUI v7 Select comboboxes: Status[0], Priority[1], Date Range[2]
+    const prioritySelect = screen.getAllByRole('combobox')[1];
+    fireEvent.mouseDown(prioritySelect);
+
+    const lowOption = await screen.findByRole('option', { name: 'Low' });
+    fireEvent.click(lowOption);
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #2')).toBeInTheDocument();
+    });
+    // Urgent quotation should be filtered out
+    expect(screen.queryByText('Quote Request #1')).not.toBeInTheDocument();
+  });
+
+  it('filters quotations by priority "urgent"', async () => {
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    // MUI v7 Select comboboxes: Status[0], Priority[1], Date Range[2]
+    const prioritySelect = screen.getAllByRole('combobox')[1];
+    fireEvent.mouseDown(prioritySelect);
+
+    const urgentOption = await screen.findByRole('option', { name: 'Urgent' });
+    fireEvent.click(urgentOption);
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+    // Low priority quotation should be filtered out
+    expect(screen.queryByText('Quote Request #2')).not.toBeInTheDocument();
+  });
+
+  it('updates item unit price in response dialog', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Respond'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Respond to Quote Request #1')).toBeInTheDocument();
+    });
+
+    // Find the unit price input (type="number" in the items table)
+    const priceInput = screen.getByDisplayValue('1500');
+    expect(priceInput).toBeInTheDocument();
+
+    // Change the price
+    fireEvent.change(priceInput, { target: { value: '2000' } });
+
+    // Verify updated value
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('2000')).toBeInTheDocument();
+    });
+
+    // Total should be updated: 2000 * 10 = 20000
+    expect(screen.getByText(/R\$ 20,000/)).toBeInTheDocument();
+  });
+
+  it('updates item availability in response dialog', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Respond'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Respond to Quote Request #1')).toBeInTheDocument();
+    });
+
+    // The availability select starts at 'in_stock' (shown as "In Stock")
+    // MUI Select renders as a combobox role; find the one displaying "In Stock"
+    const comboboxes = screen.getAllByRole('combobox');
+    const availabilitySelect = comboboxes.find(el => el.textContent === 'In Stock')!;
+    expect(availabilitySelect).toBeDefined();
+    fireEvent.mouseDown(availabilitySelect);
+
+    const limitedOption = await screen.findByRole('option', { name: 'Limited' });
+    fireEvent.click(limitedOption);
+
+    await waitFor(() => {
+      const updatedComboboxes = screen.getAllByRole('combobox');
+      const updated = updatedComboboxes.find(el => el.textContent === 'Limited');
+      expect(updated).toBeDefined();
     });
   });
 });

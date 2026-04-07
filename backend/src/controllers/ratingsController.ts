@@ -22,7 +22,7 @@ export const createRating = asyncHandler(async (req: AuthenticatedRequest, res: 
 });
 
 export const getSupplierRatings = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { supplierId } = req.params;
+  const supplierId = req.params.supplierId as string;
   const { page = 1, limit = 10 } = req.query;
 
   const data = await ratingsService.getSupplierRatings(supplierId, Number(page), Number(limit));
@@ -30,7 +30,7 @@ export const getSupplierRatings = asyncHandler(async (req: AuthenticatedRequest,
 });
 
 export const updateRating = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { ratingId } = req.params;
+  const ratingId = req.params.ratingId as string;
   const { score, comment } = req.body;
   const buyerId = req.user?.id!;
 
@@ -44,7 +44,7 @@ export const updateRating = asyncHandler(async (req: AuthenticatedRequest, res: 
 });
 
 export const deleteRating = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { ratingId } = req.params;
+  const ratingId = req.params.ratingId as string;
   const buyerId = req.user?.id!;
   const userRole = req.user?.role!;
 

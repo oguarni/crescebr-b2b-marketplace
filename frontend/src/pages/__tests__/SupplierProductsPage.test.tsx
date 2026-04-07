@@ -182,14 +182,13 @@ describe('SupplierProductsPage', () => {
 
   it('creates a product successfully', async () => {
     await renderPage();
-    const user = userEvent.setup();
 
     await waitFor(() => {
       expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
     });
 
     const addButton = screen.getByText('Add Product');
-    await user.click(addButton);
+    fireEvent.click(addButton);
 
     await waitFor(
       () => {
@@ -200,10 +199,10 @@ describe('SupplierProductsPage', () => {
     );
 
     const nameField = screen.getByRole('textbox', { name: /product name/i });
-    await user.type(nameField, 'New Product');
+    fireEvent.change(nameField, { target: { value: 'New Product' } });
 
     const createButton = screen.getByText('Create');
-    await user.click(createButton);
+    fireEvent.click(createButton);
 
     await waitFor(
       () => {
@@ -312,6 +311,125 @@ describe('SupplierProductsPage', () => {
     expect(screen.getByLabelText('Image URL')).toHaveValue('https://example.com/new-image.jpg');
   }, 20000);
 
+  it('shows Out of Stock products tab when clicked', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+    });
+
+    const outOfStockTab = screen.getByRole('tab', { name: /Out of Stock/i });
+    await user.click(outOfStockTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Concrete Mix')).toBeInTheDocument();
+    });
+  }, 15000);
+
+  it('shows no active products alert when active tab is empty', async () => {
+    vi.mocked(productsService.getAllProducts).mockResolvedValue({
+      products: [
+        {
+          ...mockProducts[2], // out_of_stock
+          id: 99,
+          name: 'Only OOS Product',
+        },
+      ],
+    });
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Only OOS Product')).toBeInTheDocument();
+    });
+
+    const activeTab = screen.getByRole('tab', { name: /^Active/i });
+    await user.click(activeTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('No active products found.')).toBeInTheDocument();
+    });
+  }, 15000);
+
+  it('shows no out of stock alert when out-of-stock tab is empty', async () => {
+    vi.mocked(productsService.getAllProducts).mockResolvedValue({
+      products: [mockProducts[0]], // only in_stock product
+    });
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+    });
+
+    const outOfStockTab = screen.getByRole('tab', { name: /Out of Stock/i });
+    await user.click(outOfStockTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('No out of stock products.')).toBeInTheDocument();
+    });
+  }, 15000);
+
+  it('shows no products found message on All tab when all products filtered out', async () => {
+    vi.mocked(productsService.getAllProducts).mockResolvedValue({ products: [] });
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('No products found. Start by adding your first product!')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('renders custom_order availability icon', async () => {
+    const customOrderProduct = {
+      ...mockProducts[0],
+      id: 99,
+      name: 'Custom Order Product',
+      availability: 'custom_order' as const,
+    };
+    vi.mocked(productsService.getAllProducts).mockResolvedValue({
+      products: [customOrderProduct],
+    });
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Custom Order Product')).toBeInTheDocument();
+    });
+    // ScheduleIcon should be rendered for custom_order
+    expect(document.querySelector('[data-testid="ScheduleIcon"]')).toBeInTheDocument();
+  });
+
+  it('changes description and price fields in create product dialog', async () => {
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+    });
+
+    const addButton = screen.getByText('Add Product');
+    fireEvent.click(addButton);
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('Add New Product')).toBeInTheDocument();
+      },
+      { timeout: 10000 }
+    );
+
+    const descriptionField = screen.getByLabelText(/description/i);
+    fireEvent.change(descriptionField, { target: { value: 'Test product description' } });
+    expect(descriptionField).toHaveValue('Test product description');
+
+    // Use getAllByLabelText to handle both "Price (R$)" and "Unit Price (R$)"
+    const priceFields = screen.getAllByLabelText(/Price \(R\$\)/i);
+    const priceField = priceFields[0]; // First match is "Price (R$)"
+    fireEvent.change(priceField, { target: { value: '999' } });
+    expect(priceField).toHaveValue(999);
+  }, 20000);
+
   it('switches between grid and table view', async () => {
     await renderPage();
     const user = userEvent.setup();
@@ -334,4 +452,131 @@ describe('SupplierProductsPage', () => {
       { timeout: 10000 }
     );
   }, 15000);
+
+  it('triggers CSV import toast when a file is selected', async () => {
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+    });
+
+    const fileInput = document.getElementById('csv-import') as HTMLInputElement;
+    expect(fileInput).toBeInTheDocument();
+
+    const file = new File(['name,price\nTest,100'], 'products.csv', { type: 'text/csv' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith('CSV import feature coming soon');
+    });
+  });
+
+  it('triggers CSV export toast when Export CSV button is clicked', async () => {
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+    });
+
+    const exportButton = screen.getByText('Export CSV');
+    await user.click(exportButton);
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith('CSV export feature coming soon');
+    });
+  });
+
+  it('does not delete product when confirmation is cancelled', async () => {
+    vi.mocked(window.confirm).mockReturnValue(false);
+
+    await renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByTestId('DeleteIcon');
+    await user.click(deleteButtons[0].closest('button')!);
+
+    await waitFor(() => {
+      expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this product?');
+    });
+
+    expect(productsService.deleteProduct).not.toHaveBeenCalled();
+  });
+
+  it('returns null icon for unknown availability value', async () => {
+    const unknownAvailabilityProduct = {
+      ...mockProducts[0],
+      id: 100,
+      name: 'Unknown Availability Product',
+      availability: 'unknown_value' as any,
+    };
+    vi.mocked(productsService.getAllProducts).mockResolvedValue({
+      products: [unknownAvailabilityProduct],
+    });
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Unknown Availability Product')).toBeInTheDocument();
+    });
+
+    // Find the product card containing the unknown availability product
+    const productCard = screen.getByText('Unknown Availability Product').closest('.MuiCard-root')!;
+
+    // The chip should exist in the card but no known availability icon should be rendered inside it
+    expect(productCard.querySelector('[data-testid="CheckCircleIcon"]')).toBeNull();
+    expect(productCard.querySelector('[data-testid="WarningIcon"]')).toBeNull();
+    expect(productCard.querySelector('[data-testid="CancelIcon"]')).toBeNull();
+    expect(productCard.querySelector('[data-testid="ScheduleIcon"]')).toBeNull();
+  });
+
+  it('filters products by selected category', async () => {
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+      expect(screen.getByText('Safety Helmet')).toBeInTheDocument();
+      expect(screen.getByText('Concrete Mix')).toBeInTheDocument();
+    });
+
+    // Open Category select
+    const categorySelect = screen.getAllByRole('combobox')[0];
+    fireEvent.mouseDown(categorySelect);
+
+    const categoryOption = await screen.findByRole('option', { name: 'Safety Equipment' });
+    fireEvent.click(categoryOption);
+
+    await waitFor(() => {
+      expect(screen.getByText('Safety Helmet')).toBeInTheDocument();
+      expect(screen.queryByText('Industrial Pump')).not.toBeInTheDocument();
+      expect(screen.queryByText('Concrete Mix')).not.toBeInTheDocument();
+    });
+  });
+
+  it('filters products by availability', async () => {
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+      expect(screen.getByText('Safety Helmet')).toBeInTheDocument();
+      expect(screen.getByText('Concrete Mix')).toBeInTheDocument();
+    });
+
+    // Open Availability select (second combobox after Category)
+    const comboboxes = screen.getAllByRole('combobox');
+    const availabilitySelect = comboboxes[1];
+    fireEvent.mouseDown(availabilitySelect);
+
+    const limitedOption = await screen.findByRole('option', { name: 'Limited' });
+    fireEvent.click(limitedOption);
+
+    await waitFor(() => {
+      expect(screen.getByText('Safety Helmet')).toBeInTheDocument();
+      expect(screen.queryByText('Industrial Pump')).not.toBeInTheDocument();
+      expect(screen.queryByText('Concrete Mix')).not.toBeInTheDocument();
+    });
+  });
 });

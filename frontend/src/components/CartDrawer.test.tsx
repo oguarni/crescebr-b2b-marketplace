@@ -47,13 +47,15 @@ const mockItem = {
 };
 
 function setupMocks(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   overrides: { items?: any[]; isOpen?: boolean; isAuthenticated?: boolean } = {}
 ) {
   mockUseCart.mockReturnValue({
     isOpen: overrides.isOpen ?? true,
     items: overrides.items ?? [],
     totalPrice: overrides.items
-      ? overrides.items.reduce((sum: number, i: any) => sum + i.totalPrice, 0)
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        overrides.items.reduce((sum: number, i: any) => sum + i.totalPrice, 0)
       : 0,
     toggleCart: mockToggleCart,
     updateQuantity: mockUpdateQuantity,
@@ -137,7 +139,7 @@ describe('CartDrawer', () => {
 
       const decrementButtons = screen.getAllByRole('button');
       // Find the decrement button (Remove icon)
-      const removeButton = decrementButtons.find(btn => btn.querySelector('[data-testid]') || btn);
+      const _removeButton = decrementButtons.find(btn => btn.querySelector('[data-testid]') || btn);
       // Click the first quantity decrease button
       const quantityButtons = decrementButtons.filter(
         btn => btn.closest('[class*="ListItem"]') !== null
@@ -266,6 +268,21 @@ describe('CartDrawer', () => {
         fireEvent.change(inputs[0], { target: { value: '0' } });
         expect(mockRemoveItem).toHaveBeenCalledWith(mockItem.id);
       }
+    });
+  });
+
+  describe('image error fallback', () => {
+    it('sets fallback src when Avatar image fails to load', () => {
+      setupMocks({ items: [mockItem] });
+      renderCartDrawer();
+
+      const img = document.querySelector('img');
+      expect(img).not.toBeNull();
+
+      // Simulate onError event
+      fireEvent.error(img!);
+
+      expect(img!.src).toContain('data:image/svg+xml;base64,');
     });
   });
 

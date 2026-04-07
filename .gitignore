@@ -144,3 +144,6 @@ shared/dist/
 # AI / prompt artifacts (not project source)
 # ──────────────────────────────────────────────
 docs/delegation-prompt-sonnet.md
+*session-is-being-continued*.txt
+*-conversation*.txt
+Project Diagnostic.md

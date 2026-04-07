@@ -367,6 +367,73 @@ describe('MyQuotationsPage', () => {
     });
   });
 
+  it('shows N/A when quotation has no createdAt date', async () => {
+    const quotationWithoutDate = {
+      ...mockQuotations[0],
+      createdAt: undefined as unknown as Date,
+    };
+    vi.mocked(quotationsService.getCustomerQuotations).mockResolvedValue([quotationWithoutDate]);
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Solicitada em: N\/A/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows error message from Error instance when createOrderFromQuotation fails', async () => {
+    vi.mocked(quotationsService.getCustomerQuotations).mockResolvedValue(mockQuotations);
+    vi.mocked(ordersService.createOrderFromQuotation).mockRejectedValue(
+      new Error('Specific error message')
+    );
+
+    const toast = (await import('react-hot-toast')).default;
+
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Create Order')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Create Order'));
+    });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Specific error message');
+    });
+  });
+
+  it('shows "s" plural suffix when quotation has more than 4 items (5+ extra)', async () => {
+    const quotationWith5Items = {
+      ...mockQuotations[0],
+      items: Array.from({ length: 5 }, (_, i) => ({
+        id: i + 1,
+        quotationId: 1,
+        productId: 10 + i,
+        product: {
+          id: 10 + i,
+          name: `Item ${i + 1}`,
+          imageUrl: `/img/${i + 1}.jpg`,
+          price: 1,
+          description: '',
+          category: '',
+          companyId: 2,
+        },
+        quantity: 1,
+      })),
+    };
+
+    vi.mocked(quotationsService.getCustomerQuotations).mockResolvedValue([quotationWith5Items]);
+
+    await renderPage();
+
+    await waitFor(() => {
+      // With 5 items, diff = 5-3 = 2 (2 !== 1 is true), so both ternaries return 's'
+      expect(screen.getByText(/\+2 items adicionais/)).toBeInTheDocument();
+    });
+  });
+
   it('triggers image onError fallback in Avatar', async () => {
     vi.mocked(quotationsService.getCustomerQuotations).mockResolvedValue(mockQuotations);
 

@@ -243,6 +243,63 @@ describe('ProtectedRoute', () => {
     });
   });
 
+  describe('requireAdmin with fallbackComponent', () => {
+    it('should render fallbackComponent when requireAdmin fails for non-admin user', () => {
+      mockUseAuth.mockReturnValue({
+        isAuthenticated: true,
+        isLoading: false,
+        user: makeUser('customer'),
+        token: 'token',
+        login: vi.fn(),
+        loginWithEmail: vi.fn(),
+        register: vi.fn(),
+        logout: vi.fn(),
+        fetchUser: vi.fn(),
+      });
+
+      const Fallback = () => <div>Admin Fallback</div>;
+
+      renderProtected({
+        children: <div>Admin Only</div>,
+        requireAdmin: true,
+        fallbackComponent: Fallback,
+      });
+
+      expect(screen.getByText('Admin Fallback')).toBeTruthy();
+      expect(screen.queryByText('Admin Only')).toBeNull();
+      expect(screen.queryByText(/acesso negado/i)).toBeNull();
+    });
+  });
+
+  describe('requireApproved with fallbackComponent', () => {
+    it('should render fallbackComponent when requireApproved fails for unapproved supplier', () => {
+      mockUseAuth.mockReturnValue({
+        isAuthenticated: true,
+        isLoading: false,
+        user: makeUser('supplier', 'pending'),
+        token: 'token',
+        login: vi.fn(),
+        loginWithEmail: vi.fn(),
+        register: vi.fn(),
+        logout: vi.fn(),
+        fetchUser: vi.fn(),
+      });
+
+      const Fallback = () => <div>Approval Pending Fallback</div>;
+
+      renderProtected({
+        children: <div>Approved Content</div>,
+        allowedRoles: ['supplier'],
+        requireApproved: true,
+        fallbackComponent: Fallback,
+      });
+
+      expect(screen.getByText('Approval Pending Fallback')).toBeTruthy();
+      expect(screen.queryByText('Approved Content')).toBeNull();
+      expect(screen.queryByText(/pendente de aprovação/i)).toBeNull();
+    });
+  });
+
   describe('requireAdmin (legacy)', () => {
     it('should show access denied for non-admin when requireAdmin is true', () => {
       mockUseAuth.mockReturnValue({
@@ -370,6 +427,7 @@ describe('usePermissions hook', () => {
     return {
       isAuthenticated: true,
       isLoading: false,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       user: makeUser(role, status as any),
       token: 'token',
       login: vi.fn(),
