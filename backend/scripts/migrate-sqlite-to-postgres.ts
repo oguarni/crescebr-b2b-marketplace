@@ -49,7 +49,7 @@ interface MigrationResult {
   errors: string[];
 }
 
-async function exportTable(tableName: string): Promise<any[]> {
+async function exportTable(tableName: string): Promise<Record<string, unknown>[]> {
   try {
     const rows = await sqliteDb.query(`SELECT * FROM ${tableName}`, {
       type: QueryTypes.SELECT,
@@ -62,7 +62,7 @@ async function exportTable(tableName: string): Promise<any[]> {
   }
 }
 
-async function importTable(tableName: string, rows: any[]): Promise<number> {
+async function importTable(tableName: string, rows: Record<string, unknown>[]): Promise<number> {
   if (rows.length === 0) {
     console.log(`  No rows to import for ${tableName}`);
     return 0;
@@ -86,8 +86,11 @@ async function importTable(tableName: string, rows: any[]): Promise<number> {
         }
       );
       imported++;
-    } catch (error: any) {
-      console.error(`  Error importing row into ${tableName}:`, error.message);
+    } catch (error: unknown) {
+      console.error(
+        `  Error importing row into ${tableName}:`,
+        error instanceof Error ? error.message : error
+      );
     }
   }
 
@@ -111,14 +114,14 @@ async function resetSequences(): Promise<void> {
     try {
       await postgresDb.query(query);
       console.log(`  Reset: ${query.split("'")[1]}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Sequence might not exist if table is empty or different naming
       console.log(`  Skipped (sequence may not exist): ${query.split("'")[1]}`);
     }
   }
 }
 
-async function exportToJson(data: Record<string, any[]>): Promise<void> {
+async function exportToJson(data: Record<string, Record<string, unknown>[]>): Promise<void> {
   const exportPath = path.join(__dirname, '..', 'data-export.json');
   fs.writeFileSync(exportPath, JSON.stringify(data, null, 2));
   console.log(`\nData exported to: ${exportPath}`);
@@ -130,7 +133,7 @@ async function migrate(): Promise<void> {
   console.log('='.repeat(60));
 
   const results: MigrationResult[] = [];
-  const exportedData: Record<string, any[]> = {};
+  const exportedData: Record<string, Record<string, unknown>[]> = {};
 
   try {
     // Test connections

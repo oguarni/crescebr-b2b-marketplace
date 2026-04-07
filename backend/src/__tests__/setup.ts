@@ -100,8 +100,8 @@ global.createMockQuotation = (overrides = {}) => ({
 });
 
 declare global {
-  var createMockUser: (overrides?: any) => any;
-  var createMockProduct: (overrides?: any) => any;
-  var createMockOrder: (overrides?: any) => any;
-  var createMockQuotation: (overrides?: any) => any;
+  var createMockUser: (overrides?: Record<string, unknown>) => Record<string, unknown>;
+  var createMockProduct: (overrides?: Record<string, unknown>) => Record<string, unknown>;
+  var createMockOrder: (overrides?: Record<string, unknown>) => Record<string, unknown>;
+  var createMockQuotation: (overrides?: Record<string, unknown>) => Record<string, unknown>;
 }

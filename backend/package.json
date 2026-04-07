@@ -7,7 +7,7 @@
     "start": "node dist/server.js",
     "build": "tsc",
     "dev": "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && nodemon src/server.ts",
-    "test": "cross-env NODE_ENV=test NODE_OPTIONS=--max-old-space-size=4096 jest --runInBand --detectOpenHandles --forceExit",
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS=--max-old-space-size=4096 jest --runInBand --detectOpenHandles --forceExit --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint . --ext ts,js --report-unused-disable-directives",
     "db:migrate": "sequelize-cli db:migrate",
