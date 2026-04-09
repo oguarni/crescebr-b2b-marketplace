@@ -1,12 +1,13 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import toast from 'react-hot-toast';
+import { authService } from './authService';
 
 const api = axios.create({
   baseURL: '/api', // Use relative path for proxy
 });
 
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('crescebr_token');
+  const token = authService.getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -14,12 +15,16 @@ api.interceptors.request.use(config => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const message = error.response?.data?.error || error.response?.data?.message || error.message || 'An unexpected error occurred';
+  response => response,
+  error => {
+    const message =
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message ||
+      'An unexpected error occurred';
 
     if (error.response?.status === 401) {
-      localStorage.removeItem('crescebr_token');
+      authService.logout();
       window.location.href = '/login';
     } else if (error.response?.status !== 404) {
       toast.error(message);
