@@ -43,7 +43,7 @@ vi.mock('../../services/viaCepService', () => ({
 const renderPage = async () => {
   await act(async () => {
     render(
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <RegisterPage />
       </BrowserRouter>
     );

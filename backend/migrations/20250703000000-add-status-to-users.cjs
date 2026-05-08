@@ -5,11 +5,8 @@ module.exports = {
     try {
       // Helper function to check if column exists
       const columnExists = async (tableName, columnName) => {
-        const tableInfo = await queryInterface.sequelize.query(
-          `PRAGMA table_info(${tableName})`,
-          { type: Sequelize.QueryTypes.SELECT }
-        );
-        return tableInfo.some(column => column.name === columnName);
+        const tableDescription = await queryInterface.describeTable(tableName);
+        return !!tableDescription[columnName];
       };
 
       // Add status column if it doesn't exist

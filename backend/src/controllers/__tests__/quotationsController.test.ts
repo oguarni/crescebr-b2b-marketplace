@@ -1,5 +1,5 @@
 import request from 'supertest';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import {
   createQuotation,
   getCustomerQuotations,
@@ -36,18 +36,21 @@ jest.mock('../../middleware/auth', () => ({
   authenticateJWT: jest.fn(),
 }));
 jest.mock('../../middleware/rbac', () => ({
-  requireRole: jest.fn((...roles: string[]) => (req: any, res: any, next: any) => {
-    if (!req.user) {
-      return res.status(401).json({ success: false, error: 'Authentication required' });
-    }
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        error: `Access denied. Required role: ${roles.join(' or ')}`,
-      });
-    }
-    next();
-  }),
+  requireRole: jest.fn(
+    (...roles: string[]) =>
+      (req: Request, res: Response, next: NextFunction) => {
+        if (!req.user) {
+          return res.status(401).json({ success: false, error: 'Authentication required' });
+        }
+        if (!roles.includes(req.user.role)) {
+          return res.status(403).json({
+            success: false,
+            error: `Access denied. Required role: ${roles.join(' or ')}`,
+          });
+        }
+        next();
+      }
+  ),
 }));
 
 const MockProduct = Product as jest.Mocked<typeof Product>;
@@ -125,7 +128,13 @@ describe('Quotations Controller', () => {
 
     it('should create quotation successfully for customer', async () => {
       // Arrange
-      const mockCustomer = { id: 1, email: 'customer@example.com', role: 'customer' };
+      const mockCustomer = {
+        id: 1,
+        email: 'customer@example.com',
+        role: 'customer' as const,
+        cnpj: '12.345.678/0001-90',
+        companyType: 'buyer' as const,
+      };
       const mockProducts = [
         { id: 1, name: 'Product 1', price: 100 },
         { id: 2, name: 'Product 2', price: 200 },
@@ -149,7 +158,7 @@ describe('Quotations Controller', () => {
         })),
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
         req.user = mockCustomer;
         next();
       });
@@ -183,8 +192,14 @@ describe('Quotations Controller', () => {
         ],
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
 
@@ -203,8 +218,14 @@ describe('Quotations Controller', () => {
         items: [],
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
 
@@ -218,8 +239,14 @@ describe('Quotations Controller', () => {
 
     it('should return 403 for non-customer users', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 2, email: 'supplier@example.com', role: 'supplier' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 2,
+          email: 'supplier@example.com',
+          role: 'supplier',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'supplier',
+        };
         next();
       });
 
@@ -236,8 +263,14 @@ describe('Quotations Controller', () => {
 
     it('should return 400 when product not found', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       // Return empty array - no products found
@@ -256,8 +289,14 @@ describe('Quotations Controller', () => {
 
     it('should handle database errors gracefully', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockProduct.findAll.mockRejectedValue(new Error('Database error'));
@@ -276,7 +315,13 @@ describe('Quotations Controller', () => {
   describe('GET /api/quotations/customer', () => {
     it('should get customer quotations successfully', async () => {
       // Arrange
-      const mockCustomer = { id: 1, email: 'customer@example.com', role: 'customer' };
+      const mockCustomer = {
+        id: 1,
+        email: 'customer@example.com',
+        role: 'customer' as const,
+        cnpj: '12.345.678/0001-90',
+        companyType: 'buyer' as const,
+      };
       const mockQuotations = [
         {
           id: 1,
@@ -308,7 +353,7 @@ describe('Quotations Controller', () => {
         },
       ];
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
         req.user = mockCustomer;
         next();
       });
@@ -331,8 +376,14 @@ describe('Quotations Controller', () => {
 
     it('should return 403 for non-customer users', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 2, email: 'admin@example.com', role: 'admin' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 2,
+          email: 'admin@example.com',
+          role: 'admin',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
 
@@ -346,8 +397,14 @@ describe('Quotations Controller', () => {
 
     it('should handle database errors gracefully', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockQuotation.findAll.mockRejectedValue(new Error('Database error'));
@@ -378,8 +435,14 @@ describe('Quotations Controller', () => {
 
     it('should get quotation by ID for owner customer', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockQuotation.findByPk.mockResolvedValue(mockQuotation as any);
@@ -395,8 +458,14 @@ describe('Quotations Controller', () => {
 
     it('should get quotation by ID for admin', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 2, email: 'admin@example.com', role: 'admin' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 2,
+          email: 'admin@example.com',
+          role: 'admin',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockQuotation.findByPk.mockResolvedValue(mockQuotation as any);
@@ -411,8 +480,14 @@ describe('Quotations Controller', () => {
 
     it('should return 404 when quotation not found', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockQuotation.findByPk.mockResolvedValue(null);
@@ -427,8 +502,14 @@ describe('Quotations Controller', () => {
 
     it('should return 403 when customer tries to access other customer quotation', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 2, email: 'other@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 2,
+          email: 'other@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockQuotation.findByPk.mockResolvedValue(mockQuotation as any);
@@ -462,8 +543,14 @@ describe('Quotations Controller', () => {
         },
       ];
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 3, email: 'admin@example.com', role: 'admin' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 3,
+          email: 'admin@example.com',
+          role: 'admin',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockQuotation.findAll.mockResolvedValue(mockQuotations as any);
@@ -482,8 +569,14 @@ describe('Quotations Controller', () => {
 
     it('should return 403 for non-admin users', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
 
@@ -520,8 +613,14 @@ describe('Quotations Controller', () => {
         user: { id: 1, email: 'customer@example.com', role: 'customer' },
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 2, email: 'admin@example.com', role: 'admin' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 2,
+          email: 'admin@example.com',
+          role: 'admin',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockQuotation.findByPk
@@ -548,8 +647,14 @@ describe('Quotations Controller', () => {
         adminNotes: 'Test notes',
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 2, email: 'admin@example.com', role: 'admin' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 2,
+          email: 'admin@example.com',
+          role: 'admin',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
 
@@ -566,8 +671,14 @@ describe('Quotations Controller', () => {
 
     it('should return 403 for non-admin users', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
 
@@ -584,8 +695,14 @@ describe('Quotations Controller', () => {
 
     it('should return 404 when quotation not found', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 2, email: 'admin@example.com', role: 'admin' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 2,
+          email: 'admin@example.com',
+          role: 'admin',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockQuotation.findByPk.mockResolvedValue(null);
@@ -613,8 +730,14 @@ describe('Quotations Controller', () => {
         update: jest.fn().mockResolvedValue(true),
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 2, email: 'admin@example.com', role: 'admin' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 2,
+          email: 'admin@example.com',
+          role: 'admin',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockQuotation.findByPk.mockResolvedValueOnce(mockQuotation as any);
@@ -716,8 +839,14 @@ describe('Quotations Controller', () => {
         ],
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.calculateQuoteComparison.mockResolvedValue(mockCalculations);
@@ -750,8 +879,14 @@ describe('Quotations Controller', () => {
         shippingMethod: 'invalid-method',
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
 
@@ -768,8 +903,14 @@ describe('Quotations Controller', () => {
 
     it('should handle calculation errors gracefully', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.calculateQuoteComparison.mockRejectedValue(new Error('Product not found'));
@@ -820,8 +961,14 @@ describe('Quotations Controller', () => {
         items: [],
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.getQuotationWithCalculations.mockResolvedValue(mockResult);
@@ -858,8 +1005,14 @@ describe('Quotations Controller', () => {
         },
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.getQuotationWithCalculations.mockResolvedValue(mockResult);
@@ -874,8 +1027,14 @@ describe('Quotations Controller', () => {
 
     it('should handle service errors gracefully', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.getQuotationWithCalculations.mockRejectedValue(
@@ -931,8 +1090,14 @@ describe('Quotations Controller', () => {
         items: [],
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 2, email: 'admin@example.com', role: 'admin' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 2,
+          email: 'admin@example.com',
+          role: 'admin',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.getQuotationWithCalculations.mockResolvedValue(mockResult);
@@ -955,8 +1120,14 @@ describe('Quotations Controller', () => {
 
     it('should return 403 for non-admin users', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
 
@@ -970,8 +1141,14 @@ describe('Quotations Controller', () => {
 
     it('should handle processing errors gracefully', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 2, email: 'admin@example.com', role: 'admin' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 2,
+          email: 'admin@example.com',
+          role: 'admin',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.getQuotationWithCalculations.mockRejectedValue(
@@ -990,8 +1167,14 @@ describe('Quotations Controller', () => {
   describe('Edge Cases and Security', () => {
     it('should handle invalid quotation ID parameter', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockQuotation.findByPk.mockResolvedValue(null);
@@ -1010,8 +1193,14 @@ describe('Quotations Controller', () => {
         items: [{ productId: 1, quantity: 999999999 }],
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockProduct.findAll.mockResolvedValue([{ id: 1, name: 'Product' }] as any);
@@ -1038,8 +1227,14 @@ describe('Quotations Controller', () => {
         items: [{ productId: 1, quantity: 1 }],
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockProduct.findAll.mockResolvedValue([{ id: 1 }] as any);
@@ -1106,8 +1301,14 @@ describe('Quotations Controller', () => {
         },
       ];
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.getMultipleSupplierQuotes.mockResolvedValue(mockQuotes);
@@ -1125,8 +1326,14 @@ describe('Quotations Controller', () => {
     });
 
     it('should default shippingMethod to standard when not provided', async () => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.getMultipleSupplierQuotes.mockResolvedValue([]);
@@ -1140,8 +1347,14 @@ describe('Quotations Controller', () => {
     });
 
     it('should return 400 when QuoteService throws', async () => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.getMultipleSupplierQuotes.mockRejectedValue(new Error('Product not found'));
@@ -1156,8 +1369,14 @@ describe('Quotations Controller', () => {
     });
 
     it('should pass optional parameters through', async () => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.getMultipleSupplierQuotes.mockResolvedValue([]);
@@ -1174,10 +1393,18 @@ describe('Quotations Controller', () => {
     });
 
     it('should return 400 when validation fails (missing required fields)', async () => {
-      (authenticateJWT as jest.Mock).mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
-        next();
-      });
+      (authenticateJWT as jest.Mock).mockImplementation(
+        (req: Request, res: Response, next: NextFunction) => {
+          req.user = {
+            id: 1,
+            email: 'customer@example.com',
+            role: 'customer',
+            cnpj: '12.345.678/0001-90',
+            companyType: 'buyer',
+          };
+          next();
+        }
+      );
 
       const response = await request(app).post('/api/quotations/compare').send({}).expect(400);
 
@@ -1188,8 +1415,14 @@ describe('Quotations Controller', () => {
 
   describe('Error fallbacks - non-Error throws and uncovered branches', () => {
     beforeEach(() => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'customer@example.com', role: 'customer' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
     });
@@ -1222,8 +1455,14 @@ describe('Quotations Controller', () => {
     });
 
     it('updateQuotation - uses fallback message when non-Error is thrown', async () => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'admin@example.com', role: 'admin' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'admin@example.com',
+          role: 'admin',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       MockQuotation.findByPk.mockRejectedValue('lock timeout');
@@ -1256,8 +1495,14 @@ describe('Quotations Controller', () => {
     });
 
     it('processQuotationWithCalculations - uses fallback message when non-Error is thrown', async () => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'admin@example.com', role: 'admin' };
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'admin@example.com',
+          role: 'admin',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
         next();
       });
       mockQuoteService.getQuotationWithCalculations.mockRejectedValue('timeout');

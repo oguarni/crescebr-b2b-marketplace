@@ -100,7 +100,7 @@ const mockQuotes = {
 const renderPage = async () => {
   await act(async () => {
     render(
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <QuoteComparisonPage />
       </BrowserRouter>
     );
@@ -367,7 +367,7 @@ describe('QuoteComparisonPage', () => {
 
     await act(async () => {
       render(
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <QuoteComparisonPage />
         </BrowserRouter>
       );

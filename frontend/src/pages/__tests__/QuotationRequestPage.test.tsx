@@ -119,7 +119,7 @@ const mockQuotationItems: MockQuotationItem[] = [
 
 const renderQuotationRequestPage = () => {
   return render(
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <QuotationRequestPage />
     </BrowserRouter>
   );

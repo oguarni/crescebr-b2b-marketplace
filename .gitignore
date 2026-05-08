@@ -134,6 +134,12 @@ filter-repo/
 .claude/settings.local.json
 .claude/projects/
 .claude/todos/
+.claude/skills/
+.claude/*.lock
+.claude/scheduled_tasks.lock
+.claude/.session_*
+.claude/cache/
+.claude/logs/
 
 # ──────────────────────────────────────────────
 # Shared build output
@@ -146,4 +152,8 @@ shared/dist/
 docs/delegation-prompt-sonnet.md
 *session-is-being-continued*.txt
 *-conversation*.txt
+*-transcript*.txt
 Project Diagnostic.md
+*-diagnostic*.md
+audit-report*.md
+*-audit-report.md

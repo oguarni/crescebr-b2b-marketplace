@@ -146,7 +146,8 @@ export const requirePermission = (permission: Permission) => {
       }
 
       // Add permissions to request for further use
-      (req as any).userPermissions = userPermissions;
+      (req as AuthenticatedRequest & { userPermissions?: Permission[] }).userPermissions =
+        userPermissions;
       next();
     } catch (error) {
       res.status(500).json({
@@ -190,7 +191,8 @@ export const requireAnyPermission = (permissions: Permission[]) => {
         return;
       }
 
-      (req as any).userPermissions = userPermissions;
+      (req as AuthenticatedRequest & { userPermissions?: Permission[] }).userPermissions =
+        userPermissions;
       next();
     } catch (error) {
       res.status(500).json({
@@ -234,7 +236,8 @@ export const requireAllPermissions = (permissions: Permission[]) => {
         return;
       }
 
-      (req as any).userPermissions = userPermissions;
+      (req as AuthenticatedRequest & { userPermissions?: Permission[] }).userPermissions =
+        userPermissions;
       next();
     } catch (error) {
       res.status(500).json({
@@ -298,7 +301,8 @@ export const addPermissionsToResponse = async (
 
       if (user) {
         const userPermissions = RBACService.getUserPermissions(user.role, user.status);
-        (req as any).userPermissions = userPermissions;
+        (req as AuthenticatedRequest & { userPermissions?: Permission[] }).userPermissions =
+          userPermissions;
 
         if (process.env.NODE_ENV === 'development') {
           res.setHeader('X-User-Permissions', JSON.stringify(userPermissions));

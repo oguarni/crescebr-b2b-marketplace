@@ -242,10 +242,13 @@ export const canAccessOrder = async (
 
     // Supplier can access orders for their products
     if (req.user.role === 'supplier') {
-      const quotation = (order as any).quotation;
+      const orderWithQuotation = order as typeof order & {
+        quotation?: { items?: Array<{ product?: { supplierId?: number } }> };
+      };
+      const quotation = orderWithQuotation.quotation;
       if (quotation && quotation.items) {
         const hasSupplierProduct = quotation.items.some(
-          (item: any) => item.product && item.product.supplierId === req.user!.id
+          item => item.product && item.product.supplierId === req.user!.id
         );
 
         if (hasSupplierProduct) {

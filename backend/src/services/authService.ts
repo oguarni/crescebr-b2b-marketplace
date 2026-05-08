@@ -3,7 +3,7 @@ import { CNPJService } from './cnpjService';
 
 function businessError(message: string): Error {
   const err = new Error(message);
-  (err as any).statusCode = 400;
+  (err as Error & { statusCode: number }).statusCode = 400;
   return err;
 }
 

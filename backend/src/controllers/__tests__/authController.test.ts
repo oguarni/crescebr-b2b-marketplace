@@ -1,5 +1,5 @@
 import request from 'supertest';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import {
   register,
   login,
@@ -56,7 +56,7 @@ const mockRevokeAllUserTokens = revokeAllUserTokens as jest.MockedFunction<
   typeof revokeAllUserTokens
 >;
 const mockCNPJService = CNPJService as jest.Mocked<typeof CNPJService>;
-const mockAuthenticateJWT = authenticateJWT as jest.MockedFunction<typeof authenticateJWT>;
+const mockAuthenticateJWT = authenticateJWT as jest.MockedFunction<any>;
 
 // Create Express app for testing
 const app = express();
@@ -370,10 +370,22 @@ describe('Auth Controller', () => {
         updatedAt: new Date(),
       };
 
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'test@example.com', role: 'customer' };
-        next();
-      });
+      mockAuthenticateJWT.mockImplementation(
+        (
+          req: Request & { user?: Record<string, unknown> | undefined },
+          res: Response,
+          next: NextFunction
+        ) => {
+          req.user = {
+            id: 1,
+            email: 'test@example.com',
+            role: 'customer',
+            cnpj: '12.345.678/0001-90',
+            companyType: 'buyer',
+          };
+          next();
+        }
+      );
 
       MockUser.findByPk.mockResolvedValue(mockUser as any);
 
@@ -392,10 +404,16 @@ describe('Auth Controller', () => {
 
     it('should return 401 when user not authenticated', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = null;
-        next();
-      });
+      mockAuthenticateJWT.mockImplementation(
+        (
+          req: Request & { user?: Record<string, unknown> | undefined },
+          res: Response,
+          next: NextFunction
+        ) => {
+          req.user = undefined;
+          next();
+        }
+      );
 
       // Act
       const response = await request(app).get('/api/auth/profile').expect(401);
@@ -407,10 +425,22 @@ describe('Auth Controller', () => {
 
     it('should return 404 when user not found in database', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 999, email: 'nonexistent@example.com', role: 'customer' };
-        next();
-      });
+      mockAuthenticateJWT.mockImplementation(
+        (
+          req: Request & { user?: Record<string, unknown> | undefined },
+          res: Response,
+          next: NextFunction
+        ) => {
+          req.user = {
+            id: 999,
+            email: 'nonexistent@example.com',
+            role: 'customer',
+            cnpj: '12.345.678/0001-90',
+            companyType: 'buyer',
+          };
+          next();
+        }
+      );
 
       MockUser.findByPk.mockResolvedValue(null);
 
@@ -427,10 +457,22 @@ describe('Auth Controller', () => {
 
     it('should handle database errors gracefully', async () => {
       // Arrange
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'test@example.com', role: 'customer' };
-        next();
-      });
+      mockAuthenticateJWT.mockImplementation(
+        (
+          req: Request & { user?: Record<string, unknown> | undefined },
+          res: Response,
+          next: NextFunction
+        ) => {
+          req.user = {
+            id: 1,
+            email: 'test@example.com',
+            role: 'customer',
+            cnpj: '12.345.678/0001-90',
+            companyType: 'buyer',
+          };
+          next();
+        }
+      );
 
       MockUser.findByPk.mockRejectedValue(new Error('Database connection failed'));
 
@@ -1122,10 +1164,22 @@ describe('Auth Controller', () => {
 
   describe('POST /api/auth/logout', () => {
     beforeEach(() => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'test@example.com', role: 'customer' };
-        next();
-      });
+      mockAuthenticateJWT.mockImplementation(
+        (
+          req: Request & { user?: Record<string, unknown> | undefined },
+          res: Response,
+          next: NextFunction
+        ) => {
+          req.user = {
+            id: 1,
+            email: 'test@example.com',
+            role: 'customer',
+            cnpj: '12.345.678/0001-90',
+            companyType: 'buyer',
+          };
+          next();
+        }
+      );
     });
 
     it('should logout successfully with refresh token', async () => {
@@ -1172,10 +1226,22 @@ describe('Auth Controller', () => {
 
   describe('POST /api/auth/logout-all', () => {
     it('should logout from all devices successfully', async () => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'test@example.com', role: 'customer' };
-        next();
-      });
+      mockAuthenticateJWT.mockImplementation(
+        (
+          req: Request & { user?: Record<string, unknown> | undefined },
+          res: Response,
+          next: NextFunction
+        ) => {
+          req.user = {
+            id: 1,
+            email: 'test@example.com',
+            role: 'customer',
+            cnpj: '12.345.678/0001-90',
+            companyType: 'buyer',
+          };
+          next();
+        }
+      );
       mockRevokeAllUserTokens.mockResolvedValue(3);
 
       const response = await request(app)
@@ -1190,10 +1256,16 @@ describe('Auth Controller', () => {
     });
 
     it('should return 401 when no user is authenticated', async () => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = null;
-        next();
-      });
+      mockAuthenticateJWT.mockImplementation(
+        (
+          req: Request & { user?: Record<string, unknown> | undefined },
+          res: Response,
+          next: NextFunction
+        ) => {
+          req.user = undefined;
+          next();
+        }
+      );
 
       const response = await request(app)
         .post('/api/auth/logout-all')
@@ -1205,10 +1277,22 @@ describe('Auth Controller', () => {
     });
 
     it('should return 500 when an error occurs', async () => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'test@example.com', role: 'customer' };
-        next();
-      });
+      mockAuthenticateJWT.mockImplementation(
+        (
+          req: Request & { user?: Record<string, unknown> | undefined },
+          res: Response,
+          next: NextFunction
+        ) => {
+          req.user = {
+            id: 1,
+            email: 'test@example.com',
+            role: 'customer',
+            cnpj: '12.345.678/0001-90',
+            companyType: 'buyer',
+          };
+          next();
+        }
+      );
       mockRevokeAllUserTokens.mockImplementation(() => {
         throw new Error('Store error');
       });
@@ -1225,10 +1309,22 @@ describe('Auth Controller', () => {
 
   describe('GET /api/auth/sessions', () => {
     it('should return active sessions successfully', async () => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'test@example.com', role: 'customer' };
-        next();
-      });
+      mockAuthenticateJWT.mockImplementation(
+        (
+          req: Request & { user?: Record<string, unknown> | undefined },
+          res: Response,
+          next: NextFunction
+        ) => {
+          req.user = {
+            id: 1,
+            email: 'test@example.com',
+            role: 'customer',
+            cnpj: '12.345.678/0001-90',
+            companyType: 'buyer',
+          };
+          next();
+        }
+      );
 
       const jwtModule = require('../../utils/jwt');
       jwtModule.getUserActiveTokens = jest.fn().mockResolvedValue([
@@ -1259,10 +1355,16 @@ describe('Auth Controller', () => {
     });
 
     it('should return 401 when no user is authenticated', async () => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = null;
-        next();
-      });
+      mockAuthenticateJWT.mockImplementation(
+        (
+          req: Request & { user?: Record<string, unknown> | undefined },
+          res: Response,
+          next: NextFunction
+        ) => {
+          req.user = undefined;
+          next();
+        }
+      );
 
       const response = await request(app)
         .get('/api/auth/sessions')
@@ -1274,10 +1376,22 @@ describe('Auth Controller', () => {
     });
 
     it('should return 500 when an error occurs retrieving sessions', async () => {
-      mockAuthenticateJWT.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'test@example.com', role: 'customer' };
-        next();
-      });
+      mockAuthenticateJWT.mockImplementation(
+        (
+          req: Request & { user?: Record<string, unknown> | undefined },
+          res: Response,
+          next: NextFunction
+        ) => {
+          req.user = {
+            id: 1,
+            email: 'test@example.com',
+            role: 'customer',
+            cnpj: '12.345.678/0001-90',
+            companyType: 'buyer',
+          };
+          next();
+        }
+      );
 
       const jwtModule = require('../../utils/jwt');
       jwtModule.getUserActiveTokens = jest.fn().mockImplementation(() => {

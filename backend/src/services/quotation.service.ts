@@ -73,7 +73,13 @@ class QuotationService {
     return quotationRepository.findAll();
   }
 
-  async updateByAdmin(id: number, data: { status?: 'pending' | 'processed' | 'completed' | 'rejected'; adminNotes?: string | null }) {
+  async updateByAdmin(
+    id: number,
+    data: {
+      status?: 'pending' | 'processed' | 'completed' | 'rejected';
+      adminNotes?: string | null;
+    }
+  ) {
     const quotation = await quotationRepository.findById(id);
 
     if (!quotation) {
@@ -88,7 +94,7 @@ class QuotationService {
     return quotationRepository.findByIdWithItemsAndUser(id);
   }
 
-  async processWithCalculations(id: number, _calculations: any) {
+  async processWithCalculations(id: number, _calculations: Record<string, unknown>) {
     const quotation = await quotationRepository.findById(id);
 
     if (!quotation) {

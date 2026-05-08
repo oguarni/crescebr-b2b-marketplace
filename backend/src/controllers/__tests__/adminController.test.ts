@@ -1,5 +1,5 @@
 import request from 'supertest';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import {
   getAllPendingCompanies,
   verifyCompany,
@@ -26,26 +26,29 @@ jest.mock('../../middleware/auth', () => ({
   authenticateJWT: jest.fn((req, res, next) => next()),
 }));
 jest.mock('../../middleware/rbac', () => {
-  let _impl: (req: any, res: any, next: any) => void = (req, res, next) => next();
-  const requireRoleMock = jest.fn(() => (req: any, res: any, next: any) => _impl(req, res, next));
+  let _impl: (req: Request, res: Response, next: NextFunction) => void = (req, res, next) => next();
+  const requireRoleMock = jest.fn(
+    () => (req: Request, res: Response, next: NextFunction) => _impl(req, res, next)
+  );
   (requireRoleMock as any).__setImpl = (fn: typeof _impl) => {
     _impl = fn;
   };
   return { requireRole: requireRoleMock };
 });
 jest.mock('../../middleware/errorHandler', () => ({
-  errorHandler: jest.fn((err: any, req: any, res: any, _next: any) => {
+  errorHandler: jest.fn((err: Error, req: Request, res: Response, _next: NextFunction) => {
     res.status(500).json({ error: err.message });
   }),
   asyncHandler: jest.fn(
-    (fn: any) => (req: any, res: any, next: any) => Promise.resolve(fn(req, res, next)).catch(next)
+    (fn: Function) => (req: Request, res: Response, next: NextFunction) =>
+      Promise.resolve(fn(req, res, next)).catch(next)
   ),
 }));
 
 const MockAdminService = adminService as jest.Mocked<typeof adminService>;
 
 // Helper factories
-function createMockUser(overrides: any = {}) {
+function createMockUser(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
     email: 'test@test.com',
@@ -59,7 +62,7 @@ function createMockUser(overrides: any = {}) {
   };
 }
 
-function createMockProduct(overrides: any = {}) {
+function createMockProduct(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
     name: 'Test Product',
@@ -69,7 +72,7 @@ function createMockProduct(overrides: any = {}) {
   };
 }
 
-function createMockOrder(overrides: any = {}) {
+function createMockOrder(overrides: Record<string, unknown> = {}) {
   return {
     id: 'order-1',
     totalAmount: 100,
@@ -143,7 +146,7 @@ describe('Admin Controller', () => {
       next();
     });
 
-    (requireRole as any).__setImpl((req: any, res: any, next: any) => next());
+    (requireRole as any).__setImpl((req: Request, res: Response, next: NextFunction) => next());
   });
 
   describe('GET /api/admin/companies/pending', () => {
@@ -192,7 +195,7 @@ describe('Admin Controller', () => {
     });
 
     it('should return 403 when user is not an admin', async () => {
-      (requireRole as any).__setImpl((req: any, res: any) => {
+      (requireRole as any).__setImpl((req: Request, res: Response) => {
         return res
           .status(403)
           .json({ success: false, error: 'Access denied. Required role: admin' });
@@ -630,7 +633,7 @@ describe('Admin Controller', () => {
         recentRatings: [],
       };
 
-      MockAdminService.getSupplierMetrics.mockResolvedValue(mockMetrics);
+      MockAdminService.getSupplierMetrics.mockResolvedValue(mockMetrics as never);
 
       const response = await request(app).get('/api/admin/suppliers/1/metrics').expect(200);
 

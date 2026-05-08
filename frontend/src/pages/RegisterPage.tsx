@@ -223,7 +223,8 @@ const RegisterPage: React.FC = () => {
       navigate('/');
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
-      const errorMessage = axiosErr.response?.data?.error || axiosErr.message || 'Erro ao fazer cadastro';
+      const errorMessage =
+        axiosErr.response?.data?.error || axiosErr.message || 'Erro ao fazer cadastro';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -265,7 +266,7 @@ const RegisterPage: React.FC = () => {
 
           <Box component='form' onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
             <Grid container spacing={2}>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   required
                   fullWidth
@@ -285,7 +286,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   required
                   fullWidth
@@ -313,7 +314,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   required
                   fullWidth
@@ -343,7 +344,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   required
                   fullWidth
@@ -363,7 +364,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   required
                   fullWidth
@@ -388,7 +389,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   required
                   fullWidth
@@ -410,7 +411,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={8}>
+              <Grid size={{ xs: 12, sm: 8 }}>
                 <TextField
                   fullWidth
                   id='street'
@@ -422,7 +423,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   id='number'
@@ -434,7 +435,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   id='complement'
@@ -446,7 +447,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   id='neighborhood'
@@ -458,7 +459,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   id='city'
@@ -470,7 +471,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   id='state'
@@ -482,7 +483,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   id='phone'
@@ -494,7 +495,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   id='website'
@@ -506,7 +507,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   required
                   fullWidth
@@ -525,7 +526,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   required
                   fullWidth
@@ -544,7 +545,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   required
                   fullWidth
@@ -564,7 +565,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   id='contactPerson'
@@ -576,7 +577,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   id='contactTitle'
@@ -588,7 +589,7 @@ const RegisterPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth>
                   <InputLabel id='companySize-label'>Porte da Empresa</InputLabel>
                   <Select
@@ -612,7 +613,7 @@ const RegisterPage: React.FC = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth>
                   <InputLabel id='annualRevenue-label'>Faturamento Anual</InputLabel>
                   <Select
@@ -637,7 +638,7 @@ const RegisterPage: React.FC = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth required>
                   <InputLabel id='industrySector-label'>Setor da Indústria</InputLabel>
                   <Select
@@ -669,7 +670,7 @@ const RegisterPage: React.FC = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <FormControl fullWidth required>
                   <InputLabel id='companyType-label'>Tipo de Empresa</InputLabel>
                   <Select

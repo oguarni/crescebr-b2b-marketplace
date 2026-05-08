@@ -150,10 +150,16 @@ backend/config/
 backend/nodemon.json
 
 # ──────────────────────────────────────────────
-# Claude memory (private, not code context)
+# Claude memory & runtime (private, not code context)
 # ──────────────────────────────────────────────
 .claude/projects/
 .claude/todos/
+.claude/settings.local.json
+.claude/*.lock
+.claude/scheduled_tasks.lock
+.claude/.session_*
+.claude/cache/
+.claude/logs/
 
 # ──────────────────────────────────────────────
 # Migration scripts (one-time, not core logic)
@@ -165,4 +171,8 @@ backend/scripts/
 # ──────────────────────────────────────────────
 *session-is-being-continued*.txt
 *-conversation*.txt
+*-transcript*.txt
 Project Diagnostic.md
+*-diagnostic*.md
+audit-report*.md
+*-audit-report.md

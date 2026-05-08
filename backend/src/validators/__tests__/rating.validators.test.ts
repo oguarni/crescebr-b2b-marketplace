@@ -1,8 +1,9 @@
-import { validationResult } from 'express-validator';
+import { validationResult, ValidationChain, FieldValidationError } from 'express-validator';
+import { Request } from 'express';
 import { createRatingValidation, updateRatingValidation } from '../rating.validators';
 
-async function runValidators(validators: any[], body: any) {
-  const req = { body } as any;
+async function runValidators(validators: ValidationChain[], body: Record<string, unknown>) {
+  const req = { body } as Request;
   for (const validator of validators) {
     await validator.run(req);
   }
@@ -33,7 +34,7 @@ describe('Rating Validators', () => {
       const result = await runValidators(createRatingValidation, { score: 5 });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.path === 'supplierId')).toBe(true);
+      expect(errors.some(e => (e as FieldValidationError).path === 'supplierId')).toBe(true);
     });
 
     it('should fail with supplierId of 0', async () => {
@@ -45,7 +46,7 @@ describe('Rating Validators', () => {
       const result = await runValidators(createRatingValidation, { supplierId: 1 });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.path === 'score')).toBe(true);
+      expect(errors.some(e => (e as FieldValidationError).path === 'score')).toBe(true);
     });
 
     it('should fail with score below 1', async () => {
@@ -76,7 +77,7 @@ describe('Rating Validators', () => {
       });
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
-      expect(errors.some((e: any) => e.path === 'comment')).toBe(true);
+      expect(errors.some(e => (e as FieldValidationError).path === 'comment')).toBe(true);
     });
 
     it('should pass with comment at exactly 1000 characters', async () => {

@@ -1,6 +1,6 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import request from 'supertest';
-import { validationResult } from 'express-validator';
+import { validationResult, FieldValidationError } from 'express-validator';
 import {
   validateNfeModulo11,
   updateOrderStatusValidation,
@@ -84,7 +84,7 @@ describe('validateNfeModulo11', () => {
 describe('nfeAccessKeyChain integration', () => {
   const app = express();
   app.use(express.json());
-  app.post('/test', updateOrderStatusValidation, (req: any, res: any) => {
+  app.post('/test', updateOrderStatusValidation, (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -129,7 +129,7 @@ describe('nfeAccessKeyChain integration', () => {
       .send({ status: 'shipped', nfeAccessKey: invalidKey })
       .expect(400);
 
-    const errors = response.body.errors.map((e: any) => e.msg);
+    const errors = response.body.errors.map((e: FieldValidationError) => e.msg);
     expect(errors).toContain('NF-e access key has an invalid Modulo 11 check digit');
   });
 
@@ -139,7 +139,7 @@ describe('nfeAccessKeyChain integration', () => {
       .send({ status: 'shipped', nfeAccessKey: '12345' })
       .expect(400);
 
-    const errors = response.body.errors.map((e: any) => e.msg);
+    const errors = response.body.errors.map((e: FieldValidationError) => e.msg);
     expect(errors).toContain('NF-e access key must be exactly 44 numeric digits');
   });
 
@@ -162,7 +162,7 @@ describe('nfeAccessKeyChain integration', () => {
 describe('updateOrderNfeValidation (default fieldName parameter)', () => {
   const nfeApp = express();
   nfeApp.use(express.json());
-  nfeApp.post('/nfe-test', updateOrderNfeValidation, (req: any, res: any) => {
+  nfeApp.post('/nfe-test', updateOrderNfeValidation, (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -200,7 +200,7 @@ describe('updateOrderNfeValidation (default fieldName parameter)', () => {
       .send({ nfeAccessKey: '12345' })
       .expect(400);
 
-    expect(response.body.errors.map((e: any) => e.msg)).toContain(
+    expect(response.body.errors.map((e: FieldValidationError) => e.msg)).toContain(
       'NF-e access key must be exactly 44 numeric digits'
     );
   });

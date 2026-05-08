@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { authService } from './authService';
 
 const api = axios.create({
-  baseURL: '/api', // Use relative path for proxy
+  baseURL: '/api/v1', // Use relative path for proxy; matches backend API_PREFIX
 });
 
 api.interceptors.request.use(config => {

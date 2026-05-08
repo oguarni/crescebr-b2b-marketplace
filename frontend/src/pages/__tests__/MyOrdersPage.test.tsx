@@ -123,7 +123,7 @@ const mockOrderHistory = {
 // Render without act() - use waitFor in tests to handle async state updates
 const renderPage = () => {
   render(
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <MyOrdersPage />
     </BrowserRouter>
   );
@@ -422,7 +422,7 @@ describe('MyOrdersPage', () => {
     vi.mocked(ordersService.getUserOrders).mockImplementation(() => new Promise(() => {}));
 
     render(
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <MyOrdersPage />
       </BrowserRouter>
     );

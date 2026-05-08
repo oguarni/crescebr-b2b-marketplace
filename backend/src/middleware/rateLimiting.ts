@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { getRedisClient } from '../config/redis';
+import { AuthenticatedRequest } from './auth';
 
 interface RateLimitOptions {
   windowMs: number; // Time window in milliseconds
@@ -61,7 +62,7 @@ class RateLimiter {
 
   private defaultKeyGenerator(req: Request): string {
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
-    const userId = (req as any).user?.id || 'anonymous';
+    const userId = (req as AuthenticatedRequest).user?.id || 'anonymous';
     return `${ip}:${userId}`;
   }
 
@@ -111,7 +112,7 @@ export const cnpjValidationRateLimit = rateLimiter.createLimiter({
   message: 'Too many CNPJ validation requests. Please try again in an hour.',
   keyGenerator: (req: Request) => {
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
-    const userId = (req as any).user?.id || 'anonymous';
+    const userId = (req as AuthenticatedRequest).user?.id || 'anonymous';
     return `cnpj:${ip}:${userId}`;
   },
 });
@@ -139,7 +140,7 @@ export const emailRateLimit = rateLimiter.createLimiter({
   maxRequests: 5,
   message: 'Too many email requests. Please try again in an hour.',
   keyGenerator: (req: Request) => {
-    const userId = (req as any).user?.id || 'anonymous';
+    const userId = (req as AuthenticatedRequest).user?.id || 'anonymous';
     return `email:${userId}`;
   },
 });
@@ -159,7 +160,7 @@ export const createCustomRateLimit = (options: RateLimitOptions) => {
 // Progressive rate limiter that increases restrictions based on user behavior
 export const progressiveRateLimit = (req: Request, res: Response, next: NextFunction): void => {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
-  const user = (req as any).user;
+  const user = (req as AuthenticatedRequest).user;
 
   let windowMs = 15 * 60 * 1000;
   let maxRequests = 100;

@@ -16,7 +16,7 @@ export interface DashboardAnalytics {
     };
     products: {
       total: number;
-      byCategory: any[];
+      byCategory: Array<{ category: string; count: number }>;
     };
     orders: {
       total: number;
@@ -39,7 +39,7 @@ export interface DashboardAnalytics {
     };
     quotations: {
       total: number;
-      byStatus: any[];
+      byStatus: Array<{ status: string; count: number }>;
     };
     activity: {
       recentOrders: number;
@@ -78,7 +78,10 @@ export const adminService = {
       User.count({ where: { role: 'supplier', status: 'pending' } }),
       User.count({ where: { role: 'supplier', status: 'approved' } }),
       User.count({
-        where: { role: 'supplier', cnpjValidated: false, cnpj: { [Op.ne]: null } } as any,
+        where: { role: 'supplier', cnpjValidated: false, cnpj: { [Op.ne]: null } } as Record<
+          string,
+          unknown
+        >,
       }),
       Product.count(),
       Product.findAll({
@@ -151,7 +154,7 @@ export const adminService = {
         },
         products: {
           total: totalProducts,
-          byCategory: productsByCategory,
+          byCategory: productsByCategory as unknown as Array<{ category: string; count: number }>,
         },
         orders: {
           total: totalOrders,
@@ -174,7 +177,7 @@ export const adminService = {
         },
         quotations: {
           total: totalQuotations,
-          byStatus: quotationsByStatus,
+          byStatus: quotationsByStatus as unknown as Array<{ status: string; count: number }>,
         },
         activity: {
           recentOrders,
@@ -238,7 +241,7 @@ export const adminService = {
     endDate?: string;
     status?: string;
   }) {
-    const whereClause: any = {};
+    const whereClause: Record<string, unknown> = {};
     if (filters.startDate && filters.endDate) {
       whereClause.createdAt = {
         [Op.between]: [new Date(filters.startDate), new Date(filters.endDate)],
@@ -313,7 +316,7 @@ export const adminService = {
 
   async getVerificationQueue(page: number, limit: number, filter: string) {
     const offset = (page - 1) * limit;
-    const whereClause: any = { role: 'supplier' };
+    const whereClause: Record<string, unknown> = { role: 'supplier' };
 
     if (filter === 'pending') {
       whereClause.status = 'pending';

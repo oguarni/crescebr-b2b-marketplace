@@ -13,7 +13,7 @@ interface StatusTransition {
   from: OrderStatus;
   to: OrderStatus;
   requiredFields?: string[];
-  businessLogic?: (order: Order, data: any) => Promise<void>;
+  businessLogic?: (order: Order, data: OrderStatusUpdate) => Promise<void>;
 }
 
 interface OrderStatusUpdate {
@@ -254,7 +254,7 @@ export class OrderStatusService {
       offset?: number;
     } = {}
   ): Promise<{ orders: Order[]; total: number }> {
-    const whereClause: any = {};
+    const whereClause: Record<string, unknown> = {};
 
     if (status) {
       whereClause.status = status;
@@ -308,10 +308,13 @@ export class OrderStatusService {
       raw: true,
     });
 
-    const counts = statusCounts.reduce((acc: any, item: any) => {
-      acc[item.status] = parseInt(item.count);
-      return acc;
-    }, {});
+    const counts = (statusCounts as unknown as Array<{ status: string; count: string }>).reduce(
+      (acc: Record<string, number>, item) => {
+        acc[item.status] = parseInt(item.count);
+        return acc;
+      },
+      {}
+    );
 
     const totalOrders = (Object.values(counts) as number[]).reduce(
       (sum: number, count: number) => sum + count,

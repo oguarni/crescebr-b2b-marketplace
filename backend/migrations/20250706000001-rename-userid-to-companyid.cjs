@@ -5,12 +5,9 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     // Helper function to check if column exists (SQLite compatible)
     const columnExists = async (tableName, columnName) => {
-      const tableInfo = await queryInterface.sequelize.query(
-        `PRAGMA table_info(${tableName})`,
-        { type: Sequelize.QueryTypes.SELECT }
-      );
-      return tableInfo.some(column => column.name === columnName);
-    };
+        const tableDescription = await queryInterface.describeTable(tableName);
+        return !!tableDescription[columnName];
+      };
 
     // Rename userId to companyId in quotations table
     if (await columnExists('quotations', 'userId')) {
@@ -28,12 +25,9 @@ module.exports = {
   async down(queryInterface, Sequelize) {
     // Helper function to check if column exists (SQLite compatible)
     const columnExists = async (tableName, columnName) => {
-      const tableInfo = await queryInterface.sequelize.query(
-        `PRAGMA table_info(${tableName})`,
-        { type: Sequelize.QueryTypes.SELECT }
-      );
-      return tableInfo.some(column => column.name === columnName);
-    };
+        const tableDescription = await queryInterface.describeTable(tableName);
+        return !!tableDescription[columnName];
+      };
 
     // Rename companyId back to userId in quotations table
     if (await columnExists('quotations', 'companyId')) {

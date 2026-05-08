@@ -5,12 +5,9 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     // Helper function to check if column exists (SQLite compatible)
     const columnExists = async (tableName, columnName) => {
-      const tableInfo = await queryInterface.sequelize.query(
-        `PRAGMA table_info(${tableName})`,
-        { type: Sequelize.QueryTypes.SELECT }
-      );
-      return tableInfo.some(column => column.name === columnName);
-    };
+        const tableDescription = await queryInterface.describeTable(tableName);
+        return !!tableDescription[columnName];
+      };
 
     // Add new fields to users table for company-centric approach
     if (!(await columnExists('users', 'companyType'))) {
@@ -65,16 +62,16 @@ module.exports = {
     await queryInterface.sequelize.query(`
       UPDATE users 
       SET 
-        companyName = COALESCE(companyName, 'Company Name Required'),
-        corporateName = COALESCE(corporateName, 'Corporate Name Required'),
+        "companyName" = COALESCE("companyName", 'Company Name Required'),
+        "corporateName" = COALESCE("corporateName", 'Corporate Name Required'),
         cnpj = COALESCE(cnpj, '00000000000000' || CAST(id AS TEXT)),
-        industrySector = COALESCE(industrySector, 'other'),
-        companyType = CASE 
-          WHEN role = 'supplier' THEN 'supplier'
-          WHEN role = 'customer' THEN 'buyer'
-          ELSE 'buyer'
+        "industrySector" = COALESCE("industrySector", 'other'),
+        "companyType" = CASE 
+          WHEN role::text = 'supplier' THEN 'supplier'::"enum_users_companyType"
+          WHEN role::text = 'customer' THEN 'buyer'::"enum_users_companyType"
+          ELSE 'buyer'::"enum_users_companyType"
         END
-      WHERE companyName IS NULL OR corporateName IS NULL OR cnpj IS NULL OR industrySector IS NULL OR companyType IS NULL;
+      WHERE "companyName" IS NULL OR "corporateName" IS NULL OR cnpj IS NULL OR "industrySector" IS NULL OR "companyType" IS NULL;
     `);
 
     // Add new fields to quotations table
@@ -154,11 +151,11 @@ module.exports = {
     await queryInterface.sequelize.query(`
       UPDATE products 
       SET 
-        tierPricing = COALESCE(tierPricing, '[]'),
+        "tierPricing" = COALESCE("tierPricing", '[]'),
         specifications = COALESCE(specifications, '{}'),
-        unitPrice = COALESCE(unitPrice, price),
-        minimumOrderQuantity = COALESCE(minimumOrderQuantity, 1)
-      WHERE tierPricing IS NULL OR specifications IS NULL OR unitPrice IS NULL OR minimumOrderQuantity IS NULL;
+        "unitPrice" = COALESCE("unitPrice", price),
+        "minimumOrderQuantity" = COALESCE("minimumOrderQuantity", 1)
+      WHERE "tierPricing" IS NULL OR specifications IS NULL OR "unitPrice" IS NULL OR "minimumOrderQuantity" IS NULL;
     `);
   },
 

@@ -37,32 +37,31 @@ interface UserAttributes {
   updatedAt?: Date;
 }
 
-interface UserCreationAttributes
-  extends Optional<
-    UserAttributes,
-    | 'id'
-    | 'status'
-    | 'cnpjValidated'
-    | 'averageRating'
-    | 'totalRatings'
-    | 'street'
-    | 'number'
-    | 'complement'
-    | 'neighborhood'
-    | 'city'
-    | 'state'
-    | 'zipCode'
-    | 'country'
-    | 'phone'
-    | 'contactPerson'
-    | 'contactTitle'
-    | 'companySize'
-    | 'annualRevenue'
-    | 'certifications'
-    | 'website'
-    | 'createdAt'
-    | 'updatedAt'
-  > {}
+interface UserCreationAttributes extends Optional<
+  UserAttributes,
+  | 'id'
+  | 'status'
+  | 'cnpjValidated'
+  | 'averageRating'
+  | 'totalRatings'
+  | 'street'
+  | 'number'
+  | 'complement'
+  | 'neighborhood'
+  | 'city'
+  | 'state'
+  | 'zipCode'
+  | 'country'
+  | 'phone'
+  | 'contactPerson'
+  | 'contactTitle'
+  | 'companySize'
+  | 'annualRevenue'
+  | 'certifications'
+  | 'website'
+  | 'createdAt'
+  | 'updatedAt'
+> {}
 
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;
@@ -103,7 +102,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   }
 
   public static async hashPassword(password: string): Promise<string> {
-    const saltRounds = 10;
+    const saltRounds = process.env.NODE_ENV === 'test' ? 1 : 10;
     return bcrypt.hash(password, saltRounds);
   }
 }

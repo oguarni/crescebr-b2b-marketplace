@@ -7,7 +7,7 @@ import { orderService } from '../services/orderService';
 export const createOrderFromQuotation = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const { quotationId } = req.body;
-    const companyId = req.user?.id!;
+    const companyId = req.user!.id;
 
     try {
       const order = await orderService.createFromQuotation(quotationId, companyId);
@@ -27,7 +27,7 @@ export const createOrderFromQuotation = asyncHandler(
 export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const orderId = req.params.orderId as string;
   const { status, trackingNumber, estimatedDeliveryDate, notes, nfeAccessKey, nfeUrl } = req.body;
-  const companyId = req.user?.id!;
+  const companyId = req.user!.id;
 
   try {
     const updatedOrder = await OrderStatusService.updateOrderStatus(
@@ -57,15 +57,19 @@ export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, 
 });
 
 export const getUserOrders = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const companyId = req.user?.id!;
+  const companyId = req.user!.id;
   const { status, page = 1, limit = 20 } = req.query;
 
   try {
-    const result = await OrderStatusService.getOrdersByStatus((status as any) || undefined, {
-      companyId,
-      limit: parseInt(limit as string),
-      offset: (parseInt(page as string) - 1) * parseInt(limit as string),
-    });
+    const result = await OrderStatusService.getOrdersByStatus(
+      (status as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | undefined) ||
+        undefined,
+      {
+        companyId,
+        limit: parseInt(limit as string),
+        offset: (parseInt(page as string) - 1) * parseInt(limit as string),
+      }
+    );
 
     res.status(200).json({
       success: true,
@@ -89,8 +93,8 @@ export const getUserOrders = asyncHandler(async (req: AuthenticatedRequest, res:
 
 export const getOrderHistory = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const orderId = req.params.orderId as string;
-  const companyId = req.user?.id!;
-  const userRole = req.user?.role!;
+  const companyId = req.user!.id;
+  const userRole = req.user!.role;
 
   try {
     const result = await orderService.getHistory(orderId, companyId, userRole);
@@ -109,12 +113,16 @@ export const getAllOrders = asyncHandler(async (req: AuthenticatedRequest, res: 
   const { status, startDate, endDate, page = 1, limit = 50 } = req.query;
 
   try {
-    const result = await OrderStatusService.getOrdersByStatus((status as any) || undefined, {
-      startDate: startDate ? new Date(startDate as string) : undefined,
-      endDate: endDate ? new Date(endDate as string) : undefined,
-      limit: parseInt(limit as string),
-      offset: (parseInt(page as string) - 1) * parseInt(limit as string),
-    });
+    const result = await OrderStatusService.getOrdersByStatus(
+      (status as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | undefined) ||
+        undefined,
+      {
+        startDate: startDate ? new Date(startDate as string) : undefined,
+        endDate: endDate ? new Date(endDate as string) : undefined,
+        limit: parseInt(limit as string),
+        offset: (parseInt(page as string) - 1) * parseInt(limit as string),
+      }
+    );
 
     res.status(200).json({
       success: true,
@@ -154,8 +162,8 @@ export const getOrderStats = asyncHandler(async (req: AuthenticatedRequest, res:
 export const updateOrderNfe = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const orderId = req.params.orderId as string;
   const { nfeAccessKey, nfeUrl } = req.body;
-  const requesterId = req.user?.id!;
-  const requesterRole = req.user?.role!;
+  const requesterId = req.user!.id;
+  const requesterRole = req.user!.role;
 
   try {
     const updatedOrder = await OrderStatusService.updateOrderNfe(

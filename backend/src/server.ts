@@ -14,6 +14,12 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const API_PREFIX = process.env.API_PREFIX || '/api/v1';
 
+// Trust the first proxy hop in production (so req.ip reflects X-Forwarded-For
+// for accurate rate limiting and logging behind load balancers)
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Middleware
 app.use(helmet());
 
@@ -62,16 +68,7 @@ const startServer = async () => {
     // Initialize database
     await syncDatabase();
 
-    // Start server
-    app.listen(PORT, () => {
-      console.log(`
-🚀 CresceBR Backend Server is running!
-📍 Server: http://localhost:${PORT}
-📍 API: http://localhost:${PORT}${API_PREFIX}
-📍 Health: http://localhost:${PORT}${API_PREFIX}/health
-🌍 Environment: ${process.env.NODE_ENV || 'development'}
-      `);
-    });
+    app.listen(PORT);
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

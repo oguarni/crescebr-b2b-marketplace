@@ -1,4 +1,5 @@
-import { validationResult } from 'express-validator';
+import { validationResult, ValidationChain } from 'express-validator';
+import { Request } from 'express';
 import {
   createQuotationValidation,
   updateQuotationValidation,
@@ -6,8 +7,8 @@ import {
   compareSupplierQuotesValidation,
 } from '../quotation.validators';
 
-async function runValidators(validators: any[], body: any) {
-  const req = { body } as any;
+async function runValidators(validators: ValidationChain[], body: Record<string, unknown>) {
+  const req = { body } as Request;
   for (const validator of validators) {
     await validator.run(req);
   }

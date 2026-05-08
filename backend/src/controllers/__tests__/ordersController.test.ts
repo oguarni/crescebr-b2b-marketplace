@@ -1,5 +1,5 @@
 import request from 'supertest';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import {
   createOrderFromQuotation,
   updateOrderStatus,
@@ -38,7 +38,8 @@ jest.mock('../../middleware/errorHandler', () => ({
     res.status(500).json({ error: err.message });
   }),
   asyncHandler: jest.fn(
-    (fn: any) => (req: any, res: any, next: any) => Promise.resolve(fn(req, res, next)).catch(next)
+    (fn: Function) => (req: Request, res: Response, next: NextFunction) =>
+      Promise.resolve(fn(req, res, next)).catch(next)
   ),
 }));
 

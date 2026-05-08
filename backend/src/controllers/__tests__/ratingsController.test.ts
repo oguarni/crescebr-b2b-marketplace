@@ -1,5 +1,5 @@
 import request from 'supertest';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import {
   createRating,
   getSupplierRatings,
@@ -21,7 +21,7 @@ jest.mock('../../models/Rating');
 jest.mock('../../models/Order');
 jest.mock('../../models/User');
 jest.mock('../../middleware/auth', () => ({
-  authenticateJWT: jest.fn((req: any, res: any, next: any) => next()),
+  authenticateJWT: jest.fn((req: Request, res: Response, next: NextFunction) => next()),
 }));
 jest.mock('../../middleware/errorHandler', () => ({
   errorHandler: jest.fn(),

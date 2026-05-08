@@ -5,11 +5,8 @@ module.exports = {
     try {
       // Helper function to check if column exists (SQLite compatible)
       const columnExists = async (tableName, columnName) => {
-        const tableInfo = await queryInterface.sequelize.query(
-          `PRAGMA table_info(${tableName})`,
-          { type: Sequelize.QueryTypes.SELECT }
-        );
-        return tableInfo.some(column => column.name === columnName);
+        const tableDescription = await queryInterface.describeTable(tableName);
+        return !!tableDescription[columnName];
       };
 
       // Add cnpjValidated boolean to User table if it doesn't exist
@@ -70,11 +67,12 @@ module.exports = {
 
       // Helper function to check if table exists (SQLite compatible)
       const tableExists = async (tableName) => {
-        const result = await queryInterface.sequelize.query(
-          `SELECT name FROM sqlite_master WHERE type='table' AND name='${tableName}'`,
-          { type: Sequelize.QueryTypes.SELECT }
-        );
-        return result.length > 0;
+        try {
+          await queryInterface.describeTable(tableName);
+          return true;
+        } catch (error) {
+          return false;
+        }
       };
 
       // SQLite doesn't support enum updates like PostgreSQL

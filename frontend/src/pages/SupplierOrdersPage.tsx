@@ -129,15 +129,17 @@ const SupplierOrdersPage: React.FC = () => {
 
     try {
       const updateData = {
-        status: statusUpdateDialog.newStatus as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled',
+        status: statusUpdateDialog.newStatus as
+          | 'pending'
+          | 'processing'
+          | 'shipped'
+          | 'delivered'
+          | 'cancelled',
         notes: statusUpdateDialog.notes || undefined,
         trackingNumber: statusUpdateDialog.trackingNumber || undefined,
       };
 
-      await ordersService.updateOrderStatus(
-        statusUpdateDialog.order.id,
-        updateData
-      );
+      await ordersService.updateOrderStatus(statusUpdateDialog.order.id, updateData);
 
       toast.success('Order status updated successfully');
       setStatusUpdateDialog({
@@ -371,7 +373,7 @@ const SupplierOrdersPage: React.FC = () => {
 
       {/* Statistics */}
       <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} sm={3}>
+        <Grid size={{ xs: 12, sm: 3 }}>
           <Card>
             <CardContent>
               <Box display='flex' alignItems='center'>
@@ -386,7 +388,7 @@ const SupplierOrdersPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid size={{ xs: 12, sm: 3 }}>
           <Card>
             <CardContent>
               <Box display='flex' alignItems='center'>
@@ -401,7 +403,7 @@ const SupplierOrdersPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid size={{ xs: 12, sm: 3 }}>
           <Card>
             <CardContent>
               <Box display='flex' alignItems='center'>
@@ -416,7 +418,7 @@ const SupplierOrdersPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid size={{ xs: 12, sm: 3 }}>
           <Card>
             <CardContent>
               <Box display='flex' alignItems='center'>
@@ -437,7 +439,7 @@ const SupplierOrdersPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} alignItems='center'>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField
                 fullWidth
                 placeholder='Search orders...'
@@ -452,7 +454,7 @@ const SupplierOrdersPage: React.FC = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <FormControl fullWidth>
                 <InputLabel>Status</InputLabel>
                 <Select
@@ -469,7 +471,7 @@ const SupplierOrdersPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <FormControl fullWidth>
                 <InputLabel>Date Range</InputLabel>
                 <Select

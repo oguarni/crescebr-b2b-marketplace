@@ -95,7 +95,7 @@ const renderPage = async () => {
   let renderResult;
   await act(async () => {
     renderResult = render(
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <SupplierDashboardPage />
       </BrowserRouter>
     );

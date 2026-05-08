@@ -152,13 +152,16 @@ export const ratingsService = {
       raw: true,
     });
 
-    return topSuppliers.map(s => ({
-      id: s.id,
-      companyName: s.companyName,
-      email: s.email,
-      averageRating: parseFloat(Number((s as any).averageRating).toFixed(2)),
-      totalRatings: (s as any).totalRatings ? Number((s as any).totalRatings) : 0,
-    }));
+    return topSuppliers.map(s => {
+      const raw = s as User & { averageRating?: number | string; totalRatings?: number | string };
+      return {
+        id: s.id,
+        companyName: s.companyName,
+        email: s.email,
+        averageRating: parseFloat(Number(raw.averageRating).toFixed(2)),
+        totalRatings: raw.totalRatings ? Number(raw.totalRatings) : 0,
+      };
+    });
   },
 
   async getBuyerRatings(buyerId: number, page: number, limit: number) {

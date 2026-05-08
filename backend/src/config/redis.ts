@@ -16,10 +16,6 @@ export function getRedisClient(): Redis {
     redisClient.on('error', err => {
       console.error('Redis connection error:', err.message);
     });
-
-    redisClient.on('connect', () => {
-      console.log('Redis connected');
-    });
   }
   return redisClient;
 }

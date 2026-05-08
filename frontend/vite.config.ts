@@ -38,10 +38,10 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
     testTimeout: 30000,
+    css: false,
     poolOptions: {
       threads: {
-        maxThreads: 2,
-        minThreads: 1,
+        isolate: false,
       },
     },
     coverage: {

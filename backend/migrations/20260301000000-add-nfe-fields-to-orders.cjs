@@ -5,11 +5,8 @@ module.exports = {
     async up(queryInterface, Sequelize) {
         // Helper: check if a column already exists (PostgreSQL-compatible)
         const columnExists = async (tableName, columnName) => {
-            const tableInfo = await queryInterface.sequelize.query(
-                `SELECT column_name FROM information_schema.columns WHERE table_name = '${tableName}' AND column_name = '${columnName}'`,
-                { type: Sequelize.QueryTypes.SELECT }
-            );
-            return tableInfo.length > 0;
+            const tableDescription = await queryInterface.describeTable(tableName);
+            return !!tableDescription[columnName];
         };
 
         // Add nfeAccessKey — Brazilian NF-e access key (exactly 44 numeric digits)

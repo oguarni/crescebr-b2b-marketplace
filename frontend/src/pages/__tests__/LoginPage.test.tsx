@@ -37,7 +37,7 @@ vi.mock('react-hot-toast', () => ({
 const renderPage = async () => {
   await act(async () => {
     render(
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <LoginPage />
       </BrowserRouter>
     );

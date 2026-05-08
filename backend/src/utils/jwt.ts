@@ -216,10 +216,10 @@ class TokenManager {
       .map(v => JSON.parse(v))
       .filter(d => new Date(d.expiresAt) > now);
 
-    const uniqueUsers = new Set(active.map((d: any) => d.userId));
+    const uniqueUsers = new Set(active.map((d: { userId: number }) => d.userId));
     const oldestToken =
       active.length > 0
-        ? active.reduce((oldest: any, current: any) =>
+        ? active.reduce((oldest: { createdAt: string }, current: { createdAt: string }) =>
             new Date(current.createdAt) < new Date(oldest.createdAt) ? current : oldest
           ).createdAt
         : null;

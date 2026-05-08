@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { productsService } from '../services/productsService';
+import { productsService, ProductFilters } from '../services/productsService';
 import path from 'path';
 
 export const getAllProducts = asyncHandler(async (req: Request, res: Response) => {
-  const result = await productsService.getAll(req.query as any);
+  const result = await productsService.getAll(req.query as unknown as ProductFilters);
 
   res.status(200).json({
     success: true,
@@ -68,10 +68,18 @@ export const importProductsFromCSV = asyncHandler(
     const { CSVImporter } = require('../utils/csvImporter');
 
     const storage = multer.diskStorage({
-      destination: (req: any, file: any, cb: any) => {
+      destination: (
+        req: Request,
+        file: { fieldname: string; originalname: string; mimetype: string },
+        cb: (error: Error | null, destination: string) => void
+      ) => {
         cb(null, 'uploads/');
       },
-      filename: (req: any, file: any, cb: any) => {
+      filename: (
+        req: Request,
+        file: { fieldname: string; originalname: string; mimetype: string },
+        cb: (error: Error | null, filename: string) => void
+      ) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
         cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
       },
@@ -79,7 +87,11 @@ export const importProductsFromCSV = asyncHandler(
 
     const upload = multer({
       storage: storage,
-      fileFilter: (req: any, file: any, cb: any) => {
+      fileFilter: (
+        req: Request,
+        file: { fieldname: string; originalname: string; mimetype: string },
+        cb: (error: Error | null, acceptFile: boolean) => void
+      ) => {
         if (
           file.mimetype === 'text/csv' ||
           path.extname(file.originalname).toLowerCase() === '.csv'
@@ -92,7 +104,7 @@ export const importProductsFromCSV = asyncHandler(
       limits: { fileSize: 10 * 1024 * 1024 },
     }).single('csvFile');
 
-    upload(req, res, async (err: any) => {
+    upload(req, res, async (err: Error) => {
       if (err) {
         return res.status(400).json({ success: false, error: err.message || 'File upload failed' });
       }

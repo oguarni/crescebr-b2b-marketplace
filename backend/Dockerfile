@@ -19,6 +19,7 @@ COPY backend/tsconfig.docker.json ./tsconfig.json
 # Use Docker-specific types configuration
 COPY backend/src/types/docker.ts ./src/types/index.ts
 
+
 # Set build-time argument for environment
 ARG NODE_ENV=development
 ENV NODE_ENV=${NODE_ENV}

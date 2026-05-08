@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import Product from '../models/Product';
+import Product, { ProductAttributes } from '../models/Product';
 
 export interface ProductFilters {
   category?: string;
@@ -44,7 +44,7 @@ const VALID_SORT_FIELDS = [
 ];
 const VALID_SORT_ORDERS = ['ASC', 'DESC'];
 
-function buildWhereClause(filters: ProductFilters): any {
+function buildWhereClause(filters: ProductFilters): Record<string | symbol, unknown> {
   const {
     category,
     search,
@@ -56,7 +56,8 @@ function buildWhereClause(filters: ProductFilters): any {
     availability,
     specifications,
   } = filters;
-  const where: any = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: Record<string | symbol, any> = {};
 
   if (category && typeof category === 'string') {
     where.category = { [Op.like]: `%${category}%` };
@@ -110,7 +111,7 @@ function buildWhereClause(filters: ProductFilters): any {
   if (specifications && typeof specifications === 'string') {
     try {
       const specsFilter = JSON.parse(specifications);
-      const specConditions: any[] = [];
+      const specConditions: Record<string, unknown>[] = [];
 
       Object.entries(specsFilter).forEach(([key, value]) => {
         if (Array.isArray(value)) {
@@ -120,9 +121,9 @@ function buildWhereClause(filters: ProductFilters): any {
           value !== null &&
           ('min' in value || 'max' in value)
         ) {
-          const rangeCondition: any = {};
-          if ('min' in value) rangeCondition[Op.gte] = (value as any).min;
-          if ('max' in value) rangeCondition[Op.lte] = (value as any).max;
+          const rangeCondition: Record<symbol, unknown> = {};
+          if ('min' in value) rangeCondition[Op.gte] = (value as Record<string, unknown>).min;
+          if ('max' in value) rangeCondition[Op.lte] = (value as Record<string, unknown>).max;
           specConditions.push({ [`specifications.${key}`]: rangeCondition });
         } else {
           specConditions.push({ [`specifications.${key}`]: value });
@@ -140,7 +141,8 @@ function buildWhereClause(filters: ProductFilters): any {
   return where;
 }
 
-async function buildFacets(where: any): Promise<Record<string, unknown>> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function buildFacets(where: Record<string | symbol, any>): Promise<Record<string, unknown>> {
   const [categoryFacets, availabilityFacets, priceRanges] = await Promise.all([
     Product.findAll({
       attributes: ['category', [Product.sequelize!.fn('COUNT', '*'), 'count']],
@@ -165,19 +167,37 @@ async function buildFacets(where: any): Promise<Record<string, unknown>> {
   ]);
 
   return {
-    categories: categoryFacets.map((item: any) => ({
+    categories: categoryFacets.map(item => ({
       value: item.category,
-      count: parseInt(item.getDataValue('count')),
+      count: parseInt(String(item.getDataValue('count' as keyof ProductAttributes))),
     })),
-    availability: availabilityFacets.map((item: any) => ({
+    availability: availabilityFacets.map(item => ({
       value: item.availability,
-      count: parseInt(item.getDataValue('count')),
+      count: parseInt(String(item.getDataValue('count' as keyof ProductAttributes))),
     })),
     priceRange: priceRanges[0]
       ? {
-          min: parseFloat((priceRanges[0] as any).dataValues?.minPrice) || 0,
-          max: parseFloat((priceRanges[0] as any).dataValues?.maxPrice) || 0,
-          avg: parseFloat((priceRanges[0] as any).dataValues?.avgPrice) || 0,
+          min:
+            parseFloat(
+              String(
+                (priceRanges[0] as Product & { dataValues?: Record<string, unknown> }).dataValues
+                  ?.minPrice
+              )
+            ) || 0,
+          max:
+            parseFloat(
+              String(
+                (priceRanges[0] as Product & { dataValues?: Record<string, unknown> }).dataValues
+                  ?.maxPrice
+              )
+            ) || 0,
+          avg:
+            parseFloat(
+              String(
+                (priceRanges[0] as Product & { dataValues?: Record<string, unknown> }).dataValues
+                  ?.avgPrice
+              )
+            ) || 0,
         }
       : null,
   };
@@ -268,7 +288,7 @@ export const productsService = {
         ? typeof data.specifications === 'string'
           ? JSON.parse(data.specifications)
           : data.specifications
-        : {}) as any,
+        : {}) as Record<string, unknown>,
       unitPrice: parseFloat(String(data.price)),
       minimumOrderQuantity: data.minimumOrderQuantity || 1,
     });
@@ -294,7 +314,7 @@ export const productsService = {
       category: data.category,
       specifications: (data.specifications !== undefined
         ? data.specifications
-        : product.specifications) as any,
+        : product.specifications) as Record<string, unknown>,
       unitPrice: parseFloat(String(data.price)),
       minimumOrderQuantity:
         data.minimumOrderQuantity !== undefined

@@ -12,6 +12,23 @@ configure({
 // Global act wrapper for all tests
 (global as unknown as Record<string, unknown>).act = act;
 
+// Mock recharts to avoid heavy SVG rendering in JSDOM
+import React from 'react';
+import { vi } from 'vitest';
+vi.mock('recharts', async () => {
+  const Original = await vi.importActual('recharts');
+  return {
+    ...(Original as Record<string, unknown>),
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => children,
+    LineChart: ({ children }: { children: React.ReactNode }) =>
+      React.createElement('div', { 'data-testid': 'mock-line-chart' }, children),
+    BarChart: ({ children }: { children: React.ReactNode }) =>
+      React.createElement('div', { 'data-testid': 'mock-bar-chart' }, children),
+    PieChart: ({ children }: { children: React.ReactNode }) =>
+      React.createElement('div', { 'data-testid': 'mock-pie-chart' }, children),
+  };
+});
+
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
   observe() {}
@@ -28,7 +45,41 @@ global.IntersectionObserver = class MockIntersectionObserver implements Intersec
   observe() {}
   unobserve() {}
   disconnect() {}
-  takeRecords(): IntersectionObserverEntry[] { return []; }
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+};
+
+// Bypass heavy layout calculations in tests
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {}, // Deprecated
+    removeListener: () => {}, // Deprecated
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }),
+});
+
+window.getComputedStyle = (element: Element) => {
+  return {
+    ...element,
+    getPropertyValue: (prop: string) => {
+      const htmlElement = element as HTMLElement;
+      if (htmlElement.style && typeof htmlElement.style.getPropertyValue === 'function') {
+        const val = htmlElement.style.getPropertyValue(prop);
+        if (val) return val;
+        // Fallback for some inline styles accessed as camelCase
+        const camelProp = prop.replace(/-([a-z])/g, g => g[1].toUpperCase());
+        return (htmlElement.style as unknown as Record<string, string>)[camelProp] || '';
+      }
+      return '';
+    },
+  } as unknown as Record<string, unknown>;
 };
 
 // Suppress React Router warnings in tests

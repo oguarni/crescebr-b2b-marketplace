@@ -46,8 +46,8 @@ describe('api module', () => {
   });
 
   describe('axios instance creation', () => {
-    it('should create axios instance with baseURL /api', () => {
-      expect(axios.create).toHaveBeenCalledWith({ baseURL: '/api' });
+    it('should create axios instance with baseURL /api/v1', () => {
+      expect(axios.create).toHaveBeenCalledWith({ baseURL: '/api/v1' });
     });
 
     it('should register request interceptor', () => {

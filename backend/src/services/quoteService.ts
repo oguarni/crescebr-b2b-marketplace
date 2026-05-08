@@ -278,11 +278,15 @@ export class QuoteService {
       throw new Error('Quotation not found');
     }
 
-    const items = (quotation as any).items || [];
-    const calculationInputs: QuoteCalculationInput[] = items.map((item: any) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-    }));
+    const items =
+      (quotation as Quotation & { items?: Array<{ productId: number; quantity: number }> }).items ||
+      [];
+    const calculationInputs: QuoteCalculationInput[] = items.map(
+      (item: { productId: number; quantity: number }) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })
+    );
 
     const calculations = await this.calculateQuoteComparison(calculationInputs);
 
@@ -358,7 +362,14 @@ export class QuoteService {
     shippingMethod?: 'standard' | 'express' | 'economy'
   ): Promise<
     Array<{
-      supplier: any;
+      supplier: {
+        id: number;
+        companyName: string;
+        corporateName?: string;
+        averageRating?: number;
+        totalRatings?: number;
+        industrySector?: string;
+      };
       quote: QuoteCalculationResult | null;
       error?: string;
     }>

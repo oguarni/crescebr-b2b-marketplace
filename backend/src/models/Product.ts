@@ -16,7 +16,7 @@ export interface ProductAttributes {
   category: string;
   supplierId: number;
   tierPricing: PricingTier[];
-  specifications: Record<string, any>;
+  specifications: Record<string, unknown>;
   unitPrice: number;
   minimumOrderQuantity: number;
   leadTime: number;
@@ -25,11 +25,10 @@ export interface ProductAttributes {
   updatedAt?: Date;
 }
 
-export interface ProductCreationAttributes
-  extends Optional<
-    ProductAttributes,
-    'id' | 'imageUrl' | 'tierPricing' | 'availability' | 'leadTime' | 'createdAt' | 'updatedAt'
-  > {}
+export interface ProductCreationAttributes extends Optional<
+  ProductAttributes,
+  'id' | 'imageUrl' | 'tierPricing' | 'availability' | 'leadTime' | 'createdAt' | 'updatedAt'
+> {}
 
 class Product
   extends Model<ProductAttributes, ProductCreationAttributes>
@@ -43,7 +42,7 @@ class Product
   public category!: string;
   public supplierId!: number;
   public tierPricing!: PricingTier[];
-  public specifications!: Record<string, any>;
+  public specifications!: Record<string, unknown>;
   public unitPrice!: number;
   public minimumOrderQuantity!: number;
   public leadTime!: number;

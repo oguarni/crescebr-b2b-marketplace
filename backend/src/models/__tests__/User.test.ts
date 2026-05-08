@@ -162,7 +162,7 @@ describe('User Model', () => {
 
       // Assert
       expect(result).toBe(hashedPassword);
-      expect(mockBcrypt.hash).toHaveBeenCalledWith(plainPassword, 10);
+      expect(mockBcrypt.hash).toHaveBeenCalledWith(plainPassword, 1);
     });
 
     it('should handle empty password strings', async () => {
@@ -177,7 +177,7 @@ describe('User Model', () => {
 
       // Assert
       expect(result).toBe(hashedPassword);
-      expect(mockBcrypt.hash).toHaveBeenCalledWith('', 10);
+      expect(mockBcrypt.hash).toHaveBeenCalledWith('', 1);
     });
 
     it('should handle bcrypt hashing errors', async () => {
@@ -188,7 +188,7 @@ describe('User Model', () => {
 
       // Act & Assert
       await expect(User.hashPassword(plainPassword)).rejects.toThrow('Hashing failed');
-      expect(mockBcrypt.hash).toHaveBeenCalledWith(plainPassword, 10);
+      expect(mockBcrypt.hash).toHaveBeenCalledWith(plainPassword, 1);
     });
 
     it('should handle very long passwords', async () => {
@@ -203,7 +203,7 @@ describe('User Model', () => {
 
       // Assert
       expect(result).toBe(hashedPassword);
-      expect(mockBcrypt.hash).toHaveBeenCalledWith(longPassword, 10);
+      expect(mockBcrypt.hash).toHaveBeenCalledWith(longPassword, 1);
     });
 
     it('should handle special characters in passwords', async () => {
@@ -218,7 +218,7 @@ describe('User Model', () => {
 
       // Assert
       expect(result).toBe(hashedPassword);
-      expect(mockBcrypt.hash).toHaveBeenCalledWith(specialPassword, 10);
+      expect(mockBcrypt.hash).toHaveBeenCalledWith(specialPassword, 1);
     });
 
     it('should handle unicode characters in passwords', async () => {
@@ -233,7 +233,7 @@ describe('User Model', () => {
 
       // Assert
       expect(result).toBe(hashedPassword);
-      expect(mockBcrypt.hash).toHaveBeenCalledWith(unicodePassword, 10);
+      expect(mockBcrypt.hash).toHaveBeenCalledWith(unicodePassword, 1);
     });
 
     it('should handle null/undefined passwords', async () => {
@@ -248,7 +248,7 @@ describe('User Model', () => {
 
       // Assert
       expect(result).toBe(hashedPassword);
-      expect(mockBcrypt.hash).toHaveBeenCalledWith(null, 10);
+      expect(mockBcrypt.hash).toHaveBeenCalledWith(null, 1);
     });
 
     it('should maintain consistent salt rounds across calls', async () => {
@@ -269,8 +269,8 @@ describe('User Model', () => {
       // Assert
       expect(result1).toBe(hashedPassword1);
       expect(result2).toBe(hashedPassword2);
-      expect(mockBcrypt.hash).toHaveBeenNthCalledWith(1, password1, 10);
-      expect(mockBcrypt.hash).toHaveBeenNthCalledWith(2, password2, 10);
+      expect(mockBcrypt.hash).toHaveBeenNthCalledWith(1, password1, 1);
+      expect(mockBcrypt.hash).toHaveBeenNthCalledWith(2, password2, 1);
     });
   });
 
@@ -284,7 +284,7 @@ describe('User Model', () => {
       await User.hashPassword(password);
 
       // Assert
-      expect(mockBcrypt.hash).toHaveBeenCalledWith(password, 10);
+      expect(mockBcrypt.hash).toHaveBeenCalledWith(password, 1);
     });
 
     it('should compare against properly hashed passwords', async () => {
@@ -432,7 +432,7 @@ describe('User Model', () => {
       expect(hashed).toBe(hashedPassword);
       expect(correctResult).toBe(true);
       expect(wrongResult).toBe(false);
-      expect(mockBcrypt.hash).toHaveBeenCalledWith(plainPassword, 10);
+      expect(mockBcrypt.hash).toHaveBeenCalledWith(plainPassword, 1);
       expect(mockBcrypt.compare).toHaveBeenCalledTimes(2);
     });
 
@@ -484,7 +484,7 @@ describe('User Model', () => {
       await beforeCreateHook(mockUser);
 
       // Assert
-      expect(mockBcrypt.hash).toHaveBeenCalledWith('plain-text-password', 10);
+      expect(mockBcrypt.hash).toHaveBeenCalledWith('plain-text-password', 1);
       expect(mockUser.password).toBe(hashedPassword);
     });
 
@@ -525,7 +525,7 @@ describe('User Model', () => {
 
       // Assert
       expect((mockUser as any).changed).toHaveBeenCalledWith('password');
-      expect(mockBcrypt.hash).toHaveBeenCalledWith('new-plain-password', 10);
+      expect(mockBcrypt.hash).toHaveBeenCalledWith('new-plain-password', 1);
       expect(mockUser.password).toBe(hashedPassword);
     });
 

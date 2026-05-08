@@ -1,5 +1,5 @@
 import request from 'supertest';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import {
   getAllProducts,
@@ -25,11 +25,13 @@ import { CSVImporter } from '../../utils/csvImporter';
 jest.mock('../../models/Product');
 jest.mock('../../utils/csvImporter');
 jest.mock('../../middleware/auth', () => ({
-  authenticateJWT: jest.fn((req: any, res: any, next: any) => next()),
+  authenticateJWT: jest.fn((req: Request, res: Response, next: NextFunction) => next()),
 }));
 jest.mock('../../middleware/rbac', () => {
-  let _impl: (req: any, res: any, next: any) => void = (req, res, next) => next();
-  const requireRoleMock = jest.fn(() => (req: any, res: any, next: any) => _impl(req, res, next));
+  let _impl: (req: Request, res: Response, next: NextFunction) => void = (req, res, next) => next();
+  const requireRoleMock = jest.fn(
+    () => (req: Request, res: Response, next: NextFunction) => _impl(req, res, next)
+  );
   (requireRoleMock as any).__setImpl = (fn: typeof _impl) => {
     _impl = fn;
   };
@@ -83,7 +85,7 @@ app.post(
   authenticateJWT,
   requireRole('supplier'),
   upload.single('csv'),
-  async (req: any, res: any) => {
+  async (req: Request, res: Response) => {
     try {
       const filePath = req.file?.path;
       if (!filePath) {
@@ -123,7 +125,7 @@ describe('Products Controller', () => {
       next();
     });
 
-    (requireRole as any).__setImpl((req: any, res: any, next: any) => next());
+    (requireRole as any).__setImpl((req: Request, res: Response, next: NextFunction) => next());
   });
 
   describe('GET /api/products', () => {
@@ -482,7 +484,7 @@ describe('Products Controller', () => {
     });
 
     it('should return 403 for non-supplier users', async () => {
-      (requireRole as any).__setImpl((req: any, res: any) => {
+      (requireRole as any).__setImpl((req: Request, res: Response) => {
         return res
           .status(403)
           .json({ success: false, error: 'Access denied. Required role: supplier' });
@@ -710,7 +712,7 @@ describe('Products Controller', () => {
       const originalExports = cachedMod?.exports;
 
       const mockMulter = jest.fn(() => ({
-        single: jest.fn(() => (req: any, res: any, cb: Function) => {
+        single: jest.fn(() => (req: Request, res: Response, cb: Function) => {
           cb({ code: 'UNKNOWN_ERROR' }); // no .message property
         }),
       }));
