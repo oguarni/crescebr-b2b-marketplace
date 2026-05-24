@@ -42,8 +42,9 @@ COPY --from=build /usr/src/app/dist ./dist
 # Copy migrations and seeders
 COPY --from=build /usr/src/app/migrations ./migrations
 COPY --from=build /usr/src/app/seeders ./seeders
-# Copy config and package.json
-COPY backend/config/config.json ./config/config.json
+# Copy Sequelize CLI config (env-driven) and package.json
+COPY backend/config/config.cjs ./config/config.cjs
+COPY backend/.sequelizerc ./.sequelizerc
 COPY backend/package.json .
 # Copy wait-for-it and start scripts
 COPY backend/wait-for-it.sh ./wait-for-it.sh
@@ -52,6 +53,9 @@ RUN chmod +x ./wait-for-it.sh ./start.sh
 
 # Install sequelize-cli globally to run migrations
 RUN npm install -g sequelize-cli
+
+# Writable uploads dir for transient CSV import/export (ephemeral on Cloud Run).
+RUN mkdir -p uploads
 
 RUN chown -R node:node /usr/src/app
 USER node

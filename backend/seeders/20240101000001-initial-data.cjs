@@ -32,7 +32,7 @@ module.exports = {
         password: supplierPasswordHash,
         cpf: '111.222.333-44',
         address: 'Av. Industrial, 500, Curitiba, PR',
-        role: 'customer',
+        role: 'supplier',
         status: 'approved',
         companyName: 'Industrial Solutions',
         corporateName: 'Industrial Solutions LTDA',

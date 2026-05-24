@@ -1,0 +1,12 @@
+# Keep the Cloud Build upload small and clean.
+.git/
+.gitignore
+node_modules/
+**/coverage/
+*.log
+backend/crescebr_b2b.db
+backend/uploads/
+frontend/*.txt
+.husky/
+.claude/
+docs/

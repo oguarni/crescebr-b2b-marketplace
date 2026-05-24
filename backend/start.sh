@@ -1,67 +1,56 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-echo "🚀 Starting CresceBR Backend..."
+echo "Starting CresceBR backend..."
 
-# Wait for database to be ready
-echo "⏳ Waiting for database to be ready..."
-until nc -z db 5432; do
-  echo "Database is not ready yet, waiting..."
-  sleep 2
+# Wait for a TCP database host (local / Docker Compose).
+# Cloud SQL Unix sockets are ready at mount time, so no wait is needed there.
+case "$DB_HOST" in
+  /cloudsql/*) echo "Cloud SQL socket detected ($DB_HOST); skipping TCP wait." ;;
+  "") echo "DB_HOST not set; skipping TCP wait." ;;
+  *)
+    echo "Waiting for database at $DB_HOST:${DB_PORT:-5432}..."
+    until nc -z "$DB_HOST" "${DB_PORT:-5432}"; do
+      echo "Database not ready, waiting..."
+      sleep 2
+    done
+    echo "Database is ready." ;;
+esac
+
+# Run migrations with a few retries (the DB connection can settle a moment after start).
+n=0
+until npx sequelize-cli db:migrate; do
+  n=$((n + 1))
+  if [ "$n" -ge 5 ]; then
+    echo "Migrations failed after $n attempts."
+    exit 1
+  fi
+  echo "Migration attempt $n failed; retrying in 5s..."
+  sleep 5
 done
-echo "✅ Database is ready!"
+echo "Migrations applied."
 
-# Function to run migrations with retry
-run_migrations() {
-  local max_attempts=3
-  local attempt=1
-  
-  while [ $attempt -le $max_attempts ]; do
-    echo "📊 Running database migrations (attempt $attempt/$max_attempts)..."
-    
-    if npx sequelize-cli db:migrate; then
-      echo "✅ Migrations completed successfully"
-      return 0
-    else
-      echo "❌ Migration attempt $attempt failed"
-      if [ $attempt -eq $max_attempts ]; then
-        echo "💥 All migration attempts failed"
-        exit 1
-      fi
-      echo "⏳ Waiting 5 seconds before retry..."
-      sleep 5
-      attempt=$((attempt + 1))
-    fi
-  done
-}
+# Seed only when explicitly requested (production) or in local development.
+# The seeder is safe to re-run: unique constraints reject duplicates.
+if [ "$SEED_ON_START" = "true" ] || [ "$NODE_ENV" = "development" ]; then
+  echo "Seeding database..."
+  npx sequelize-cli db:seed:all || echo "Seed step reported errors (likely already seeded); continuing."
+fi
 
-# Function to run seeders with retry
-run_seeders() {
-  local max_attempts=3
-  local attempt=1
-  
-  while [ $attempt -le $max_attempts ]; do
-    echo "🌱 Running database seeders (attempt $attempt/$max_attempts)..."
-    
-    if npx sequelize-cli db:seed:all; then
-      echo "✅ Seeders completed successfully"
-      return 0
-    else
-      echo "❌ Seeder attempt $attempt failed"
-      if [ $attempt -eq $max_attempts ]; then
-        echo "⚠️  Seeders failed, but continuing startup..."
-        return 0
-      fi
-      echo "⏳ Waiting 3 seconds before retry..."
-      sleep 3
-      attempt=$((attempt + 1))
-    fi
-  done
-}
+# Resolve the compiled entrypoint. tsc emits under dist/src when the shared
+# workspace is part of the compilation (the Docker build), or dist/server.js otherwise.
+if [ -f dist/server.js ]; then
+  ENTRY=dist/server.js
+elif [ -f dist/src/server.js ]; then
+  ENTRY=dist/src/server.js
+else
+  ENTRY=$(find dist -name server.js | head -n1)
+fi
 
-# Run migrations and seeders
-run_migrations
-run_seeders
+if [ -z "$ENTRY" ]; then
+  echo "Could not find compiled server.js under dist/."
+  exit 1
+fi
 
-echo "🎯 Starting the application..."
-exec node dist/server.js
+echo "Starting application ($ENTRY)..."
+exec node "$ENTRY"

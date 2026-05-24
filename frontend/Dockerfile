@@ -28,11 +28,15 @@ FROM nginx:1.25-alpine
 # Copy the built files from the build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy the custom Nginx configuration
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# Nginx config is a template: the official entrypoint runs envsubst on it at
+# startup, injecting PORT (set by Cloud Run) and BACKEND_HOST (the backend host).
+COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 
-# Expose port 80 for Nginx
-EXPOSE 80
+# Only substitute our own variables, never nginx runtime variables ($uri, $host, ...).
+ENV NGINX_ENVSUBST_FILTER="^(PORT|BACKEND_HOST)$"
+ENV PORT=8080
+ENV BACKEND_HOST=localhost
 
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 8080
+
+# Entrypoint (envsubst on templates) and CMD are inherited from the nginx base image.

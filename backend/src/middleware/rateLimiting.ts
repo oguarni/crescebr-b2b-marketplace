@@ -15,6 +15,13 @@ class RateLimiter {
     const windowSeconds = Math.ceil(options.windowMs / 1000);
 
     return (req: Request, res: Response, next: NextFunction): void => {
+      // When no Redis is configured (e.g. serverless deploy without Memorystore),
+      // skip rate limiting. The limiter already fails open on Redis errors anyway.
+      if (process.env.DISABLE_RATE_LIMIT === 'true') {
+        next();
+        return;
+      }
+
       if (options.skipIf && options.skipIf(req)) {
         next();
         return;
