@@ -30,6 +30,8 @@ import {
 } from '@mui/icons-material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { useAuth } from '../contexts/AuthContext';
+import { useT } from '../contexts/LanguageContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { viaCepService } from '../services/viaCepService';
 import toast from 'react-hot-toast';
 
@@ -74,6 +76,7 @@ const RegisterPage: React.FC = () => {
   const [isLoadingCep, setIsLoadingCep] = useState(false);
 
   const { register } = useAuth();
+  const t = useT();
   const navigate = useNavigate();
 
   const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,75 +112,78 @@ const RegisterPage: React.FC = () => {
     setFormData(prev => ({ ...prev, cnpj: formatted }));
   };
 
-  const handleCepChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const cep = e.target.value.replace(/\D/g, '');
-    const formattedCep = viaCepService.formatCep(cep);
+  const handleCepChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const cep = e.target.value.replace(/\D/g, '');
+      const formattedCep = viaCepService.formatCep(cep);
 
-    setFormData(prev => ({ ...prev, cep: formattedCep }));
+      setFormData(prev => ({ ...prev, cep: formattedCep }));
 
-    if (viaCepService.isValidCep(cep)) {
-      setIsLoadingCep(true);
-      try {
-        const addressData = await viaCepService.getAddressByCep(cep);
-        const fullAddress = `${addressData.logradouro}, ${addressData.bairro}, ${addressData.localidade} - ${addressData.uf}`;
-        setFormData(prev => ({
-          ...prev,
-          address: fullAddress,
-          street: addressData.logradouro || '',
-          neighborhood: addressData.bairro || '',
-          city: addressData.localidade || '',
-          state: addressData.uf || '',
-          zipCode: viaCepService.formatCep(cep),
-        }));
-        toast.success('Endereço preenchido automaticamente!');
-      } catch (error: unknown) {
-        toast.error(error instanceof Error ? error.message : 'Erro ao buscar endereço');
-      } finally {
-        setIsLoadingCep(false);
+      if (viaCepService.isValidCep(cep)) {
+        setIsLoadingCep(true);
+        try {
+          const addressData = await viaCepService.getAddressByCep(cep);
+          const fullAddress = `${addressData.logradouro}, ${addressData.bairro}, ${addressData.localidade} - ${addressData.uf}`;
+          setFormData(prev => ({
+            ...prev,
+            address: fullAddress,
+            street: addressData.logradouro || '',
+            neighborhood: addressData.bairro || '',
+            city: addressData.localidade || '',
+            state: addressData.uf || '',
+            zipCode: viaCepService.formatCep(cep),
+          }));
+          toast.success(t('register.toast.cepSuccess'));
+        } catch (error: unknown) {
+          toast.error(error instanceof Error ? error.message : t('register.toast.cepError'));
+        } finally {
+          setIsLoadingCep(false);
+        }
       }
-    }
-  }, []);
+    },
+    [t]
+  );
 
   const validateForm = (): boolean => {
     if (formData.password !== formData.confirmPassword) {
-      setError('As senhas não coincidem');
+      setError(t('register.validation.passwordsDontMatch'));
       return false;
     }
 
     if (formData.password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres');
+      setError(t('register.validation.passwordTooShort'));
       return false;
     }
 
     const cleanCpf = formData.cpf.replace(/\D/g, '');
     if (cleanCpf.length !== 11) {
-      setError('CPF deve conter 11 dígitos');
+      setError(t('register.validation.cpfInvalid'));
       return false;
     }
 
     const cleanCnpj = formData.cnpj.replace(/\D/g, '');
     if (cleanCnpj.length !== 14) {
-      setError('CNPJ deve conter 14 dígitos');
+      setError(t('register.validation.cnpjInvalid'));
       return false;
     }
 
     if (!formData.address.trim()) {
-      setError('Endereço é obrigatório');
+      setError(t('register.validation.addressRequired'));
       return false;
     }
 
     if (!formData.companyName.trim()) {
-      setError('Nome da empresa é obrigatório');
+      setError(t('register.validation.companyNameRequired'));
       return false;
     }
 
     if (!formData.corporateName.trim()) {
-      setError('Razão social é obrigatória');
+      setError(t('register.validation.corporateNameRequired'));
       return false;
     }
 
     if (!formData.industrySector.trim()) {
-      setError('Setor da indústria é obrigatório');
+      setError(t('register.validation.industrySectorRequired'));
       return false;
     }
 
@@ -219,12 +225,12 @@ const RegisterPage: React.FC = () => {
         industrySector: formData.industrySector,
         companyType: formData.companyType,
       });
-      toast.success('Empresa cadastrada com sucesso!');
+      toast.success(t('register.toast.success'));
       navigate('/');
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
       const errorMessage =
-        axiosErr.response?.data?.error || axiosErr.message || 'Erro ao fazer cadastro';
+        axiosErr.response?.data?.error || axiosErr.message || t('register.toast.error');
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -251,11 +257,14 @@ const RegisterPage: React.FC = () => {
             width: '100%',
           }}
         >
+          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
+            <LanguageSwitcher />
+          </Box>
           <Typography component='h1' variant='h4' gutterBottom>
             CresceBR
           </Typography>
           <Typography component='h2' variant='h6' color='text.secondary' gutterBottom>
-            Cadastro Empresarial - B2B
+            {t('register.subtitle')}
           </Typography>
 
           {error && (
@@ -271,7 +280,7 @@ const RegisterPage: React.FC = () => {
                   required
                   fullWidth
                   id='email'
-                  label='Email'
+                  label={t('register.email')}
                   name='email'
                   autoComplete='email'
                   value={formData.email}
@@ -291,7 +300,7 @@ const RegisterPage: React.FC = () => {
                   required
                   fullWidth
                   name='password'
-                  label='Senha'
+                  label={t('register.password')}
                   type={showPassword ? 'text' : 'password'}
                   id='password'
                   autoComplete='new-password'
@@ -319,7 +328,7 @@ const RegisterPage: React.FC = () => {
                   required
                   fullWidth
                   name='confirmPassword'
-                  label='Confirmar Senha'
+                  label={t('register.confirmPassword')}
                   type={showConfirmPassword ? 'text' : 'password'}
                   id='confirmPassword'
                   value={formData.confirmPassword}
@@ -349,7 +358,7 @@ const RegisterPage: React.FC = () => {
                   required
                   fullWidth
                   id='cpf'
-                  label='CPF'
+                  label={t('register.cpf')}
                   name='cpf'
                   value={formData.cpf}
                   onChange={handleCpfChange}
@@ -369,7 +378,7 @@ const RegisterPage: React.FC = () => {
                   required
                   fullWidth
                   id='cep'
-                  label='CEP'
+                  label={t('register.cep')}
                   name='cep'
                   value={formData.cep}
                   onChange={handleCepChange}
@@ -394,13 +403,13 @@ const RegisterPage: React.FC = () => {
                   required
                   fullWidth
                   id='address'
-                  label='Endereço Completo'
+                  label={t('register.addressFull')}
                   name='address'
                   multiline
                   rows={2}
                   value={formData.address}
                   onChange={handleChange('address')}
-                  placeholder='Rua, número, bairro, cidade - UF'
+                  placeholder={t('register.addressPlaceholder')}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position='start'>
@@ -415,11 +424,11 @@ const RegisterPage: React.FC = () => {
                 <TextField
                   fullWidth
                   id='street'
-                  label='Logradouro'
+                  label={t('register.street')}
                   name='street'
                   value={formData.street}
                   onChange={handleChange('street')}
-                  placeholder='Nome da rua'
+                  placeholder={t('register.streetPlaceholder')}
                 />
               </Grid>
 
@@ -427,11 +436,11 @@ const RegisterPage: React.FC = () => {
                 <TextField
                   fullWidth
                   id='number'
-                  label='Número'
+                  label={t('register.number')}
                   name='number'
                   value={formData.number}
                   onChange={handleChange('number')}
-                  placeholder='123'
+                  placeholder={t('register.numberPlaceholder')}
                 />
               </Grid>
 
@@ -439,11 +448,11 @@ const RegisterPage: React.FC = () => {
                 <TextField
                   fullWidth
                   id='complement'
-                  label='Complemento'
+                  label={t('register.complement')}
                   name='complement'
                   value={formData.complement}
                   onChange={handleChange('complement')}
-                  placeholder='Apto, sala, etc.'
+                  placeholder={t('register.complementPlaceholder')}
                 />
               </Grid>
 
@@ -451,11 +460,11 @@ const RegisterPage: React.FC = () => {
                 <TextField
                   fullWidth
                   id='neighborhood'
-                  label='Bairro'
+                  label={t('register.neighborhood')}
                   name='neighborhood'
                   value={formData.neighborhood}
                   onChange={handleChange('neighborhood')}
-                  placeholder='Bairro'
+                  placeholder={t('register.neighborhoodPlaceholder')}
                 />
               </Grid>
 
@@ -463,11 +472,11 @@ const RegisterPage: React.FC = () => {
                 <TextField
                   fullWidth
                   id='city'
-                  label='Cidade'
+                  label={t('register.city')}
                   name='city'
                   value={formData.city}
                   onChange={handleChange('city')}
-                  placeholder='Cidade'
+                  placeholder={t('register.cityPlaceholder')}
                 />
               </Grid>
 
@@ -475,11 +484,11 @@ const RegisterPage: React.FC = () => {
                 <TextField
                   fullWidth
                   id='state'
-                  label='Estado'
+                  label={t('register.state')}
                   name='state'
                   value={formData.state}
                   onChange={handleChange('state')}
-                  placeholder='PR'
+                  placeholder={t('register.statePlaceholder')}
                 />
               </Grid>
 
@@ -487,11 +496,11 @@ const RegisterPage: React.FC = () => {
                 <TextField
                   fullWidth
                   id='phone'
-                  label='Telefone'
+                  label={t('register.phone')}
                   name='phone'
                   value={formData.phone}
                   onChange={handleChange('phone')}
-                  placeholder='(11) 9999-9999'
+                  placeholder={t('register.phonePlaceholder')}
                 />
               </Grid>
 
@@ -499,11 +508,11 @@ const RegisterPage: React.FC = () => {
                 <TextField
                   fullWidth
                   id='website'
-                  label='Website'
+                  label={t('register.website')}
                   name='website'
                   value={formData.website}
                   onChange={handleChange('website')}
-                  placeholder='https://www.empresa.com.br'
+                  placeholder={t('register.websitePlaceholder')}
                 />
               </Grid>
 
@@ -512,7 +521,7 @@ const RegisterPage: React.FC = () => {
                   required
                   fullWidth
                   id='companyName'
-                  label='Nome da Empresa'
+                  label={t('register.companyName')}
                   name='companyName'
                   value={formData.companyName}
                   onChange={handleChange('companyName')}
@@ -531,7 +540,7 @@ const RegisterPage: React.FC = () => {
                   required
                   fullWidth
                   id='corporateName'
-                  label='Razão Social'
+                  label={t('register.corporateName')}
                   name='corporateName'
                   value={formData.corporateName}
                   onChange={handleChange('corporateName')}
@@ -550,7 +559,7 @@ const RegisterPage: React.FC = () => {
                   required
                   fullWidth
                   id='cnpj'
-                  label='CNPJ'
+                  label={t('register.cnpj')}
                   name='cnpj'
                   value={formData.cnpj}
                   onChange={handleCnpjChange}
@@ -569,11 +578,11 @@ const RegisterPage: React.FC = () => {
                 <TextField
                   fullWidth
                   id='contactPerson'
-                  label='Pessoa de Contato'
+                  label={t('register.contactPerson')}
                   name='contactPerson'
                   value={formData.contactPerson}
                   onChange={handleChange('contactPerson')}
-                  placeholder='Nome do responsável'
+                  placeholder={t('register.contactPersonPlaceholder')}
                 />
               </Grid>
 
@@ -581,22 +590,22 @@ const RegisterPage: React.FC = () => {
                 <TextField
                   fullWidth
                   id='contactTitle'
-                  label='Cargo do Contato'
+                  label={t('register.contactTitle')}
                   name='contactTitle'
                   value={formData.contactTitle}
                   onChange={handleChange('contactTitle')}
-                  placeholder='Gerente, Diretor, etc.'
+                  placeholder={t('register.contactTitlePlaceholder')}
                 />
               </Grid>
 
               <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth>
-                  <InputLabel id='companySize-label'>Porte da Empresa</InputLabel>
+                  <InputLabel id='companySize-label'>{t('register.companySize.label')}</InputLabel>
                   <Select
                     labelId='companySize-label'
                     id='companySize'
                     value={formData.companySize}
-                    label='Porte da Empresa'
+                    label={t('register.companySize.label')}
                     onChange={(e: SelectChangeEvent<string>) =>
                       setFormData(prev => ({
                         ...prev,
@@ -604,23 +613,25 @@ const RegisterPage: React.FC = () => {
                       }))
                     }
                   >
-                    <MenuItem value='micro'>Microempresa</MenuItem>
-                    <MenuItem value='small'>Pequena</MenuItem>
-                    <MenuItem value='medium'>Média</MenuItem>
-                    <MenuItem value='large'>Grande</MenuItem>
-                    <MenuItem value='enterprise'>Corporação</MenuItem>
+                    <MenuItem value='micro'>{t('register.companySize.micro')}</MenuItem>
+                    <MenuItem value='small'>{t('register.companySize.small')}</MenuItem>
+                    <MenuItem value='medium'>{t('register.companySize.medium')}</MenuItem>
+                    <MenuItem value='large'>{t('register.companySize.large')}</MenuItem>
+                    <MenuItem value='enterprise'>{t('register.companySize.enterprise')}</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
 
               <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth>
-                  <InputLabel id='annualRevenue-label'>Faturamento Anual</InputLabel>
+                  <InputLabel id='annualRevenue-label'>
+                    {t('register.annualRevenue.label')}
+                  </InputLabel>
                   <Select
                     labelId='annualRevenue-label'
                     id='annualRevenue'
                     value={formData.annualRevenue}
-                    label='Faturamento Anual'
+                    label={t('register.annualRevenue.label')}
                     onChange={(e: SelectChangeEvent<string>) =>
                       setFormData(prev => ({
                         ...prev,
@@ -628,24 +639,24 @@ const RegisterPage: React.FC = () => {
                       }))
                     }
                   >
-                    <MenuItem value='under_500k'>Até R$ 500.000</MenuItem>
-                    <MenuItem value='500k_2m'>R$ 500.000 - R$ 2 milhões</MenuItem>
-                    <MenuItem value='2m_10m'>R$ 2 milhões - R$ 10 milhões</MenuItem>
-                    <MenuItem value='10m_50m'>R$ 10 milhões - R$ 50 milhões</MenuItem>
-                    <MenuItem value='50m_200m'>R$ 50 milhões - R$ 200 milhões</MenuItem>
-                    <MenuItem value='over_200m'>Acima de R$ 200 milhões</MenuItem>
+                    <MenuItem value='under_500k'>{t('register.annualRevenue.under_500k')}</MenuItem>
+                    <MenuItem value='500k_2m'>{t('register.annualRevenue.500k_2m')}</MenuItem>
+                    <MenuItem value='2m_10m'>{t('register.annualRevenue.2m_10m')}</MenuItem>
+                    <MenuItem value='10m_50m'>{t('register.annualRevenue.10m_50m')}</MenuItem>
+                    <MenuItem value='50m_200m'>{t('register.annualRevenue.50m_200m')}</MenuItem>
+                    <MenuItem value='over_200m'>{t('register.annualRevenue.over_200m')}</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
 
               <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth required>
-                  <InputLabel id='industrySector-label'>Setor da Indústria</InputLabel>
+                  <InputLabel id='industrySector-label'>{t('register.industry.label')}</InputLabel>
                   <Select
                     labelId='industrySector-label'
                     id='industrySector'
                     value={formData.industrySector}
-                    label='Setor da Indústria'
+                    label={t('register.industry.label')}
                     onChange={e =>
                       setFormData(prev => ({ ...prev, industrySector: e.target.value }))
                     }
@@ -655,29 +666,35 @@ const RegisterPage: React.FC = () => {
                       </InputAdornment>
                     }
                   >
-                    <MenuItem value='machinery'>Máquinas</MenuItem>
-                    <MenuItem value='raw_materials'>Matérias-primas</MenuItem>
-                    <MenuItem value='components'>Componentes</MenuItem>
-                    <MenuItem value='electronics'>Eletrônicos</MenuItem>
-                    <MenuItem value='textiles'>Têxteis</MenuItem>
-                    <MenuItem value='chemicals'>Químicos</MenuItem>
-                    <MenuItem value='automotive'>Automotivo</MenuItem>
-                    <MenuItem value='food_beverage'>Alimentos e Bebidas</MenuItem>
-                    <MenuItem value='construction'>Construção</MenuItem>
-                    <MenuItem value='pharmaceutical'>Farmacêutico</MenuItem>
-                    <MenuItem value='other'>Outros</MenuItem>
+                    <MenuItem value='machinery'>{t('register.industry.machinery')}</MenuItem>
+                    <MenuItem value='raw_materials'>
+                      {t('register.industry.raw_materials')}
+                    </MenuItem>
+                    <MenuItem value='components'>{t('register.industry.components')}</MenuItem>
+                    <MenuItem value='electronics'>{t('register.industry.electronics')}</MenuItem>
+                    <MenuItem value='textiles'>{t('register.industry.textiles')}</MenuItem>
+                    <MenuItem value='chemicals'>{t('register.industry.chemicals')}</MenuItem>
+                    <MenuItem value='automotive'>{t('register.industry.automotive')}</MenuItem>
+                    <MenuItem value='food_beverage'>
+                      {t('register.industry.food_beverage')}
+                    </MenuItem>
+                    <MenuItem value='construction'>{t('register.industry.construction')}</MenuItem>
+                    <MenuItem value='pharmaceutical'>
+                      {t('register.industry.pharmaceutical')}
+                    </MenuItem>
+                    <MenuItem value='other'>{t('register.industry.other')}</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
 
               <Grid size={{ xs: 12 }}>
                 <FormControl fullWidth required>
-                  <InputLabel id='companyType-label'>Tipo de Empresa</InputLabel>
+                  <InputLabel id='companyType-label'>{t('register.companyType.label')}</InputLabel>
                   <Select
                     labelId='companyType-label'
                     id='companyType'
                     value={formData.companyType}
-                    label='Tipo de Empresa'
+                    label={t('register.companyType.label')}
                     onChange={e =>
                       setFormData(prev => ({
                         ...prev,
@@ -690,13 +707,11 @@ const RegisterPage: React.FC = () => {
                       </InputAdornment>
                     }
                   >
-                    <MenuItem value='buyer'>Comprador</MenuItem>
-                    <MenuItem value='supplier'>Fornecedor</MenuItem>
-                    <MenuItem value='both'>Ambos</MenuItem>
+                    <MenuItem value='buyer'>{t('register.companyType.buyer')}</MenuItem>
+                    <MenuItem value='supplier'>{t('register.companyType.supplier')}</MenuItem>
+                    <MenuItem value='both'>{t('register.companyType.both')}</MenuItem>
                   </Select>
-                  <FormHelperText>
-                    Compradores podem solicitar cotações. Fornecedores podem vender produtos.
-                  </FormHelperText>
+                  <FormHelperText>{t('register.companyType.help')}</FormHelperText>
                 </FormControl>
               </Grid>
             </Grid>
@@ -708,14 +723,14 @@ const RegisterPage: React.FC = () => {
               sx={{ mt: 3, mb: 2 }}
               disabled={isLoading}
             >
-              {isLoading ? <CircularProgress size={24} /> : 'Cadastrar'}
+              {isLoading ? <CircularProgress size={24} /> : t('register.submit')}
             </Button>
 
             <Box textAlign='center'>
               <Typography variant='body2'>
-                Já tem uma conta?{' '}
+                {t('register.haveAccount')}
                 <Link to='/login' style={{ color: 'inherit', textDecoration: 'underline' }}>
-                  Faça login
+                  {t('register.loginCta')}
                 </Link>
               </Typography>
             </Box>

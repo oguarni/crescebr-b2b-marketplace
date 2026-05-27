@@ -44,6 +44,7 @@ import { productsService } from '../services/productsService';
 import { useCart } from '../contexts/CartContext';
 import { useQuotationRequest } from '../contexts/QuotationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useT } from '../contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
@@ -70,6 +71,7 @@ const HomePage: React.FC = () => {
   const { items: cartItems, addItem } = useCart();
   const { addItem: addToQuotationRequest } = useQuotationRequest();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const t = useT();
   const navigate = useNavigate();
 
   const loadProducts = useCallback(async () => {
@@ -104,7 +106,7 @@ const HomePage: React.FC = () => {
       setProducts(response.products);
       setTotalPages(response.pagination.totalPages);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar produtos');
+      setError(err instanceof Error ? err.message : t('home.loadError'));
     } finally {
       setLoading(false);
     }
@@ -118,6 +120,7 @@ const HomePage: React.FC = () => {
     maxLeadTime,
     availabilityFilter,
     specsFilter,
+    t,
   ]);
 
   const loadCategories = useCallback(async () => {
@@ -248,20 +251,20 @@ const HomePage: React.FC = () => {
         <Box sx={{ p: 4, textAlign: 'center', maxWidth: 600 }}>
           <AdminPanelSettings sx={{ fontSize: 80, color: 'primary.main', mb: 2 }} />
           <Typography variant='h4' component='h1' gutterBottom sx={{ fontWeight: 'bold' }}>
-            Admin Dashboard
+            {t('home.adminDashboard')}
           </Typography>
           <Typography variant='body1' color='text.secondary' gutterBottom sx={{ mb: 4 }}>
-            Welcome to the CresceBR Marketplace Administration System
+            {t('home.adminWelcome')}
           </Typography>
           <Grid container spacing={2} justifyContent='center'>
             <Grid item>
               <Button variant='contained' size='large' onClick={() => navigate('/admin/products')}>
-                Manage Products
+                {t('home.manageProducts')}
               </Button>
             </Grid>
             <Grid item>
               <Button variant='outlined' size='large' onClick={() => navigate('/admin/quotations')}>
-                Manage Quotations
+                {t('home.manageQuotations')}
               </Button>
             </Grid>
           </Grid>
@@ -317,7 +320,7 @@ const HomePage: React.FC = () => {
             />
             <InputBase
               fullWidth
-              placeholder='Search industrial parts...'
+              placeholder={t('home.searchPlaceholder')}
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               sx={{
@@ -396,7 +399,7 @@ const HomePage: React.FC = () => {
                     },
                   }}
                 >
-                  {category}
+                  {category === 'All Products' ? t('home.allProducts') : category}
                 </Button>
               ))
             : // Fallback mock categories if API fails or is empty
@@ -431,7 +434,7 @@ const HomePage: React.FC = () => {
                     },
                   }}
                 >
-                  {cat}
+                  {cat === 'All Products' ? t('home.allProducts') : cat}
                 </Button>
               ))}
         </Box>
@@ -457,10 +460,10 @@ const HomePage: React.FC = () => {
               variant='subtitle2'
               sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
             >
-              <FilterList fontSize='small' /> Advanced Filters
+              <FilterList fontSize='small' /> {t('home.advancedFilters')}
             </Typography>
             <Button size='small' onClick={handleClearFilters}>
-              Clear All
+              {t('home.clearAll')}
             </Button>
           </Box>
 
@@ -471,7 +474,7 @@ const HomePage: React.FC = () => {
                 variant='caption'
                 sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 500, mb: 1 }}
               >
-                <Speed color='primary' fontSize='small' /> Price Range
+                <Speed color='primary' fontSize='small' /> {t('home.priceRange')}
               </Typography>
               <Box sx={{ px: 2 }}>
                 <Slider
@@ -496,7 +499,7 @@ const HomePage: React.FC = () => {
                 variant='caption'
                 sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 500, mb: 1 }}
               >
-                <Inventory color='primary' fontSize='small' /> Minimum Order (MOQ)
+                <Inventory color='primary' fontSize='small' /> {t('home.moq')}
               </Typography>
               <Box sx={{ px: 2 }}>
                 <Slider
@@ -506,11 +509,15 @@ const HomePage: React.FC = () => {
                   min={1}
                   max={1000}
                   step={10}
-                  valueLabelFormat={value => `${value} units`}
+                  valueLabelFormat={value => `${value} ${t('home.units')}`}
                 />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant='caption'>{moqRange[0]} units</Typography>
-                  <Typography variant='caption'>{moqRange[1]} units</Typography>
+                  <Typography variant='caption'>
+                    {moqRange[0]} {t('home.units')}
+                  </Typography>
+                  <Typography variant='caption'>
+                    {moqRange[1]} {t('home.units')}
+                  </Typography>
                 </Box>
               </Box>
             </Grid>
@@ -521,7 +528,7 @@ const HomePage: React.FC = () => {
                 variant='caption'
                 sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 500, mb: 1 }}
               >
-                <LocalShippingOutlined color='primary' fontSize='small' /> Max Lead Time
+                <LocalShippingOutlined color='primary' fontSize='small' /> {t('home.maxLeadTime')}
               </Typography>
               <Box sx={{ px: 2 }}>
                 <Slider
@@ -531,10 +538,10 @@ const HomePage: React.FC = () => {
                   min={1}
                   max={90}
                   step={1}
-                  valueLabelFormat={value => `${value} days`}
+                  valueLabelFormat={value => `${value} ${t('home.days')}`}
                 />
                 <Typography variant='caption' sx={{ display: 'block' }}>
-                  Up to {maxLeadTime} days
+                  {t('home.maxLeadTimeValue', { days: maxLeadTime })}
                 </Typography>
               </Box>
             </Grid>
@@ -542,7 +549,7 @@ const HomePage: React.FC = () => {
             {/* Availability Status */}
             <Grid item xs={12} md={6}>
               <Typography variant='caption' sx={{ fontWeight: 500, mb: 1, display: 'block' }}>
-                Availability Status
+                {t('home.availabilityStatus')}
               </Typography>
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 {['in_stock', 'limited', 'custom_order'].map(status => (
@@ -558,10 +565,10 @@ const HomePage: React.FC = () => {
                     label={
                       <Typography variant='caption'>
                         {status === 'in_stock'
-                          ? 'In Stock'
+                          ? t('home.inStockOption')
                           : status === 'limited'
-                            ? 'Limited'
-                            : 'Made to Order'}
+                            ? t('home.limitedOption')
+                            : t('home.madeToOrderOption')}
                       </Typography>
                     }
                   />
@@ -575,7 +582,7 @@ const HomePage: React.FC = () => {
                 variant='caption'
                 sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 500, mb: 1 }}
               >
-                <Info color='primary' fontSize='small' /> Technical Specifications
+                <Info color='primary' fontSize='small' /> {t('home.technicalSpecs')}
               </Typography>
               <Grid container spacing={2}>
                 {Object.entries(allSpecs).map(([specKey, values]) => (
@@ -595,7 +602,7 @@ const HomePage: React.FC = () => {
                         <TextField
                           {...params}
                           label={specKey.charAt(0).toUpperCase() + specKey.slice(1)}
-                          placeholder={`Select ${specKey}`}
+                          placeholder={t('home.selectSpec', { spec: specKey })}
                         />
                       )}
                     />
@@ -636,10 +643,10 @@ const HomePage: React.FC = () => {
         ) : products.length === 0 ? (
           <Box textAlign='center' py={4}>
             <Typography variant='h6' color='text.secondary'>
-              No products found
+              {t('home.noProducts')}
             </Typography>
             <Typography variant='body2' color='text.secondary'>
-              Try adjusting your filters
+              {t('home.adjustFilters')}
             </Typography>
           </Box>
         ) : (
@@ -719,7 +726,7 @@ const HomePage: React.FC = () => {
                             fontWeight: 700,
                           }}
                         >
-                          IN STOCK
+                          {t('home.inStockBadge')}
                         </Box>
                       )}
                     </Box>
@@ -738,7 +745,7 @@ const HomePage: React.FC = () => {
                             fontSize: '0.625rem',
                           }}
                         >
-                          {product.category || 'Uncategorized'}
+                          {product.category || t('home.uncategorized')}
                         </Typography>
                       </Box>
 
@@ -763,8 +770,8 @@ const HomePage: React.FC = () => {
                         <StorefrontOutlined sx={{ fontSize: 14, color: 'text.secondary' }} />
                         <Typography variant='caption' color='text.secondary' noWrap>
                           {product.supplierId
-                            ? `Supplier ID: ${product.supplierId}`
-                            : 'Industrias Brasil Ltda.'}
+                            ? t('home.supplierId', { id: product.supplierId })
+                            : t('home.fallbackSupplier')}
                         </Typography>
                       </Box>
 
@@ -784,7 +791,7 @@ const HomePage: React.FC = () => {
                             variant='caption'
                             sx={{ fontSize: '0.625rem', color: 'text.secondary' }}
                           >
-                            Unit Price
+                            {t('home.unitPrice')}
                           </Typography>
                           <Typography
                             variant='subtitle1'
@@ -889,7 +896,7 @@ const HomePage: React.FC = () => {
           >
             <GridViewOutlined fontSize='small' />
             <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              Catalog
+              {t('home.catalog')}
             </Typography>
           </Box>
           <Box
@@ -906,7 +913,7 @@ const HomePage: React.FC = () => {
           >
             <RequestQuoteOutlined fontSize='small' />
             <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              Quotes
+              {t('home.quotes')}
             </Typography>
           </Box>
           <Box
@@ -923,7 +930,7 @@ const HomePage: React.FC = () => {
           >
             <LocalShippingOutlined fontSize='small' />
             <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              Orders
+              {t('home.orders')}
             </Typography>
           </Box>
           <Box
@@ -940,7 +947,7 @@ const HomePage: React.FC = () => {
           >
             <PersonOutlined fontSize='small' />
             <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              Account
+              {t('home.account')}
             </Typography>
           </Box>
         </Box>

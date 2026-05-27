@@ -29,6 +29,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useQuotationRequest } from '../contexts/QuotationContext';
+import { useT } from '../contexts/LanguageContext';
+import LanguageSwitcher from './LanguageSwitcher';
 
 import { AdminOnly, SupplierOnly, CustomerOnly, ApprovedSupplierOnly } from './PermissionGuard';
 import toast from 'react-hot-toast';
@@ -38,6 +40,7 @@ const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { totalItems, toggleCart } = useCart();
   const { totalItems: quotationItems } = useQuotationRequest();
+  const t = useT();
 
   const navigate = useNavigate();
   const theme = useTheme();
@@ -53,7 +56,7 @@ const Navbar: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    toast.success('Logout realizado com sucesso!');
+    toast.success(t('nav.logoutSuccess'));
     navigate('/');
     handleClose();
   };
@@ -116,6 +119,8 @@ const Navbar: React.FC = () => {
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <LanguageSwitcher />
+
           {/* Dynamic Action Buttons Based on Permissions */}
           <CustomerOnly>
             <IconButton
@@ -183,10 +188,14 @@ const Navbar: React.FC = () => {
                       {user?.email}
                     </Typography>
                     <Typography variant='caption' color='text.secondary'>
-                      {user?.role === 'admin' && 'Administrador'}
+                      {user?.role === 'admin' && t('nav.roleAdmin')}
                       {user?.role === 'supplier' &&
-                        `Fornecedor ${user?.status === 'approved' ? '(Aprovado)' : '(Pendente)'}`}
-                      {user?.role === 'customer' && 'Cliente'}
+                        `${t('nav.roleSupplier')} ${
+                          user?.status === 'approved'
+                            ? t('nav.supplierApproved')
+                            : t('nav.supplierPending')
+                        }`}
+                      {user?.role === 'customer' && t('nav.roleCustomer')}
                     </Typography>
                   </Box>
                 </MenuItem>
@@ -197,15 +206,15 @@ const Navbar: React.FC = () => {
                 <CustomerOnly>
                   <MenuItem onClick={handleMyQuotations}>
                     <Assignment sx={{ mr: 1 }} />
-                    Minhas Cotações
+                    {t('nav.myQuotations')}
                   </MenuItem>
                   <MenuItem onClick={handleMyOrders}>
                     <Receipt sx={{ mr: 1 }} />
-                    Meus Pedidos
+                    {t('nav.myOrders')}
                   </MenuItem>
                   <MenuItem onClick={handleQuoteComparison}>
                     <Compare sx={{ mr: 1 }} />
-                    Comparar Preços
+                    {t('nav.comparePrices')}
                   </MenuItem>
                 </CustomerOnly>
 
@@ -213,7 +222,7 @@ const Navbar: React.FC = () => {
                 <SupplierOnly>
                   <MenuItem onClick={handleSupplierDashboard}>
                     <Analytics sx={{ mr: 1 }} />
-                    Dashboard Fornecedor
+                    {t('nav.supplierDashboard')}
                   </MenuItem>
                   <ApprovedSupplierOnly>
                     <MenuItem
@@ -223,7 +232,7 @@ const Navbar: React.FC = () => {
                       }}
                     >
                       <Receipt sx={{ mr: 1 }} />
-                      Meus Produtos
+                      {t('nav.myProducts')}
                     </MenuItem>
                     <MenuItem
                       onClick={() => {
@@ -232,7 +241,7 @@ const Navbar: React.FC = () => {
                       }}
                     >
                       <Assignment sx={{ mr: 1 }} />
-                      Pedidos Recebidos
+                      {t('nav.receivedOrders')}
                     </MenuItem>
                   </ApprovedSupplierOnly>
                 </SupplierOnly>
@@ -241,11 +250,11 @@ const Navbar: React.FC = () => {
                 <AdminOnly>
                   <MenuItem onClick={handleAdminPanel}>
                     <AdminPanelSettings sx={{ mr: 1 }} />
-                    Painel Admin
+                    {t('nav.adminPanel')}
                   </MenuItem>
                   <MenuItem onClick={handleAnalytics}>
                     <Analytics sx={{ mr: 1 }} />
-                    Analytics
+                    {t('nav.analytics')}
                   </MenuItem>
                   <MenuItem
                     onClick={() => {
@@ -254,7 +263,7 @@ const Navbar: React.FC = () => {
                     }}
                   >
                     <Verified sx={{ mr: 1 }} />
-                    Verificação de Empresas
+                    {t('nav.companyVerification')}
                   </MenuItem>
                   <MenuItem
                     onClick={() => {
@@ -263,19 +272,19 @@ const Navbar: React.FC = () => {
                     }}
                   >
                     <Settings sx={{ mr: 1 }} />
-                    Configurações
+                    {t('nav.settings')}
                   </MenuItem>
                 </AdminOnly>
 
                 <Divider />
-                <MenuItem onClick={handleLogout}>Sair</MenuItem>
+                <MenuItem onClick={handleLogout}>{t('nav.logout')}</MenuItem>
               </Menu>
             </>
           ) : (
             <Box sx={{ display: 'flex', gap: 1 }}>
               {!isMobile && (
                 <Button color='inherit' component={Link} to='/login'>
-                  Entrar
+                  {t('nav.login')}
                 </Button>
               )}
               <Button
@@ -291,7 +300,7 @@ const Navbar: React.FC = () => {
                   },
                 }}
               >
-                Cadastrar
+                {t('nav.register')}
               </Button>
             </Box>
           )}

@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { CircularProgress, Box } from '@mui/material';
+import { LanguageProvider } from './contexts/LanguageContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { QuotationRequestProvider } from './contexts/QuotationContext';
@@ -34,148 +35,150 @@ const PageFallback = () => (
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <QuotationRequestProvider>
-          <Suspense fallback={<PageFallback />}>
-            <Routes>
-              {/* Public routes */}
-              <Route path='/login' element={<LoginPage />} />
-              <Route path='/register' element={<RegisterPage />} />
+    <LanguageProvider>
+      <AuthProvider>
+        <CartProvider>
+          <QuotationRequestProvider>
+            <Suspense fallback={<PageFallback />}>
+              <Routes>
+                {/* Public routes */}
+                <Route path='/login' element={<LoginPage />} />
+                <Route path='/register' element={<RegisterPage />} />
 
-              {/* Protected routes with layout */}
-              <Route path='/' element={<Layout />}>
-                <Route index element={<HomePage />} />
+                {/* Protected routes with layout */}
+                <Route path='/' element={<Layout />}>
+                  <Route index element={<HomePage />} />
 
-                {/* Customer routes */}
-                <Route path='cart' element={<CartPage />} />
-                <Route path='quotation-request' element={<QuotationRequestPage />} />
-                <Route
-                  path='my-quotations'
-                  element={
-                    <ProtectedRoute allowedRoles={['customer', 'admin']}>
-                      <MyQuotationsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path='quote-comparison'
-                  element={
-                    <ProtectedRoute allowedRoles={['customer', 'admin']}>
-                      <QuoteComparisonPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path='my-orders'
-                  element={
-                    <ProtectedRoute allowedRoles={['customer', 'admin']}>
-                      <MyOrdersPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path='quotations/:id'
-                  element={
-                    <ProtectedRoute>
-                      <QuotationDetailPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path='checkout'
-                  element={
-                    <ProtectedRoute>
-                      <CheckoutPage />
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Customer routes */}
+                  <Route path='cart' element={<CartPage />} />
+                  <Route path='quotation-request' element={<QuotationRequestPage />} />
+                  <Route
+                    path='my-quotations'
+                    element={
+                      <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                        <MyQuotationsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path='quote-comparison'
+                    element={
+                      <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                        <QuoteComparisonPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path='my-orders'
+                    element={
+                      <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                        <MyOrdersPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path='quotations/:id'
+                    element={
+                      <ProtectedRoute>
+                        <QuotationDetailPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path='checkout'
+                    element={
+                      <ProtectedRoute>
+                        <CheckoutPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Admin routes */}
-                <Route
-                  path='admin/products'
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminProductsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path='admin/quotations'
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminQuotationsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path='admin/analytics'
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminTransactionMonitoringPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path='admin/company-verification'
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminCompanyVerificationPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path='admin/settings'
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      {/* Settings page would go here */}
-                      <div>System Settings (To be implemented)</div>
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Admin routes */}
+                  <Route
+                    path='admin/products'
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminProductsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path='admin/quotations'
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminQuotationsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path='admin/analytics'
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminTransactionMonitoringPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path='admin/company-verification'
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminCompanyVerificationPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path='admin/settings'
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        {/* Settings page would go here */}
+                        <div>System Settings (To be implemented)</div>
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Supplier routes */}
-                <Route
-                  path='supplier/dashboard'
-                  element={
-                    <ProtectedRoute allowedRoles={['supplier']}>
-                      <SupplierDashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path='supplier/products'
-                  element={
-                    <ProtectedRoute allowedRoles={['supplier']} requireApproved>
-                      <SupplierProductsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path='supplier/orders'
-                  element={
-                    <ProtectedRoute allowedRoles={['supplier']} requireApproved>
-                      <SupplierOrdersPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path='supplier/quotations'
-                  element={
-                    <ProtectedRoute allowedRoles={['supplier']} requireApproved>
-                      <SupplierQuotationsPage />
-                    </ProtectedRoute>
-                  }
-                />
-              </Route>
+                  {/* Supplier routes */}
+                  <Route
+                    path='supplier/dashboard'
+                    element={
+                      <ProtectedRoute allowedRoles={['supplier']}>
+                        <SupplierDashboardPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path='supplier/products'
+                    element={
+                      <ProtectedRoute allowedRoles={['supplier']} requireApproved>
+                        <SupplierProductsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path='supplier/orders'
+                    element={
+                      <ProtectedRoute allowedRoles={['supplier']} requireApproved>
+                        <SupplierOrdersPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path='supplier/quotations'
+                    element={
+                      <ProtectedRoute allowedRoles={['supplier']} requireApproved>
+                        <SupplierQuotationsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                </Route>
 
-              {/* Catch all - redirect to home */}
-              <Route path='*' element={<Navigate to='/' replace />} />
-            </Routes>
-          </Suspense>
-        </QuotationRequestProvider>
-      </CartProvider>
-    </AuthProvider>
+                {/* Catch all - redirect to home */}
+                <Route path='*' element={<Navigate to='/' replace />} />
+              </Routes>
+            </Suspense>
+          </QuotationRequestProvider>
+        </CartProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 };
 

@@ -170,9 +170,9 @@ describe('LoginPage', () => {
     });
   });
 
-  it('should display test accounts section', async () => {
+  it('should display demo company accounts section', async () => {
     await renderPage();
-    expect(screen.getByText('Contas de teste:')).toBeInTheDocument();
+    expect(screen.getByText('Empresas de demonstração')).toBeInTheDocument();
     expect(screen.getByText(/admin@crescebr.com/)).toBeInTheDocument();
   });
 

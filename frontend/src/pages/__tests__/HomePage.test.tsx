@@ -3,6 +3,7 @@ import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import HomePage from '../HomePage';
+import { LanguageProvider } from '../../contexts/LanguageContext';
 import { productsService } from '../../services/productsService';
 
 // Mock the services
@@ -120,7 +121,9 @@ const renderHomePage = async () => {
   await act(async () => {
     renderResult = render(
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <HomePage />
+        <LanguageProvider initialLanguage='en'>
+          <HomePage />
+        </LanguageProvider>
       </BrowserRouter>
     );
   });
@@ -589,7 +592,9 @@ describe('HomePage', () => {
     await act(async () => {
       render(
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <HomePage />
+          <LanguageProvider initialLanguage='en'>
+            <HomePage />
+          </LanguageProvider>
         </BrowserRouter>
       );
     });
