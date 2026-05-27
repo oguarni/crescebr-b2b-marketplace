@@ -24,15 +24,9 @@ import {
   Alert,
   InputAdornment,
 } from '@mui/material';
-import {
-  CreditCard,
-  LocalShipping,
-  Security,
-  CheckCircle,
-} from '@mui/icons-material';
+import { CreditCard, LocalShipping, Security, CheckCircle } from '@mui/icons-material';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
-import { ordersService } from '../services/ordersService';
 import { viaCepService } from '../services/viaCepService';
 import toast from 'react-hot-toast';
 
@@ -50,14 +44,14 @@ const CheckoutPage: React.FC = () => {
     // Shipping Info
     cep: '',
     address: user?.address || '',
-    
+
     // Payment Info
     paymentMethod: 'credit',
     cardNumber: '',
     cardName: '',
     cardExpiry: '',
     cardCvv: '',
-    
+
     // PIX Info (for PIX payment simulation)
     pixEmail: user?.email || '',
   });
@@ -77,7 +71,7 @@ const CheckoutPage: React.FC = () => {
 
   const handleCepChange = async (cep: string) => {
     setFormData(prev => ({ ...prev, cep }));
-    
+
     if (viaCepService.isValidCep(cep)) {
       setIsCalculatingShipping(true);
       try {
@@ -85,7 +79,7 @@ const CheckoutPage: React.FC = () => {
         const addressData = await viaCepService.getAddressByCep(cep);
         const fullAddress = `${addressData.logradouro}, ${addressData.bairro}, ${addressData.localidade} - ${addressData.uf}`;
         setFormData(prev => ({ ...prev, address: fullAddress }));
-        
+
         // Simulate shipping calculation based on CEP
         const shipping: ShippingInfo = {
           cost: totalPrice * 0.05,
@@ -114,7 +108,10 @@ const CheckoutPage: React.FC = () => {
   };
 
   const formatCardNumber = (value: string) => {
-    return value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
+    return value
+      .replace(/\s/g, '')
+      .replace(/(\d{4})/g, '$1 ')
+      .trim();
   };
 
   const formatCardExpiry = (value: string) => {
@@ -158,59 +155,62 @@ const CheckoutPage: React.FC = () => {
     return true;
   };
 
+  const fillDemoData = () => {
+    setFormData(prev => ({
+      ...prev,
+      cep: '85801-010',
+      address: 'Av. Brasil, 456, Centro, Cascavel - PR',
+      paymentMethod: 'credit',
+      cardNumber: '4111 1111 1111 1111',
+      cardName: 'Comprador Demonstração',
+      cardExpiry: '12/30',
+      cardCvv: '123',
+    }));
+    setShippingInfo({ cost: totalPrice * 0.05, days: 5 });
+    toast.success('Dados de demonstração preenchidos. Agora é só finalizar o pedido.');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
-    
-    try {
-      // For checkout, we need a quotationId. Since cart items may not have a quotationId,
-      // we use the first item's productId as a placeholder quotationId for now.
-      // In a real scenario, a quotation would be created first.
-      const quotationId = items[0]?.productId ?? 0;
 
-      // Create order from quotation
-      const orderResponse = await ordersService.createOrderFromQuotation({ quotationId });
+    // Simulated checkout: this is a portfolio demo, so no real order is created
+    // and no payment is processed. We just emulate the processing delay.
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Simulate payment processing delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    const simulatedOrderId = Math.floor(100000 + Math.random() * 900000);
+    setOrderId(simulatedOrderId);
+    setOrderSuccess(true);
+    clearCart();
 
-      setOrderId(Number(orderResponse.id));
-      setOrderSuccess(true);
-      clearCart();
-
-      toast.success('Pedido realizado com sucesso!');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro ao processar pedido';
-      toast.error(message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    toast.success('Pedido realizado com sucesso!');
+    setIsSubmitting(false);
   };
 
   if (orderSuccess) {
     return (
-      <Container maxWidth="md">
+      <Container maxWidth='md'>
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <CheckCircle sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
-          <Typography variant="h4" gutterBottom>
+          <Typography variant='h4' gutterBottom>
             Pedido Realizado com Sucesso!
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-            Seu pedido #{orderId} foi processado e você receberá um email de confirmação.
+          <Typography variant='body1' color='text.secondary' sx={{ mb: 2 }}>
+            Seu pedido de demonstração #{orderId} foi registrado.
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+          <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
             Prazo de entrega: {shippingInfo?.days} dias úteis
           </Typography>
-          <Button
-            variant="contained"
-            onClick={() => navigate('/')}
-            size="large"
-          >
+          <Alert severity='info' sx={{ mb: 4, textAlign: 'left' }}>
+            Esta foi uma compra simulada. Nenhum pagamento foi processado e nenhum dado de cartão
+            foi armazenado.
+          </Alert>
+          <Button variant='contained' onClick={() => navigate('/')} size='large'>
             Continuar Comprando
           </Button>
         </Box>
@@ -221,10 +221,23 @@ const CheckoutPage: React.FC = () => {
   const totalWithShipping = totalPrice + (shippingInfo?.cost || 0);
 
   return (
-    <Container maxWidth="lg">
-      <Typography variant="h4" gutterBottom>
+    <Container maxWidth='lg'>
+      <Typography variant='h4' gutterBottom>
         Finalizar Compra
       </Typography>
+
+      <Alert
+        severity='info'
+        sx={{ mb: 3 }}
+        action={
+          <Button color='inherit' size='small' onClick={fillDemoData}>
+            Preencher dados de demonstração
+          </Button>
+        }
+      >
+        <strong>Modo demonstração.</strong> Esta é uma compra simulada — nenhum pagamento é
+        processado. Clique no botão para preencher os campos automaticamente.
+      </Alert>
 
       <form onSubmit={handleSubmit}>
         <Grid container spacing={3}>
@@ -235,20 +248,22 @@ const CheckoutPage: React.FC = () => {
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <LocalShipping sx={{ mr: 1, color: 'primary.main' }} />
-                  <Typography variant="h6">Informações de Entrega</Typography>
+                  <Typography variant='h6'>Informações de Entrega</Typography>
                 </Box>
-                
+
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
                     <TextField
                       fullWidth
-                      label="CEP"
+                      label='CEP'
                       value={formData.cep}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleCepChange(e.target.value)}
-                      placeholder="00000-000"
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        handleCepChange(e.target.value)
+                      }
+                      placeholder='00000-000'
                       InputProps={{
                         endAdornment: isCalculatingShipping && (
-                          <InputAdornment position="end">
+                          <InputAdornment position='end'>
                             <CircularProgress size={20} />
                           </InputAdornment>
                         ),
@@ -258,9 +273,11 @@ const CheckoutPage: React.FC = () => {
                   <Grid item xs={12} sm={8}>
                     <TextField
                       fullWidth
-                      label="Endereço Completo"
+                      label='Endereço Completo'
                       value={formData.address}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setFormData(prev => ({ ...prev, address: e.target.value }))
+                      }
                       multiline
                       rows={2}
                     />
@@ -268,8 +285,9 @@ const CheckoutPage: React.FC = () => {
                 </Grid>
 
                 {shippingInfo && (
-                  <Alert severity="success" sx={{ mt: 2 }}>
-                    Frete: {formatPrice(shippingInfo.cost)} - Entrega em {shippingInfo.days} dias úteis
+                  <Alert severity='success' sx={{ mt: 2 }}>
+                    Frete: {formatPrice(shippingInfo.cost)} - Entrega em {shippingInfo.days} dias
+                    úteis
                   </Alert>
                 )}
               </CardContent>
@@ -280,18 +298,24 @@ const CheckoutPage: React.FC = () => {
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <CreditCard sx={{ mr: 1, color: 'primary.main' }} />
-                  <Typography variant="h6">Informações de Pagamento</Typography>
+                  <Typography variant='h6'>Informações de Pagamento</Typography>
                 </Box>
 
-                <FormControl component="fieldset" sx={{ mb: 3 }}>
-                  <FormLabel component="legend">Método de Pagamento</FormLabel>
+                <FormControl component='fieldset' sx={{ mb: 3 }}>
+                  <FormLabel component='legend'>Método de Pagamento</FormLabel>
                   <RadioGroup
                     value={formData.paymentMethod}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFormData(prev => ({ ...prev, paymentMethod: e.target.value }))
+                    }
                     row
                   >
-                    <FormControlLabel value="credit" control={<Radio />} label="Cartão de Crédito" />
-                    <FormControlLabel value="pix" control={<Radio />} label="PIX" />
+                    <FormControlLabel
+                      value='credit'
+                      control={<Radio />}
+                      label='Cartão de Crédito'
+                    />
+                    <FormControlLabel value='pix' control={<Radio />} label='PIX' />
                   </RadioGroup>
                 </FormControl>
 
@@ -300,47 +324,55 @@ const CheckoutPage: React.FC = () => {
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
-                        label="Número do Cartão"
+                        label='Número do Cartão'
                         value={formData.cardNumber}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({
-                          ...prev,
-                          cardNumber: formatCardNumber(e.target.value)
-                        }))}
-                        placeholder="0000 0000 0000 0000"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setFormData(prev => ({
+                            ...prev,
+                            cardNumber: formatCardNumber(e.target.value),
+                          }))
+                        }
+                        placeholder='0000 0000 0000 0000'
                         inputProps={{ maxLength: 19 }}
                       />
                     </Grid>
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
-                        label="Nome no Cartão"
+                        label='Nome no Cartão'
                         value={formData.cardName}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, cardName: e.target.value }))}
-                        placeholder="Nome como no cartão"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setFormData(prev => ({ ...prev, cardName: e.target.value }))
+                        }
+                        placeholder='Nome como no cartão'
                       />
                     </Grid>
                     <Grid item xs={6}>
                       <TextField
                         fullWidth
-                        label="Validade"
+                        label='Validade'
                         value={formData.cardExpiry}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({
-                          ...prev,
-                          cardExpiry: formatCardExpiry(e.target.value)
-                        }))}
-                        placeholder="MM/AA"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setFormData(prev => ({
+                            ...prev,
+                            cardExpiry: formatCardExpiry(e.target.value),
+                          }))
+                        }
+                        placeholder='MM/AA'
                         inputProps={{ maxLength: 5 }}
                       />
                     </Grid>
                     <Grid item xs={6}>
                       <TextField
                         fullWidth
-                        label="CVV"
+                        label='CVV'
                         value={formData.cardCvv}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, cardCvv: e.target.value }))}
-                        placeholder="123"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setFormData(prev => ({ ...prev, cardCvv: e.target.value }))
+                        }
+                        placeholder='123'
                         inputProps={{ maxLength: 3 }}
-                        type="password"
+                        type='password'
                       />
                     </Grid>
                   </Grid>
@@ -351,24 +383,35 @@ const CheckoutPage: React.FC = () => {
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
-                        label="Email para PIX"
+                        label='Email para PIX'
                         value={formData.pixEmail}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, pixEmail: e.target.value }))}
-                        placeholder="seu@email.com"
-                        type="email"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setFormData(prev => ({ ...prev, pixEmail: e.target.value }))
+                        }
+                        placeholder='seu@email.com'
+                        type='email'
                       />
                     </Grid>
                     <Grid item xs={12}>
-                      <Alert severity="info">
+                      <Alert severity='info'>
                         Após confirmar o pedido, você receberá o código PIX para pagamento.
                       </Alert>
                     </Grid>
                   </Grid>
                 )}
 
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    mt: 2,
+                    p: 2,
+                    bgcolor: 'grey.50',
+                    borderRadius: 1,
+                  }}
+                >
                   <Security sx={{ mr: 1, color: 'success.main' }} />
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant='body2' color='text.secondary'>
                     Seus dados estão protegidos com criptografia SSL
                   </Typography>
                 </Box>
@@ -380,35 +423,36 @@ const CheckoutPage: React.FC = () => {
           <Grid item xs={12} md={4}>
             <Card sx={{ position: 'sticky', top: 20 }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant='h6' gutterBottom>
                   Resumo do Pedido
                 </Typography>
 
                 <List dense>
-                  {items.map((item) => (
+                  {items.map(item => (
                     <ListItem key={item.id} sx={{ px: 0 }}>
                       <ListItemAvatar>
                         <Avatar
                           src={item.product.imageUrl}
                           alt={item.product.name}
-                          variant="rounded"
+                          variant='rounded'
                           sx={{ width: 40, height: 40 }}
                           imgProps={{
                             onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
-                              e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0yMCAxMkwyOCAyMEgyNFYyOEgxNlYyMEgxMkwyMCAxMloiIGZpbGw9IiM5MDkwOTAiLz4KPHN2Zz4K';
-                            }
+                              e.currentTarget.src =
+                                'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0yMCAxMkwyOCAyMEgyNFYyOEgxNlYyMEgxMkwyMCAxMloiIGZpbGw9IiM5MDkwOTAiLz4KPHN2Zz4K';
+                            },
                           }}
                         />
                       </ListItemAvatar>
                       <ListItemText
                         primary={
-                          <Typography variant="body2" noWrap>
+                          <Typography variant='body2' noWrap>
                             {item.product.name}
                           </Typography>
                         }
                         secondary={`Qtd: ${item.quantity} × ${formatPrice(item.product.price)}`}
                       />
-                      <Typography variant="body2" fontWeight="bold">
+                      <Typography variant='body2' fontWeight='bold'>
                         {formatPrice(item.totalPrice)}
                       </Typography>
                     </ListItem>
@@ -432,24 +476,24 @@ const CheckoutPage: React.FC = () => {
                 <Divider sx={{ my: 2 }} />
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                  <Typography variant="h6">Total:</Typography>
-                  <Typography variant="h6" color="primary">
+                  <Typography variant='h6'>Total:</Typography>
+                  <Typography variant='h6' color='primary'>
                     {formatPrice(totalWithShipping)}
                   </Typography>
                 </Box>
 
                 <Button
-                  type="submit"
-                  variant="contained"
+                  type='submit'
+                  variant='contained'
                   fullWidth
-                  size="large"
+                  size='large'
                   disabled={isSubmitting || !shippingInfo}
                   startIcon={isSubmitting ? <CircularProgress size={20} /> : <Security />}
                 >
                   {isSubmitting ? 'Processando...' : 'Finalizar Pedido'}
                 </Button>
 
-                <Typography variant="caption" display="block" sx={{ mt: 2, textAlign: 'center' }}>
+                <Typography variant='caption' display='block' sx={{ mt: 2, textAlign: 'center' }}>
                   Ao finalizar, você concorda com nossos termos de uso
                 </Typography>
               </CardContent>

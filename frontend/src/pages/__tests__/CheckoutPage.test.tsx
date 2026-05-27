@@ -3,17 +3,10 @@ import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import CheckoutPage from '../CheckoutPage';
-import { ordersService } from '../../services/ordersService';
 import { viaCepService } from '../../services/viaCepService';
 import toast from 'react-hot-toast';
 
 // Mock services
-vi.mock('../../services/ordersService', () => ({
-  ordersService: {
-    createOrderFromQuotation: vi.fn(),
-  },
-}));
-
 vi.mock('../../services/viaCepService', () => ({
   viaCepService: {
     getAddressByCep: vi.fn(),
@@ -219,7 +212,7 @@ describe('CheckoutPage', () => {
     expect(screen.queryByLabelText('Número do Cartão')).not.toBeInTheDocument();
   });
 
-  it('should create order successfully and show success screen', async () => {
+  it('should complete a simulated purchase and show the success screen', async () => {
     const user = userEvent.setup();
 
     // Setup CEP mock for valid shipping
@@ -237,22 +230,10 @@ describe('CheckoutPage', () => {
       siafi: '7107',
     });
 
-    vi.mocked(ordersService.createOrderFromQuotation).mockResolvedValue({
-      id: 42,
-      quotationId: 1,
-      customerId: 1,
-      supplierId: 1,
-      status: 'pending',
-      totalAmount: 3125.0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as unknown as import('@shared/types').Order);
-
     await renderCheckoutPage();
 
     // Fill CEP to trigger shipping calculation
-    const cepInput = screen.getByLabelText('CEP');
-    await user.type(cepInput, '01001000');
+    await user.type(screen.getByLabelText('CEP'), '01001000');
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('Frete calculado com sucesso!');
@@ -270,65 +251,38 @@ describe('CheckoutPage', () => {
 
     await waitFor(
       () => {
-        expect(ordersService.createOrderFromQuotation).toHaveBeenCalledWith({
-          quotationId: 1,
-        });
+        expect(toast.success).toHaveBeenCalledWith('Pedido realizado com sucesso!');
       },
       { timeout: 5000 }
     );
 
     await waitFor(
       () => {
-        expect(toast.success).toHaveBeenCalledWith('Pedido realizado com sucesso!');
+        expect(screen.getByText('Pedido Realizado com Sucesso!')).toBeInTheDocument();
       },
       { timeout: 5000 }
     );
   }, 30000);
 
-  it('should handle order creation failure', async () => {
+  it('should fill demo data and complete a one-click simulated purchase', async () => {
     const user = userEvent.setup();
-
-    vi.mocked(viaCepService.isValidCep).mockReturnValue(true);
-    vi.mocked(viaCepService.getAddressByCep).mockResolvedValue({
-      cep: '01001-000',
-      logradouro: 'Praça da Sé',
-      complemento: '',
-      bairro: 'Sé',
-      localidade: 'São Paulo',
-      uf: 'SP',
-      ibge: '3550308',
-      gia: '1004',
-      ddd: '11',
-      siafi: '7107',
-    });
-
-    vi.mocked(ordersService.createOrderFromQuotation).mockRejectedValue(
-      new Error('Erro ao processar pedido')
-    );
 
     await renderCheckoutPage();
 
-    // Fill CEP
-    const cepInput = screen.getByLabelText('CEP');
-    await user.type(cepInput, '01001000');
+    await user.click(screen.getByRole('button', { name: /preencher dados de demonstração/i }));
 
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('Frete calculado com sucesso!');
+      expect(toast.success).toHaveBeenCalledWith(
+        'Dados de demonstração preenchidos. Agora é só finalizar o pedido.'
+      );
     });
 
-    // Fill credit card fields
-    await user.type(screen.getByLabelText('Número do Cartão'), '4111111111111111');
-    await user.type(screen.getByLabelText('Nome no Cartão'), 'Test User');
-    await user.type(screen.getByLabelText('Validade'), '1228');
-    await user.type(screen.getByLabelText('CVV'), '123');
-
-    // Submit form
     const submitButton = screen.getByRole('button', { name: /finalizar pedido/i });
     await user.click(submitButton);
 
     await waitFor(
       () => {
-        expect(toast.error).toHaveBeenCalledWith('Erro ao processar pedido');
+        expect(toast.success).toHaveBeenCalledWith('Pedido realizado com sucesso!');
       },
       { timeout: 5000 }
     );
