@@ -8,6 +8,7 @@ options:
 steps:
   - name: gcr.io/cloud-builders/docker
     id: build-backend
+    waitFor: ['-']
     args:
       - build
       - -f
@@ -18,6 +19,7 @@ steps:
 
   - name: gcr.io/cloud-builders/docker
     id: build-frontend
+    waitFor: ['-']
     args:
       - build
       - -f
