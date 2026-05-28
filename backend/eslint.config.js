@@ -6,7 +6,7 @@ import prettier from 'eslint-config-prettier';
 export default [
   js.configs.recommended,
   {
-    files: ['**/*.{ts,js}'],
+    files: ['**/*.{ts,js,cjs}'],
     ignores: ['**/*.test.ts', '**/__tests__/**'],
     languageOptions: {
       parser: typescriptParser,
