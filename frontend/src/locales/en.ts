@@ -5,6 +5,7 @@ export const en: typeof pt = {
   common: {
     loading: 'Loading...',
     retry: 'Try again',
+    back: 'Back',
   },
   language: {
     label: 'Language',

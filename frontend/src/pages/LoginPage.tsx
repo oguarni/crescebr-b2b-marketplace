@@ -25,11 +25,13 @@ import {
   ShoppingCart,
   Storefront,
   AdminPanelSettings,
+  ArrowBack,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useT } from '../contexts/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import type { TranslationKey } from '../locales';
+import { INPUT_LIMITS } from '../utils/inputLimits';
 import toast from 'react-hot-toast';
 
 interface DemoAccount {
@@ -90,6 +92,16 @@ const LoginPage: React.FC = () => {
   const location = useLocation();
 
   const from = location.state?.from?.pathname || '/';
+
+  const handleBack = () => {
+    // Return to the previous in-app page when history exists; otherwise the user
+    // deep-linked straight here, so send them to the marketplace home.
+    if (location.key && location.key !== 'default') {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,7 +170,17 @@ const LoginPage: React.FC = () => {
             width: '100%',
           }}
         >
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
+          <Box
+            sx={{
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Button onClick={handleBack} startIcon={<ArrowBack />} color='inherit' size='small'>
+              {t('common.back')}
+            </Button>
             <LanguageSwitcher />
           </Box>
           <Typography component='h1' variant='h4' gutterBottom>
@@ -192,6 +214,7 @@ const LoginPage: React.FC = () => {
                 value={cnpj}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCnpj(e.target.value)}
                 placeholder='00.000.000/0000-00'
+                inputProps={{ maxLength: INPUT_LIMITS.cnpj }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position='start'>
@@ -212,6 +235,7 @@ const LoginPage: React.FC = () => {
                 autoFocus
                 value={email}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                inputProps={{ maxLength: INPUT_LIMITS.email }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position='start'>
@@ -232,6 +256,7 @@ const LoginPage: React.FC = () => {
               autoComplete='current-password'
               value={password}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              inputProps={{ maxLength: INPUT_LIMITS.password }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position='start'>

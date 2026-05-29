@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 15" />
   <img src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white" alt="Docker" />
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3%20%2B%20Commercial-blue" alt="License: AGPL v3 or Commercial" /></a>
 </p>
 
 ---
@@ -221,7 +221,9 @@ Follow the existing conventions: TypeScript strict mode, ESLint + Prettier forma
 
 ## License
 
-Licensed under [CC BY-NC-SA 4.0](LICENSE).
+CresceBR is **dual-licensed**: use it under the open-source [GNU AGPL v3.0](LICENSE),
+or obtain a commercial license for proprietary/closed-source use. See
+[LICENSING.md](LICENSING.md) for details.
 
 ---
 

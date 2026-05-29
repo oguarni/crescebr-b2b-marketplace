@@ -12,10 +12,13 @@ import { Translate, Check } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { Language, TranslationKey } from '../locales';
 
-const OPTIONS: { code: Language; labelKey: TranslationKey }[] = [
-  { code: 'pt', labelKey: 'language.portuguese' },
-  { code: 'en', labelKey: 'language.english' },
+const OPTIONS: { code: Language; labelKey: TranslationKey; flag: string }[] = [
+  { code: 'pt', labelKey: 'language.portuguese', flag: '🇧🇷' },
+  { code: 'en', labelKey: 'language.english', flag: '🌐' },
 ];
+
+const flagFor = (code: Language): string =>
+  OPTIONS.find(option => option.code === code)?.flag ?? '🌐';
 
 const LanguageSwitcher: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -36,8 +39,12 @@ const LanguageSwitcher: React.FC = () => {
           aria-haspopup='true'
         >
           <Translate />
-          <Typography variant='caption' sx={{ ml: 0.5, fontWeight: 700 }}>
-            {language.toUpperCase()}
+          <Typography
+            component='span'
+            aria-hidden='true'
+            sx={{ ml: 0.5, fontSize: '1.15rem', lineHeight: 1 }}
+          >
+            {flagFor(language)}
           </Typography>
         </IconButton>
       </Tooltip>
@@ -48,8 +55,11 @@ const LanguageSwitcher: React.FC = () => {
             selected={language === option.code}
             onClick={() => handleSelect(option.code)}
           >
-            <ListItemIcon>{language === option.code && <Check fontSize='small' />}</ListItemIcon>
+            <ListItemIcon sx={{ minWidth: 36, fontSize: '1.3rem' }} aria-hidden='true'>
+              {option.flag}
+            </ListItemIcon>
             <ListItemText>{t(option.labelKey)}</ListItemText>
+            {language === option.code && <Check fontSize='small' sx={{ ml: 1 }} />}
           </MenuItem>
         ))}
       </Menu>

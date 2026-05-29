@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -27,12 +27,14 @@ import {
   Home,
   Business,
   Category,
+  ArrowBack,
 } from '@mui/icons-material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { useAuth } from '../contexts/AuthContext';
 import { useT } from '../contexts/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { viaCepService } from '../services/viaCepService';
+import { INPUT_LIMITS } from '../utils/inputLimits';
 import toast from 'react-hot-toast';
 
 const RegisterPage: React.FC = () => {
@@ -78,6 +80,17 @@ const RegisterPage: React.FC = () => {
   const { register } = useAuth();
   const t = useT();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleBack = () => {
+    // Return to the previous in-app page when history exists; otherwise the user
+    // deep-linked straight here, so send them to the marketplace home.
+    if (location.key && location.key !== 'default') {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
 
   const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -257,7 +270,17 @@ const RegisterPage: React.FC = () => {
             width: '100%',
           }}
         >
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
+          <Box
+            sx={{
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Button onClick={handleBack} startIcon={<ArrowBack />} color='inherit' size='small'>
+              {t('common.back')}
+            </Button>
             <LanguageSwitcher />
           </Box>
           <Typography component='h1' variant='h4' gutterBottom>
@@ -285,6 +308,7 @@ const RegisterPage: React.FC = () => {
                   autoComplete='email'
                   value={formData.email}
                   onChange={handleChange('email')}
+                  inputProps={{ maxLength: INPUT_LIMITS.email }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position='start'>
@@ -306,6 +330,7 @@ const RegisterPage: React.FC = () => {
                   autoComplete='new-password'
                   value={formData.password}
                   onChange={handleChange('password')}
+                  inputProps={{ maxLength: INPUT_LIMITS.password }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position='start'>
@@ -333,6 +358,7 @@ const RegisterPage: React.FC = () => {
                   id='confirmPassword'
                   value={formData.confirmPassword}
                   onChange={handleChange('confirmPassword')}
+                  inputProps={{ maxLength: INPUT_LIMITS.password }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position='start'>
@@ -362,6 +388,7 @@ const RegisterPage: React.FC = () => {
                   name='cpf'
                   value={formData.cpf}
                   onChange={handleCpfChange}
+                  inputProps={{ maxLength: INPUT_LIMITS.cpf }}
                   placeholder='000.000.000-00'
                   InputProps={{
                     startAdornment: (
@@ -382,6 +409,7 @@ const RegisterPage: React.FC = () => {
                   name='cep'
                   value={formData.cep}
                   onChange={handleCepChange}
+                  inputProps={{ maxLength: INPUT_LIMITS.cep }}
                   placeholder='00000-000'
                   InputProps={{
                     startAdornment: (
@@ -409,6 +437,7 @@ const RegisterPage: React.FC = () => {
                   rows={2}
                   value={formData.address}
                   onChange={handleChange('address')}
+                  inputProps={{ maxLength: INPUT_LIMITS.address }}
                   placeholder={t('register.addressPlaceholder')}
                   InputProps={{
                     startAdornment: (
@@ -428,6 +457,7 @@ const RegisterPage: React.FC = () => {
                   name='street'
                   value={formData.street}
                   onChange={handleChange('street')}
+                  inputProps={{ maxLength: INPUT_LIMITS.street }}
                   placeholder={t('register.streetPlaceholder')}
                 />
               </Grid>
@@ -440,6 +470,7 @@ const RegisterPage: React.FC = () => {
                   name='number'
                   value={formData.number}
                   onChange={handleChange('number')}
+                  inputProps={{ maxLength: INPUT_LIMITS.number }}
                   placeholder={t('register.numberPlaceholder')}
                 />
               </Grid>
@@ -452,6 +483,7 @@ const RegisterPage: React.FC = () => {
                   name='complement'
                   value={formData.complement}
                   onChange={handleChange('complement')}
+                  inputProps={{ maxLength: INPUT_LIMITS.complement }}
                   placeholder={t('register.complementPlaceholder')}
                 />
               </Grid>
@@ -464,6 +496,7 @@ const RegisterPage: React.FC = () => {
                   name='neighborhood'
                   value={formData.neighborhood}
                   onChange={handleChange('neighborhood')}
+                  inputProps={{ maxLength: INPUT_LIMITS.neighborhood }}
                   placeholder={t('register.neighborhoodPlaceholder')}
                 />
               </Grid>
@@ -476,6 +509,7 @@ const RegisterPage: React.FC = () => {
                   name='city'
                   value={formData.city}
                   onChange={handleChange('city')}
+                  inputProps={{ maxLength: INPUT_LIMITS.city }}
                   placeholder={t('register.cityPlaceholder')}
                 />
               </Grid>
@@ -488,6 +522,7 @@ const RegisterPage: React.FC = () => {
                   name='state'
                   value={formData.state}
                   onChange={handleChange('state')}
+                  inputProps={{ maxLength: INPUT_LIMITS.state }}
                   placeholder={t('register.statePlaceholder')}
                 />
               </Grid>
@@ -500,6 +535,7 @@ const RegisterPage: React.FC = () => {
                   name='phone'
                   value={formData.phone}
                   onChange={handleChange('phone')}
+                  inputProps={{ maxLength: INPUT_LIMITS.phone }}
                   placeholder={t('register.phonePlaceholder')}
                 />
               </Grid>
@@ -512,6 +548,7 @@ const RegisterPage: React.FC = () => {
                   name='website'
                   value={formData.website}
                   onChange={handleChange('website')}
+                  inputProps={{ maxLength: INPUT_LIMITS.website }}
                   placeholder={t('register.websitePlaceholder')}
                 />
               </Grid>
@@ -525,6 +562,7 @@ const RegisterPage: React.FC = () => {
                   name='companyName'
                   value={formData.companyName}
                   onChange={handleChange('companyName')}
+                  inputProps={{ maxLength: INPUT_LIMITS.companyName }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position='start'>
@@ -544,6 +582,7 @@ const RegisterPage: React.FC = () => {
                   name='corporateName'
                   value={formData.corporateName}
                   onChange={handleChange('corporateName')}
+                  inputProps={{ maxLength: INPUT_LIMITS.corporateName }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position='start'>
@@ -563,6 +602,7 @@ const RegisterPage: React.FC = () => {
                   name='cnpj'
                   value={formData.cnpj}
                   onChange={handleCnpjChange}
+                  inputProps={{ maxLength: INPUT_LIMITS.cnpj }}
                   placeholder='00.000.000/0000-00'
                   InputProps={{
                     startAdornment: (
@@ -582,6 +622,7 @@ const RegisterPage: React.FC = () => {
                   name='contactPerson'
                   value={formData.contactPerson}
                   onChange={handleChange('contactPerson')}
+                  inputProps={{ maxLength: INPUT_LIMITS.contactPerson }}
                   placeholder={t('register.contactPersonPlaceholder')}
                 />
               </Grid>
@@ -594,6 +635,7 @@ const RegisterPage: React.FC = () => {
                   name='contactTitle'
                   value={formData.contactTitle}
                   onChange={handleChange('contactTitle')}
+                  inputProps={{ maxLength: INPUT_LIMITS.contactTitle }}
                   placeholder={t('register.contactTitlePlaceholder')}
                 />
               </Grid>

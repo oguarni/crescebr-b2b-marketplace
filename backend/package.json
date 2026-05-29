@@ -29,7 +29,7 @@
     "marketplace"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "dependencies": {
     "axios": "^1.15.2",
     "bcryptjs": "^3.0.2",

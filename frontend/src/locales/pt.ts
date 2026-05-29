@@ -4,6 +4,7 @@ export const pt = {
   common: {
     loading: 'Carregando...',
     retry: 'Tentar novamente',
+    back: 'Voltar',
   },
   language: {
     label: 'Idioma',
