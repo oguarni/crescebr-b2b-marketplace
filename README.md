@@ -221,9 +221,16 @@ Follow the existing conventions: TypeScript strict mode, ESLint + Prettier forma
 
 ## License
 
-CresceBR is **dual-licensed**: use it under the open-source [GNU AGPL v3.0](LICENSE),
-or obtain a commercial license for proprietary/closed-source use. See
-[LICENSING.md](LICENSING.md) for details.
+Copyright (C) 2025-2026 Gabriel Felipe Guarnieri. All rights reserved.
+
+This project is dual-licensed under the **AGPL-3.0 + Commercial License** model:
+
+- **Open-source use**: Licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
+- **Commercial use**: A proprietary commercial license is available for use cases incompatible with the AGPL-3.0. See [LICENSING.md](LICENSING.md) for details.
+
+> **Retroactive clause**: This license applies retroactively to all past commits and versions of this repository, superseding any previously stated license.
+
+For commercial licensing inquiries, contact the author via [LinkedIn](https://www.linkedin.com/in/oguarni/).
 
 ---
 
