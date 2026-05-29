@@ -165,6 +165,54 @@ describe('QuotationRepository', () => {
     });
   });
 
+  describe('findAllForSupplier', () => {
+    it('should fetch full quotations for the supplier-owned product ids', async () => {
+      (QuotationItem.findAll as jest.Mock).mockResolvedValue([
+        { quotationId: 1 },
+        { quotationId: 2 },
+        { quotationId: 1 }, // duplicate to verify de-duplication
+      ]);
+      const mockQuotations = [
+        { id: 1, companyId: 5, items: [], user: { id: 5 } },
+        { id: 2, companyId: 6, items: [], user: { id: 6 } },
+      ];
+      (Quotation.findAll as jest.Mock).mockResolvedValue(mockQuotations);
+
+      const result = await quotationRepository.findAllForSupplier(7);
+
+      expect(result).toEqual(mockQuotations);
+      // QuotationItem lookup filters by the supplier through the product include
+      expect(QuotationItem.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          attributes: ['quotationId'],
+          include: [
+            expect.objectContaining({
+              model: Product,
+              as: 'product',
+              where: { supplierId: 7 },
+              required: true,
+            }),
+          ],
+          raw: true,
+        })
+      );
+      // Only unique quotation ids should be requested
+      const findAllArg = (Quotation.findAll as jest.Mock).mock.calls[0][0];
+      expect(findAllArg.where.id[Object.getOwnPropertySymbols(findAllArg.where.id)[0]]).toEqual([
+        1, 2,
+      ]);
+    });
+
+    it('should return an empty array when the supplier has no quotations', async () => {
+      (QuotationItem.findAll as jest.Mock).mockResolvedValue([]);
+
+      const result = await quotationRepository.findAllForSupplier(7);
+
+      expect(result).toEqual([]);
+      expect(Quotation.findAll).not.toHaveBeenCalled();
+    });
+  });
+
   describe('create', () => {
     it('should create a new quotation', async () => {
       const quotationData = {

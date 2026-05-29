@@ -48,7 +48,6 @@ import {
 } from '@mui/icons-material';
 import { Quotation } from '@shared/types';
 import { quotationsService } from '../services/quotationsService';
-import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 interface QuotationResponse {
@@ -103,26 +102,20 @@ const SupplierQuotationsPage: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
 
-  const { user } = useAuth();
-
   const loadQuotations = useCallback(async () => {
     setLoading(true);
     try {
-      // This would ideally be a supplier-specific endpoint
-      // For now, using the admin endpoint and filtering
-      const data = await quotationsService.getAllQuotations();
-      // Filter quotations that include products from this supplier
-      const supplierQuotations = data.filter((quotation: Quotation) =>
-        quotation.items?.some(item => item.product?.supplierId === user?.id)
-      );
-      setQuotations(supplierQuotations);
+      // Supplier-scoped endpoint: the backend already restricts results to
+      // quotations that include this supplier's products.
+      const data = await quotationsService.getSupplierQuotations();
+      setQuotations(data);
     } catch (_error) {
       console.error('Error loading quotations:', _error);
       toast.error('Error loading quotations');
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, []);
 
   useEffect(() => {
     loadQuotations();

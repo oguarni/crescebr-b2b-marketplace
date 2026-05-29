@@ -169,6 +169,14 @@ const App: React.FC = () => {
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path='supplier/quotations/:id'
+                    element={
+                      <ProtectedRoute allowedRoles={['supplier', 'admin']}>
+                        <QuotationDetailPage />
+                      </ProtectedRoute>
+                    }
+                  />
                 </Route>
 
                 {/* Catch all - redirect to home */}

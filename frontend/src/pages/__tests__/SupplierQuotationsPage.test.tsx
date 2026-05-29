@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 // Mock services
 vi.mock('../../services/quotationsService', () => ({
   quotationsService: {
-    getAllQuotations: vi.fn(),
+    getSupplierQuotations: vi.fn(),
   },
 }));
 
@@ -127,11 +127,11 @@ const renderPage = async () => {
 describe('SupplierQuotationsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue(mockQuotations);
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue(mockQuotations);
   });
 
   it('shows loading spinner while fetching quotations', async () => {
-    vi.mocked(quotationsService.getAllQuotations).mockImplementation(
+    vi.mocked(quotationsService.getSupplierQuotations).mockImplementation(
       () => new Promise(resolve => setTimeout(() => resolve(mockQuotations), 100))
     );
 
@@ -206,7 +206,7 @@ describe('SupplierQuotationsPage', () => {
   });
 
   it('handles error when loading quotations fails', async () => {
-    vi.mocked(quotationsService.getAllQuotations).mockRejectedValue(new Error('Network error'));
+    vi.mocked(quotationsService.getSupplierQuotations).mockRejectedValue(new Error('Network error'));
 
     await renderPage();
 
@@ -409,7 +409,7 @@ describe('SupplierQuotationsPage', () => {
 
   it('shows empty state for processed tab when no processed quotations', async () => {
     const pendingOnly = [mockQuotations[0]]; // only pending
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue(pendingOnly);
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue(pendingOnly);
 
     await renderPage();
     const user = userEvent.setup();
@@ -428,7 +428,7 @@ describe('SupplierQuotationsPage', () => {
 
   it('shows empty state for completed tab when no completed quotations', async () => {
     const pendingOnly = [mockQuotations[0]];
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue(pendingOnly);
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue(pendingOnly);
 
     await renderPage();
     const user = userEvent.setup();
@@ -450,7 +450,7 @@ describe('SupplierQuotationsPage', () => {
       ...mockQuotations[0],
       requestedDeliveryDate: undefined,
     };
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([quotationWithoutDeliveryDate]);
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([quotationWithoutDeliveryDate]);
 
     await renderPage();
     const user = userEvent.setup();
@@ -528,7 +528,7 @@ describe('SupplierQuotationsPage', () => {
       ...mockQuotations[0],
       adminNotes: 'Approved by admin',
     };
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([quotationWithNotes]);
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([quotationWithNotes]);
 
     await renderPage();
     const user = userEvent.setup();
@@ -558,7 +558,7 @@ describe('SupplierQuotationsPage', () => {
         },
       ],
     };
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([quotationWithSpecs]);
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([quotationWithSpecs]);
 
     await renderPage();
     const user = userEvent.setup();
@@ -578,7 +578,7 @@ describe('SupplierQuotationsPage', () => {
 
   it('shows No pending quotations found when pending tab is empty', async () => {
     // Only non-pending quotations
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([
       mockQuotations[1],
       mockQuotations[2],
     ]);
@@ -616,7 +616,7 @@ describe('SupplierQuotationsPage', () => {
         },
       })),
     };
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([quotationWith4Items]);
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([quotationWith4Items]);
 
     await renderPage();
 
@@ -673,7 +673,7 @@ describe('SupplierQuotationsPage', () => {
       ...mockQuotations[0],
       createdAt: new Date().toISOString(),
     };
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([todayQuotation]);
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([todayQuotation]);
 
     await renderPage();
 
@@ -701,7 +701,7 @@ describe('SupplierQuotationsPage', () => {
       createdAt: threeDaysAgo,
     };
     // mockQuotations[1] has createdAt from 2026-03-14 which is older than a week
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([
       recentQuotation,
       mockQuotations[1],
     ]);
@@ -738,7 +738,7 @@ describe('SupplierQuotationsPage', () => {
       ...mockQuotations[1],
       createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
     };
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue([
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([
       recentQuotation,
       oldQuotation,
     ]);

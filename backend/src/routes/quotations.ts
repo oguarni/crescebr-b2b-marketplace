@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   createQuotation,
   getCustomerQuotations,
+  getSupplierQuotations,
   getQuotationById,
   getAllQuotations,
   updateQuotation,
@@ -36,7 +37,12 @@ router.post(
 );
 router.get('/', requireRole('customer'), getCustomerQuotations);
 
-// Shared routes - customers can view their own, admins can view all
+// Supplier routes - suppliers can view quotations that include their products.
+// Declared before '/:id' so the literal path is not captured as an id param.
+router.get('/supplier', requireRole('supplier', 'admin'), getSupplierQuotations);
+
+// Shared routes - customers can view their own, suppliers their related ones,
+// admins can view all (ownership scoping enforced in the service layer)
 router.get('/:id', getQuotationById);
 router.get('/:id/calculations', getQuotationCalculations);
 
