@@ -282,26 +282,46 @@ const Navbar: React.FC = () => {
             </>
           ) : (
             <Box sx={{ display: 'flex', gap: 1 }}>
-              {!isMobile && (
-                <Button color='inherit' component={Link} to='/login'>
+              {isMobile ? (
+                /* Mobile: a single prominent Login button. The login page hosts the
+                   one-click demo accounts, so this is the fastest path for new visitors. */
+                <Button
+                  variant='outlined'
+                  color='inherit'
+                  component={Link}
+                  to='/login'
+                  sx={{
+                    borderColor: 'currentColor',
+                    '&:hover': {
+                      borderColor: 'currentColor',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                  }}
+                >
                   {t('nav.login')}
                 </Button>
+              ) : (
+                <>
+                  <Button color='inherit' component={Link} to='/login'>
+                    {t('nav.login')}
+                  </Button>
+                  <Button
+                    variant='outlined'
+                    color='inherit'
+                    component={Link}
+                    to='/register'
+                    sx={{
+                      borderColor: 'currentColor',
+                      '&:hover': {
+                        borderColor: 'currentColor',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                    }}
+                  >
+                    {t('nav.register')}
+                  </Button>
+                </>
               )}
-              <Button
-                variant='outlined'
-                color='inherit'
-                component={Link}
-                to='/register'
-                sx={{
-                  borderColor: 'currentColor',
-                  '&:hover': {
-                    borderColor: 'currentColor',
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  },
-                }}
-              >
-                {t('nav.register')}
-              </Button>
             </Box>
           )}
         </Box>

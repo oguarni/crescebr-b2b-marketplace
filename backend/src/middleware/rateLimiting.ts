@@ -10,6 +10,20 @@ interface RateLimitOptions {
   keyGenerator?: (req: Request) => string; // Custom key generator
 }
 
+// Resolve the originating client IP for rate-limit keys. Behind the Cloud Run
+// nginx proxy chain `req.ip` collapses to the proxy address (trust proxy = 1),
+// which would make per-IP limits apply to every visitor collectively. The real
+// client is the left-most entry of X-Forwarded-For, so prefer it when present.
+export const getClientIp = (req: Request): string => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    const value = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+    const first = value.split(',')[0].trim();
+    if (first) return first;
+  }
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+};
+
 class RateLimiter {
   createLimiter(options: RateLimitOptions) {
     const windowSeconds = Math.ceil(options.windowMs / 1000);
@@ -68,7 +82,7 @@ class RateLimiter {
   }
 
   private defaultKeyGenerator(req: Request): string {
-    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const ip = getClientIp(req);
     const userId = (req as AuthenticatedRequest).user?.id || 'anonymous';
     return `${ip}:${userId}`;
   }
@@ -87,15 +101,15 @@ export const generalRateLimit = rateLimiter.createLimiter({
   message: 'Too many API requests. Please try again in an hour.',
 });
 
-// Strict rate limiter for auth endpoints - 5 requests per 15 minutes (relaxed in development)
+// Rate limiter for auth endpoints. Demo credentials are public so brute-force is
+// moot; production stays generous (followers may share a carrier-grade NAT IP)
+// while still capping scripted login floods. Test (5) and dev (100) are unchanged.
 export const authRateLimit = rateLimiter.createLimiter({
   windowMs: 15 * 60 * 1000,
-  maxRequests: process.env.NODE_ENV === 'development' ? 100 : 5,
+  maxRequests:
+    process.env.NODE_ENV === 'production' ? 200 : process.env.NODE_ENV === 'development' ? 100 : 5,
   message: 'Too many authentication attempts. Please try again in 15 minutes.',
-  keyGenerator: (req: Request) => {
-    const ip = req.ip || req.connection.remoteAddress || 'unknown';
-    return `auth:${ip}`;
-  },
+  keyGenerator: (req: Request) => `auth:${getClientIp(req)}`,
 });
 
 // Medium rate limiter for search and catalog - 200 requests per 15 minutes
@@ -118,7 +132,7 @@ export const cnpjValidationRateLimit = rateLimiter.createLimiter({
   maxRequests: 20,
   message: 'Too many CNPJ validation requests. Please try again in an hour.',
   keyGenerator: (req: Request) => {
-    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const ip = getClientIp(req);
     const userId = (req as AuthenticatedRequest).user?.id || 'anonymous';
     return `cnpj:${ip}:${userId}`;
   },
@@ -166,7 +180,7 @@ export const createCustomRateLimit = (options: RateLimitOptions) => {
 
 // Progressive rate limiter that increases restrictions based on user behavior
 export const progressiveRateLimit = (req: Request, res: Response, next: NextFunction): void => {
-  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const ip = getClientIp(req);
   const user = (req as AuthenticatedRequest).user;
 
   let windowMs = 15 * 60 * 1000;

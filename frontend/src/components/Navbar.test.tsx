@@ -120,6 +120,29 @@ describe('Navbar', () => {
     expect(screen.getByText('Cadastrar')).toBeInTheDocument();
   });
 
+  it('shows only the login button on mobile (register is hidden)', () => {
+    // Force the mobile breakpoint so useMediaQuery(down('md')) reports true.
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+
+    try {
+      renderNavbar();
+      expect(screen.getByText('Entrar')).toBeInTheDocument();
+      expect(screen.queryByText('Cadastrar')).not.toBeInTheDocument();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
   it('shows user menu when user is authenticated', () => {
     mockAuthContext.isAuthenticated = true;
     mockAuthContext.user = {

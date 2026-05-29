@@ -15,6 +15,7 @@
     "db:migrate:undo:all": "sequelize-cli db:migrate:undo:all",
     "db:seed": "sequelize-cli db:seed:all",
     "db:seed:undo": "sequelize-cli db:seed:undo:all",
+    "db:reset": "node scripts/reset-demo.cjs",
     "db:create": "sequelize-cli db:create",
     "db:drop": "sequelize-cli db:drop"
   },

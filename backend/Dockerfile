@@ -39,9 +39,10 @@ ENV NODE_ENV=${NODE_ENV}
 COPY --from=build /usr/src/app/node_modules ./node_modules
 # Copy built code from build stage
 COPY --from=build /usr/src/app/dist ./dist
-# Copy migrations and seeders
+# Copy migrations, seeders, and operational scripts (e.g. scheduled demo reset)
 COPY --from=build /usr/src/app/migrations ./migrations
 COPY --from=build /usr/src/app/seeders ./seeders
+COPY --from=build /usr/src/app/scripts ./scripts
 # Copy Sequelize CLI config (env-driven) and package.json
 COPY backend/config/config.cjs ./config/config.cjs
 COPY backend/.sequelizerc ./.sequelizerc
