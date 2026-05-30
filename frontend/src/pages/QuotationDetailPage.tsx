@@ -53,7 +53,15 @@ const QuotationDetailPage: React.FC = () => {
 
   const isAdmin = user?.role === 'admin';
   const isCustomer = user?.role === 'customer';
+  const isSupplier = user?.role === 'supplier';
   const canCreateOrder = isCustomer && quotation?.status === 'processed';
+
+  // Send each role back to a list page it is actually allowed to access.
+  const backTo = isAdmin
+    ? '/admin/quotations'
+    : isSupplier
+      ? '/supplier/quotations'
+      : '/my-quotations';
 
   const handleCreateOrder = async () => {
     if (!quotation) return;
@@ -133,7 +141,7 @@ const QuotationDetailPage: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <IconButton
               component={Link}
-              to={isAdmin ? '/admin/quotations' : '/my-quotations'}
+              to={backTo}
               edge='start'
               sx={{ '&:hover': { bgcolor: 'action.hover' } }}
             >

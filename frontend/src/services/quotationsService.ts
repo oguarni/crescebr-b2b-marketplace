@@ -160,6 +160,17 @@ class QuotationsService {
     return response.data;
   }
 
+  // Supplier methods
+  async getSupplierQuotations(): Promise<Quotation[]> {
+    const response = await apiService.get<ApiResponse<Quotation[]>>('/quotations/supplier');
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to fetch supplier quotations');
+    }
+
+    return response.data;
+  }
+
   // Admin methods
   async getAllQuotations(): Promise<Quotation[]> {
     const response = await apiService.get<ApiResponse<Quotation[]>>('/quotations/admin/all');

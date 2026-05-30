@@ -8,6 +8,7 @@ jest.mock('../../repositories', () => ({
     findByIdWithItems: jest.fn(),
     findByIdWithItemsAndUser: jest.fn(),
     findAllForCompany: jest.fn(),
+    findAllForSupplier: jest.fn(),
     findAll: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
@@ -110,6 +111,18 @@ describe('QuotationService', () => {
     });
   });
 
+  describe('getForSupplier', () => {
+    it('should return quotations that include the supplier products', async () => {
+      const mockQuotations = [{ id: 1 }, { id: 2 }];
+      mockQuotationRepo.findAllForSupplier.mockResolvedValue(mockQuotations as any);
+
+      const result = await quotationService.getForSupplier(7);
+
+      expect(mockQuotationRepo.findAllForSupplier).toHaveBeenCalledWith(7);
+      expect(result).toEqual(mockQuotations);
+    });
+  });
+
   describe('getById', () => {
     it('should return quotation for owner customer', async () => {
       const mockQuotation = { id: 1, companyId: 1 };
@@ -142,6 +155,30 @@ describe('QuotationService', () => {
       mockQuotationRepo.findByIdWithItemsAndUser.mockResolvedValue(mockQuotation as any);
 
       await expect(quotationService.getById(1, 1, 'customer')).rejects.toThrow('Access denied');
+    });
+
+    it('should return quotation for supplier that owns one of the products', async () => {
+      const mockQuotation = {
+        id: 1,
+        companyId: 5,
+        items: [{ product: { supplierId: 7 } }],
+      };
+      mockQuotationRepo.findByIdWithItemsAndUser.mockResolvedValue(mockQuotation as any);
+
+      const result = await quotationService.getById(1, 7, 'supplier');
+
+      expect(result).toEqual(mockQuotation);
+    });
+
+    it('should throw access denied for supplier without a matching product', async () => {
+      const mockQuotation = {
+        id: 1,
+        companyId: 5,
+        items: [{ product: { supplierId: 99 } }],
+      };
+      mockQuotationRepo.findByIdWithItemsAndUser.mockResolvedValue(mockQuotation as any);
+
+      await expect(quotationService.getById(1, 7, 'supplier')).rejects.toThrow('Access denied');
     });
   });
 
@@ -214,6 +251,54 @@ describe('QuotationService', () => {
         status: 'processed',
         adminNotes: 'New note',
       });
+    });
+  });
+
+  describe('updateBySupplier', () => {
+    it('should update a quotation that includes the supplier products', async () => {
+      const mockQuotation = {
+        id: 1,
+        status: 'pending',
+        adminNotes: null,
+        items: [{ product: { supplierId: 7 } }],
+      };
+      mockQuotationRepo.findByIdWithItems.mockResolvedValue(mockQuotation as any);
+      mockQuotationRepo.update.mockResolvedValue(undefined as any);
+      mockQuotationRepo.findByIdWithItemsAndUser.mockResolvedValue({
+        id: 1,
+        status: 'processed',
+      } as any);
+
+      const result = await quotationService.updateBySupplier(1, 7, { status: 'processed' });
+
+      expect(mockQuotationRepo.update).toHaveBeenCalledWith(mockQuotation, {
+        status: 'processed',
+        adminNotes: null,
+      });
+      expect(result).toBeDefined();
+    });
+
+    it('should throw when quotation not found', async () => {
+      mockQuotationRepo.findByIdWithItems.mockResolvedValue(null);
+
+      await expect(
+        quotationService.updateBySupplier(999, 7, { status: 'processed' })
+      ).rejects.toThrow('Quotation not found');
+    });
+
+    it('should throw access denied when supplier has no matching product', async () => {
+      const mockQuotation = {
+        id: 1,
+        status: 'pending',
+        adminNotes: null,
+        items: [{ product: { supplierId: 99 } }],
+      };
+      mockQuotationRepo.findByIdWithItems.mockResolvedValue(mockQuotation as any);
+
+      await expect(
+        quotationService.updateBySupplier(1, 7, { status: 'processed' })
+      ).rejects.toThrow('Access denied');
+      expect(mockQuotationRepo.update).not.toHaveBeenCalled();
     });
   });
 

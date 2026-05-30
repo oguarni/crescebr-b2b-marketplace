@@ -36,6 +36,18 @@ export const getCustomerQuotations = asyncHandler(
   }
 );
 
+// Supplier endpoint - returns only quotations that include the supplier's products
+export const getSupplierQuotations = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const quotations = await quotationService.getForSupplier(req.user!.id);
+
+    res.status(200).json({
+      success: true,
+      data: quotations,
+    });
+  }
+);
+
 export const getQuotationById = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const id = req.params.id as string;
 
@@ -73,10 +85,18 @@ export const updateQuotation = asyncHandler(async (req: AuthenticatedRequest, re
   const { status, adminNotes } = req.body;
 
   try {
-    const updatedQuotation = await quotationService.updateByAdmin(parseInt(id), {
-      status,
-      adminNotes,
-    });
+    // Suppliers are restricted to quotations that include their products; admins
+    // may update any quotation. Role is enforced upstream by requireRole.
+    const updatedQuotation =
+      req.user!.role === 'supplier'
+        ? await quotationService.updateBySupplier(parseInt(id), req.user!.id, {
+            status,
+            adminNotes,
+          })
+        : await quotationService.updateByAdmin(parseInt(id), {
+            status,
+            adminNotes,
+          });
 
     res.status(200).json({
       success: true,
@@ -85,7 +105,8 @@ export const updateQuotation = asyncHandler(async (req: AuthenticatedRequest, re
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update quotation';
-    const status = message === 'Quotation not found' ? 404 : 400;
+    const status =
+      message === 'Quotation not found' ? 404 : message === 'Access denied' ? 403 : 400;
 
     res.status(status).json({
       success: false,

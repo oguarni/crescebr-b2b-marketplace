@@ -151,6 +151,7 @@ All backend endpoints are served under `API_PREFIX` (default: `/api/v1`).
 - `POST /api/v1/auth/login-email` - Authentication (email-based)
 - `GET /api/v1/products` - List products (public)
 - `POST /api/v1/quotations` - Create quotation (customer only)
+- `GET /api/v1/quotations/supplier` - Quotations including the supplier's products (supplier/admin)
 - `GET /api/v1/orders` - List orders (authenticated)
 - `GET /api/v1/admin/dashboard` - Admin dashboard (admin only)
 - `GET /api/v1/ratings/top-suppliers` - Top suppliers (public)
@@ -221,6 +222,7 @@ After completing any refactoring task:
 - Vulnerabilities: `sqlite3` upgraded to v6, root `overrides` added — 0 findings (2026-04-04)
 - Docker security: `USER node` in backend Dockerfile; DB/Redis ports bound to `127.0.0.1` — fixed (2026-04-04)
 - Test credentials visible in LoginPage UI — wrapped in `import.meta.env.DEV` (2026-04-04)
+- Supplier RBAC: suppliers blocked from quotations (they hit the admin-only `GET /quotations/admin/all`, and the Supplier Dashboard failed with "Access denied"). Added supplier-scoped `GET /quotations/supplier` (server-side filtered to the supplier's products), made `PUT /quotations/supplier/:id` ownership-checked, scoped `getById` for suppliers, fixed the dashboard's broken detail/order navigation, and added the `supplier/quotations/:id` route — fixed (2026-05-29)
 
 ### Open
 1. **Backend tests OOM**: `jest --runInBand` hits heap limit without `--max-old-space-size=4096` in `backend/package.json` test script (CI has it via `NODE_OPTIONS`)

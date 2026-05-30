@@ -54,6 +54,10 @@ class QuotationService {
     return quotationRepository.findAllForCompany(companyId);
   }
 
+  async getForSupplier(supplierId: number) {
+    return quotationRepository.findAllForSupplier(supplierId);
+  }
+
   async getById(id: number, userId: number, userRole: string) {
     const quotation = await quotationRepository.findByIdWithItemsAndUser(id);
 
@@ -63,6 +67,11 @@ class QuotationService {
 
     // Access control
     if (userRole === 'customer' && quotation.companyId !== userId) {
+      throw new Error('Access denied');
+    }
+
+    // Suppliers may only access quotations that include at least one of their products
+    if (userRole === 'supplier' && !this.containsSupplierProduct(quotation, userId)) {
       throw new Error('Access denied');
     }
 
@@ -92,6 +101,41 @@ class QuotationService {
     });
 
     return quotationRepository.findByIdWithItemsAndUser(id);
+  }
+
+  async updateBySupplier(
+    id: number,
+    supplierId: number,
+    data: {
+      status?: 'pending' | 'processed' | 'completed' | 'rejected';
+      adminNotes?: string | null;
+    }
+  ) {
+    const quotation = await quotationRepository.findByIdWithItems(id);
+
+    if (!quotation) {
+      throw new Error('Quotation not found');
+    }
+
+    // A supplier may only update quotations that include at least one of their products
+    if (!this.containsSupplierProduct(quotation, supplierId)) {
+      throw new Error('Access denied');
+    }
+
+    await quotationRepository.update(quotation, {
+      status: data.status || quotation.status,
+      adminNotes: data.adminNotes !== undefined ? data.adminNotes : quotation.adminNotes,
+    });
+
+    return quotationRepository.findByIdWithItemsAndUser(id);
+  }
+
+  // Checks whether a quotation (loaded with its items and products) contains at
+  // least one product owned by the given supplier.
+  private containsSupplierProduct(quotation: unknown, supplierId: number): boolean {
+    const items =
+      (quotation as { items?: Array<{ product?: { supplierId?: number } }> }).items ?? [];
+    return items.some(item => item.product?.supplierId === supplierId);
   }
 
   async processWithCalculations(id: number, _calculations: Record<string, unknown>) {

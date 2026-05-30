@@ -225,6 +225,34 @@ describe('QuotationsService', () => {
     });
   });
 
+  describe('getSupplierQuotations', () => {
+    it('should fetch quotations for the authenticated supplier', async () => {
+      const quotations = [mockQuotation];
+      mockApi.get.mockResolvedValue({ success: true, data: quotations });
+
+      const result = await quotationsService.getSupplierQuotations();
+
+      expect(mockApi.get).toHaveBeenCalledWith('/quotations/supplier');
+      expect(result).toHaveLength(1);
+    });
+
+    it('should throw when response is unsuccessful', async () => {
+      mockApi.get.mockResolvedValue({ success: false, error: 'Supplier access required' });
+
+      await expect(quotationsService.getSupplierQuotations()).rejects.toThrow(
+        'Supplier access required'
+      );
+    });
+
+    it('should throw default message when no error field', async () => {
+      mockApi.get.mockResolvedValue({ success: false });
+
+      await expect(quotationsService.getSupplierQuotations()).rejects.toThrow(
+        'Failed to fetch supplier quotations'
+      );
+    });
+  });
+
   describe('getAllQuotations', () => {
     it('should fetch all quotations for admin', async () => {
       const quotations = [mockQuotation];

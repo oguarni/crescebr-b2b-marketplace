@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import Quotation from '../models/Quotation';
 import QuotationItem from '../models/QuotationItem';
 import Product from '../models/Product';
@@ -46,6 +47,37 @@ export const quotationRepository = {
       include: QUOTATION_INCLUDES.withItemsAndUser,
       order: [['createdAt', 'DESC']],
     }),
+
+  // Returns full quotations that contain at least one product owned by the supplier.
+  // The supplier ownership filter is applied server-side to avoid leaking other
+  // suppliers' / customers' quotation data to the client.
+  findAllForSupplier: async (supplierId: number) => {
+    const supplierItems = (await QuotationItem.findAll({
+      attributes: ['quotationId'],
+      include: [
+        {
+          model: Product,
+          as: 'product',
+          attributes: [],
+          where: { supplierId },
+          required: true,
+        },
+      ],
+      raw: true,
+    })) as unknown as Array<{ quotationId: number }>;
+
+    const quotationIds = [...new Set(supplierItems.map(item => item.quotationId))];
+
+    if (quotationIds.length === 0) {
+      return [];
+    }
+
+    return Quotation.findAll({
+      where: { id: { [Op.in]: quotationIds } },
+      include: QUOTATION_INCLUDES.withItemsAndUser,
+      order: [['createdAt', 'DESC']],
+    });
+  },
 
   create: (data: { companyId: number; status: 'pending' | 'processed' | 'completed' | 'rejected'; adminNotes: string | null }) =>
     Quotation.create(data),

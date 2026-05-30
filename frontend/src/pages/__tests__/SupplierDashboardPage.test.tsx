@@ -14,7 +14,7 @@ vi.mock('../../services/ordersService', () => ({
 
 vi.mock('../../services/quotationsService', () => ({
   quotationsService: {
-    getAllQuotations: vi.fn(),
+    getSupplierQuotations: vi.fn(),
   },
 }));
 
@@ -107,7 +107,7 @@ describe('SupplierDashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(ordersService.getUserOrders).mockResolvedValue({ orders: mockOrders });
-    vi.mocked(quotationsService.getAllQuotations).mockResolvedValue(mockQuotations);
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue(mockQuotations);
   });
 
   it('renders dashboard header with supplier branding', async () => {
@@ -146,7 +146,7 @@ describe('SupplierDashboardPage', () => {
     await renderPage();
 
     await waitFor(() => {
-      expect(quotationsService.getAllQuotations).toHaveBeenCalledTimes(1);
+      expect(quotationsService.getSupplierQuotations).toHaveBeenCalledTimes(1);
     });
 
     await waitFor(() => {
@@ -167,14 +167,14 @@ describe('SupplierDashboardPage', () => {
   it('handles error when loading dashboard data', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(ordersService.getUserOrders).mockRejectedValue(new Error('Network error'));
-    vi.mocked(quotationsService.getAllQuotations).mockRejectedValue(new Error('Network error'));
+    vi.mocked(quotationsService.getSupplierQuotations).mockRejectedValue(new Error('Network error'));
 
     await renderPage();
 
     await waitFor(
       () => {
         expect(ordersService.getUserOrders).toHaveBeenCalled();
-        expect(quotationsService.getAllQuotations).toHaveBeenCalled();
+        expect(quotationsService.getSupplierQuotations).toHaveBeenCalled();
       },
       { timeout: 10000 }
     );

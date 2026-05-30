@@ -114,7 +114,9 @@ const SupplierDashboardPage: React.FC = () => {
 
   const loadPendingQuotations = async () => {
     try {
-      const data = await quotationsService.getAllQuotations();
+      // Supplier-scoped endpoint: returns only quotations that include this
+      // supplier's products (filtered server-side).
+      const data = await quotationsService.getSupplierQuotations();
       const pending = data
         .filter((quote: Quotation) => quote.status === 'pending' || quote.status === 'processed')
         .slice(0, 4); // match new UI length
@@ -594,7 +596,7 @@ const SupplierDashboardPage: React.FC = () => {
                       cursor: 'pointer',
                       '&:hover': { opacity: 0.8 },
                     }}
-                    onClick={() => navigate(`/supplier/orders/${order.id}`)}
+                    onClick={() => navigate('/supplier/orders')}
                   >
                     <Box
                       sx={{

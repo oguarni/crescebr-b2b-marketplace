@@ -3,6 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import {
   createQuotation,
   getCustomerQuotations,
+  getSupplierQuotations,
   getQuotationById,
   getAllQuotations,
   updateQuotation,
@@ -78,6 +79,20 @@ app.get(
   authenticateJWT,
   requireRole('customer'),
   getCustomerQuotations
+);
+app.get(
+  '/api/quotations/supplier',
+  authenticateJWT,
+  requireRole('supplier', 'admin'),
+  getSupplierQuotations
+);
+app.put(
+  '/api/quotations/supplier/:id',
+  authenticateJWT,
+  requireRole('supplier'),
+  updateQuotationValidation,
+  handleValidationErrors,
+  updateQuotation
 );
 app.get('/api/quotations/:id', authenticateJWT, getQuotationById);
 app.get('/api/admin/quotations', authenticateJWT, requireRole('admin'), getAllQuotations);
@@ -414,6 +429,154 @@ describe('Quotations Controller', () => {
 
       // Assert
       expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('GET /api/quotations/supplier', () => {
+    it('should return only quotations that include the supplier products', async () => {
+      const mockSupplier = {
+        id: 7,
+        email: 'supplier@example.com',
+        role: 'supplier' as const,
+        cnpj: '12.345.678/0001-90',
+        companyType: 'supplier' as const,
+      };
+      const mockQuotations = [
+        {
+          id: 1,
+          companyId: 5,
+          status: 'pending',
+          items: [{ productId: 1, quantity: 5, product: { id: 1, supplierId: 7 } }],
+          user: { id: 5, email: 'buyer@example.com', role: 'customer' },
+        },
+      ];
+
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = mockSupplier;
+        next();
+      });
+      // findAllForSupplier: first resolve the matching quotation ids, then the full rows
+      MockQuotationItem.findAll.mockResolvedValue([{ quotationId: 1 }] as any);
+      MockQuotation.findAll.mockResolvedValue(mockQuotations as any);
+
+      const response = await request(app).get('/api/quotations/supplier').expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].id).toBe(1);
+      expect(MockQuotationItem.findAll).toHaveBeenCalled();
+    });
+
+    it('should return an empty list when the supplier has no related quotations', async () => {
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 7,
+          email: 'supplier@example.com',
+          role: 'supplier',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'supplier',
+        };
+        next();
+      });
+      MockQuotationItem.findAll.mockResolvedValue([] as any);
+
+      const response = await request(app).get('/api/quotations/supplier').expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toEqual([]);
+      expect(MockQuotation.findAll).not.toHaveBeenCalled();
+    });
+
+    it('should return 403 for customer users', async () => {
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 1,
+          email: 'customer@example.com',
+          role: 'customer',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'buyer',
+        };
+        next();
+      });
+
+      const response = await request(app).get('/api/quotations/supplier').expect(403);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Access denied');
+    });
+  });
+
+  describe('PUT /api/quotations/supplier/:id', () => {
+    it('should update a quotation that includes the supplier products', async () => {
+      const supplierQuotation = {
+        id: 1,
+        status: 'pending',
+        adminNotes: null,
+        items: [{ productId: 1, quantity: 5, product: { id: 1, supplierId: 7 } }],
+        update: jest.fn().mockResolvedValue(true),
+      };
+      const updatedQuotation = {
+        id: 1,
+        status: 'processed',
+        adminNotes: null,
+        items: supplierQuotation.items,
+        user: { id: 5, email: 'buyer@example.com', role: 'customer' },
+      };
+
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 7,
+          email: 'supplier@example.com',
+          role: 'supplier',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'supplier',
+        };
+        next();
+      });
+      // findByIdWithItems (ownership check), then findByIdWithItemsAndUser (reload)
+      MockQuotation.findByPk
+        .mockResolvedValueOnce(supplierQuotation as any)
+        .mockResolvedValueOnce(updatedQuotation as any);
+
+      const response = await request(app)
+        .put('/api/quotations/supplier/1')
+        .send({ status: 'processed' })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.status).toBe('processed');
+      expect(supplierQuotation.update).toHaveBeenCalled();
+    });
+
+    it('should return 403 when the quotation has no product from the supplier', async () => {
+      const foreignQuotation = {
+        id: 1,
+        status: 'pending',
+        adminNotes: null,
+        items: [{ productId: 2, quantity: 5, product: { id: 2, supplierId: 99 } }],
+        update: jest.fn(),
+      };
+
+      mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
+        req.user = {
+          id: 7,
+          email: 'supplier@example.com',
+          role: 'supplier',
+          cnpj: '12.345.678/0001-90',
+          companyType: 'supplier',
+        };
+        next();
+      });
+      MockQuotation.findByPk.mockResolvedValueOnce(foreignQuotation as any);
+
+      const response = await request(app)
+        .put('/api/quotations/supplier/1')
+        .send({ status: 'processed' })
+        .expect(403);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Access denied');
+      expect(foreignQuotation.update).not.toHaveBeenCalled();
     });
   });
 
