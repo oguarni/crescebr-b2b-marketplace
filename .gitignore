@@ -147,6 +147,11 @@ filter-repo/
 shared/dist/
 
 # ──────────────────────────────────────────────
+# Marketing assets (not project source)
+# ──────────────────────────────────────────────
+docs/marketing/
+
+# ──────────────────────────────────────────────
 # AI / prompt artifacts (not project source)
 # ──────────────────────────────────────────────
 docs/delegation-prompt-sonnet.md
