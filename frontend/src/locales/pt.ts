@@ -183,5 +183,12 @@ export const pt = {
     adminWelcome: 'Bem-vindo ao Sistema de Administração do Marketplace CresceBR',
     manageProducts: 'Gerenciar Produtos',
     manageQuotations: 'Gerenciar Cotações',
+    descriptionLabel: 'Descrição',
+    noDescription: 'Nenhuma descrição disponível.',
+    leadTimeLabel: 'Prazo de entrega',
+    availabilityLabel: 'Disponibilidade',
+    outOfStockOption: 'Esgotado',
+    viewDetails: 'Ver detalhes',
+    hideDetails: 'Ocultar detalhes',
   },
 };

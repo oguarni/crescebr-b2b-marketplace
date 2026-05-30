@@ -4,9 +4,6 @@ import {
   Typography,
   IconButton,
   InputBase,
-  Card,
-  CardContent,
-  CardMedia,
   Button,
   Chip,
   CircularProgress,
@@ -26,8 +23,6 @@ import {
   Search,
   Tune,
   ShoppingBagOutlined,
-  StorefrontOutlined,
-  AddShoppingCart,
   FilterList,
   GridViewOutlined,
   RequestQuoteOutlined,
@@ -41,6 +36,7 @@ import {
 
 import { Product } from '@shared/types';
 import { productsService } from '../services/productsService';
+import ProductCard from '../components/ProductCard';
 import { useCart } from '../contexts/CartContext';
 import { useQuotationRequest } from '../contexts/QuotationContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -209,13 +205,6 @@ const HomePage: React.FC = () => {
     } else {
       addItem(product);
     }
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(price);
   };
 
   if (authLoading) {
@@ -651,180 +640,24 @@ const HomePage: React.FC = () => {
           </Box>
         ) : (
           <>
-            <Grid container spacing={2}>
+            {/* Responsive product grid: 2 columns on mobile, scaling up on larger
+                screens. CSS Grid keeps every card in a row at an equal height. */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: 'repeat(2, 1fr)',
+                  md: 'repeat(3, 1fr)',
+                  lg: 'repeat(4, 1fr)',
+                },
+                gap: { xs: 1.5, sm: 2 },
+                alignItems: 'stretch',
+              }}
+            >
               {products.map(product => (
-                <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
-                  <Card
-                    variant='outlined'
-                    sx={{
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      borderRadius: 3,
-                      overflow: 'hidden',
-                      '&:hover': { boxShadow: 3 },
-                      transition: 'box-shadow 0.2s',
-                      position: 'relative',
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        position: 'relative',
-                        width: '100%',
-                        paddingTop: '75%',
-                        bgcolor: 'grey.100',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <CardMedia
-                        component='img'
-                        image={product.imageUrl || 'https://via.placeholder.com/300?text=No+Image'}
-                        alt={product.name}
-                        sx={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          transition: 'transform 0.3s',
-                          '&:hover': { transform: 'scale(1.05)' },
-                        }}
-                      />
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: 8,
-                          right: 8,
-                          bgcolor: 'rgba(255,255,255,0.9)',
-                          backdropFilter: 'blur(4px)',
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                          fontSize: '0.625rem',
-                          fontFamily: 'monospace',
-                          fontWeight: 700,
-                          color: 'text.secondary',
-                          border: 1,
-                          borderColor: 'divider',
-                        }}
-                      >
-                        SKU-{product.id || Math.floor(Math.random() * 9000) + 1000}
-                      </Box>
-                      {((product as Record<string, unknown>).stockQuantity as number) > 0 && (
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            bgcolor: 'success.main',
-                            color: 'success.contrastText',
-                            px: 1,
-                            py: 0.5,
-                            borderBottomRightRadius: 4,
-                            fontSize: '0.625rem',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {t('home.inStockBadge')}
-                        </Box>
-                      )}
-                    </Box>
-
-                    <CardContent
-                      sx={{ p: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}
-                    >
-                      <Box sx={{ mb: 0.5 }}>
-                        <Typography
-                          variant='caption'
-                          sx={{
-                            fontWeight: 700,
-                            color: 'primary.main',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            fontSize: '0.625rem',
-                          }}
-                        >
-                          {product.category || t('home.uncategorized')}
-                        </Typography>
-                      </Box>
-
-                      <Typography
-                        variant='subtitle2'
-                        sx={{
-                          fontWeight: 600,
-                          color: 'text.primary',
-                          lineHeight: 1.2,
-                          mb: 1,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          minHeight: '2.4em',
-                        }}
-                      >
-                        {product.name}
-                      </Typography>
-
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
-                        <StorefrontOutlined sx={{ fontSize: 14, color: 'text.secondary' }} />
-                        <Typography variant='caption' color='text.secondary' noWrap>
-                          {product.supplierId
-                            ? t('home.supplierId', { id: product.supplierId })
-                            : t('home.fallbackSupplier')}
-                        </Typography>
-                      </Box>
-
-                      <Box
-                        sx={{
-                          mt: 'auto',
-                          pt: 1.5,
-                          borderTop: 1,
-                          borderColor: 'divider',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <Typography
-                            variant='caption'
-                            sx={{ fontSize: '0.625rem', color: 'text.secondary' }}
-                          >
-                            {t('home.unitPrice')}
-                          </Typography>
-                          <Typography
-                            variant='subtitle1'
-                            sx={{
-                              fontFamily: 'monospace',
-                              fontWeight: 700,
-                              color: 'text.primary',
-                              lineHeight: 1,
-                            }}
-                          >
-                            {formatPrice(product.price)}
-                          </Typography>
-                        </Box>
-                        <IconButton
-                          onClick={() => handleAddToCart(product)}
-                          color='primary'
-                          sx={{
-                            bgcolor: 'primary.main',
-                            color: 'primary.contrastText',
-                            borderRadius: 2,
-                            p: 1,
-                            boxShadow: 1,
-                            '&:hover': { bgcolor: 'primary.dark' },
-                          }}
-                        >
-                          <AddShoppingCart fontSize='small' />
-                        </IconButton>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
+                <ProductCard key={product.id} product={product} onAddToCart={handleAddToCart} />
               ))}
-            </Grid>
+            </Box>
 
             {/* Pagination */}
             {totalPages > 1 && (

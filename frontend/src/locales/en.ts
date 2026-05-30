@@ -184,5 +184,12 @@ export const en: typeof pt = {
     adminWelcome: 'Welcome to the CresceBR Marketplace Administration System',
     manageProducts: 'Manage Products',
     manageQuotations: 'Manage Quotations',
+    descriptionLabel: 'Description',
+    noDescription: 'No description available.',
+    leadTimeLabel: 'Lead Time',
+    availabilityLabel: 'Availability',
+    outOfStockOption: 'Out of Stock',
+    viewDetails: 'View details',
+    hideDetails: 'Hide details',
   },
 };

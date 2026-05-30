@@ -4,6 +4,7 @@ export { default as ProtectedRoute } from './ProtectedRoute';
 export { default as PermissionGuard } from './PermissionGuard';
 export { default as CartDrawer } from './CartDrawer';
 export { default as LanguageSwitcher } from './LanguageSwitcher';
+export { default as ProductCard } from './ProductCard';
 export { LoadingSpinner } from './LoadingSpinner';
 export { ErrorMessage } from './ErrorMessage';
 export { EmptyState } from './EmptyState';
