@@ -33,7 +33,9 @@ import {
   Tab,
   Fab,
   InputAdornment,
+  Stack,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import {
   Add,
   Edit,
@@ -86,6 +88,27 @@ const initialFormData: ProductFormData = {
   specifications: {},
   tierPricing: [],
 };
+
+/**
+ * Uppercase group heading used to visually separate the product form into
+ * logical sections (basic info, pricing, inventory, media).
+ */
+const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Typography
+    variant='subtitle2'
+    sx={{
+      display: 'block',
+      mb: 2,
+      fontWeight: 700,
+      fontSize: '0.75rem',
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
+      color: 'text.secondary',
+    }}
+  >
+    {children}
+  </Typography>
+);
 
 const SupplierProductsPage: React.FC = () => {
   const { products, loading, refetch: loadProducts } = useProducts();
@@ -288,7 +311,7 @@ const SupplierProductsPage: React.FC = () => {
 
       {/* Statistics */}
       <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} sm={3}>
+        <Grid size={{ xs: 12, sm: 3 }}>
           <Card>
             <CardContent>
               <Box display='flex' alignItems='center'>
@@ -303,7 +326,7 @@ const SupplierProductsPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid size={{ xs: 12, sm: 3 }}>
           <Card>
             <CardContent>
               <Box display='flex' alignItems='center'>
@@ -320,7 +343,7 @@ const SupplierProductsPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid size={{ xs: 12, sm: 3 }}>
           <Card>
             <CardContent>
               <Box display='flex' alignItems='center'>
@@ -337,7 +360,7 @@ const SupplierProductsPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid size={{ xs: 12, sm: 3 }}>
           <Card>
             <CardContent>
               <Box display='flex' alignItems='center'>
@@ -360,7 +383,7 @@ const SupplierProductsPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} alignItems='center'>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField
                 fullWidth
                 placeholder='Search products...'
@@ -375,7 +398,7 @@ const SupplierProductsPage: React.FC = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <FormControl fullWidth>
                 <InputLabel>Category</InputLabel>
                 <Select
@@ -392,7 +415,7 @@ const SupplierProductsPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <FormControl fullWidth>
                 <InputLabel>Availability</InputLabel>
                 <Select
@@ -408,7 +431,7 @@ const SupplierProductsPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={2}>
+            <Grid size={{ xs: 12, sm: 2 }}>
               <Box display='flex' justifyContent='flex-end'>
                 <Button
                   variant={viewMode === 'grid' ? 'contained' : 'outlined'}
@@ -469,7 +492,7 @@ const SupplierProductsPage: React.FC = () => {
               return (
                 <Grid container spacing={3}>
                   {displayProducts.map(product => (
-                    <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
+                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={product.id}>
                       <Card>
                         <CardMedia
                           component='img'
@@ -598,136 +621,203 @@ const SupplierProductsPage: React.FC = () => {
       )}
 
       {/* Product Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth='md' fullWidth>
-        <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label='Product Name'
-                value={formData.name}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Category</InputLabel>
-                <Select
-                  value={formData.category}
-                  label='Category'
-                  onChange={e => setFormData({ ...formData, category: e.target.value })}
-                >
-                  {categories.map(category => (
-                    <MenuItem key={category} value={category}>
-                      {category}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label='Description'
-                value={formData.description}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                type='number'
-                label='Price (R$)'
-                value={formData.price}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, price: Number(e.target.value) })
-                }
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                type='number'
-                label='Unit Price (R$)'
-                value={formData.unitPrice}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, unitPrice: Number(e.target.value) })
-                }
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                type='number'
-                label='Minimum Order Quantity'
-                value={formData.minimumOrderQuantity}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, minimumOrderQuantity: Number(e.target.value) })
-                }
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                type='number'
-                label='Lead Time (days)'
-                value={formData.leadTime}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, leadTime: Number(e.target.value) })
-                }
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Availability</InputLabel>
-                <Select
-                  value={formData.availability}
-                  label='Availability'
-                  onChange={e =>
-                    setFormData({
-                      ...formData,
-                      availability: e.target.value as
-                        | 'in_stock'
-                        | 'out_of_stock'
-                        | 'limited'
-                        | 'custom_order',
-                    })
-                  }
-                >
-                  <MenuItem value='in_stock'>In Stock</MenuItem>
-                  <MenuItem value='limited'>Limited</MenuItem>
-                  <MenuItem value='out_of_stock'>Out of Stock</MenuItem>
-                  <MenuItem value='custom_order'>Custom Order</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label='Image URL'
-                value={formData.imageUrl}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, imageUrl: e.target.value })
-                }
-              />
-            </Grid>
-          </Grid>
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth='md'
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: 3 } } }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography component='span' variant='h6' sx={{ display: 'block', fontWeight: 600 }}>
+            {editingProduct ? 'Edit Product' : 'Add New Product'}
+          </Typography>
+          <Typography variant='body2' color='text.secondary'>
+            {editingProduct
+              ? 'Update the details of this product.'
+              : 'Fill in the details to add a new product to your catalog.'}
+          </Typography>
+        </DialogTitle>
+        <DialogContent
+          dividers
+          sx={theme => ({
+            // Unified rounded corners and a clear focus ring across every field.
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2,
+              transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+              '&.Mui-focused': {
+                boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.15)}`,
+              },
+            },
+          })}
+        >
+          <Stack spacing={3.5} sx={{ mt: 1 }}>
+            {/* Basic product identity */}
+            <Box>
+              <SectionTitle>Basic Information</SectionTitle>
+              <Grid container spacing={2.5}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label='Product Name'
+                    value={formData.name}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Category</InputLabel>
+                    <Select
+                      value={formData.category}
+                      label='Category'
+                      onChange={e => setFormData({ ...formData, category: e.target.value })}
+                    >
+                      {categories.map(category => (
+                        <MenuItem key={category} value={category}>
+                          {category}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label='Description'
+                    value={formData.description}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    required
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Pricing details */}
+            <Box>
+              <SectionTitle>Pricing</SectionTitle>
+              <Grid container spacing={2.5}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    type='number'
+                    label='Price (R$)'
+                    value={formData.price}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFormData({ ...formData, price: Number(e.target.value) })
+                    }
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    type='number'
+                    label='Unit Price (R$)'
+                    value={formData.unitPrice}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFormData({ ...formData, unitPrice: Number(e.target.value) })
+                    }
+                    required
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Stock and fulfillment */}
+            <Box>
+              <SectionTitle>Inventory & Logistics</SectionTitle>
+              <Grid container spacing={2.5}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    type='number'
+                    label='Minimum Order Quantity'
+                    value={formData.minimumOrderQuantity}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFormData({ ...formData, minimumOrderQuantity: Number(e.target.value) })
+                    }
+                    required
+                    slotProps={{
+                      input: {
+                        endAdornment: <InputAdornment position='end'>units</InputAdornment>,
+                      },
+                    }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    type='number'
+                    label='Lead Time'
+                    value={formData.leadTime}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFormData({ ...formData, leadTime: Number(e.target.value) })
+                    }
+                    required
+                    slotProps={{
+                      input: {
+                        endAdornment: <InputAdornment position='end'>days</InputAdornment>,
+                      },
+                    }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Availability</InputLabel>
+                    <Select
+                      value={formData.availability}
+                      label='Availability'
+                      onChange={e =>
+                        setFormData({
+                          ...formData,
+                          availability: e.target.value as
+                            | 'in_stock'
+                            | 'out_of_stock'
+                            | 'limited'
+                            | 'custom_order',
+                        })
+                      }
+                    >
+                      <MenuItem value='in_stock'>In Stock</MenuItem>
+                      <MenuItem value='limited'>Limited</MenuItem>
+                      <MenuItem value='out_of_stock'>Out of Stock</MenuItem>
+                      <MenuItem value='custom_order'>Custom Order</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Product media */}
+            <Box>
+              <SectionTitle>Product Image</SectionTitle>
+              <Grid container spacing={2.5}>
+                <Grid size={{ xs: 12 }}>
+                  <TextField
+                    fullWidth
+                    label='Image URL'
+                    placeholder='https://example.com/product.jpg'
+                    value={formData.imageUrl}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFormData({ ...formData, imageUrl: e.target.value })
+                    }
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setDialogOpen(false)} color='inherit'>
+            Cancel
+          </Button>
           <Button onClick={handleSaveProduct} variant='contained'>
             {editingProduct ? 'Update' : 'Create'}
           </Button>
