@@ -215,6 +215,54 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
         </CardContent>
       </CardActionArea>
 
+      {/* Expandable details revealed when the card is clicked. */}
+      <Collapse in={expanded} timeout='auto' unmountOnExit>
+        <Box id={detailsId} sx={{ px: { xs: 1.25, sm: 2 }, pb: 2 }}>
+          <Divider sx={{ mb: 1.5 }} />
+
+          <Typography variant='caption' sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>
+            {t('home.descriptionLabel')}
+          </Typography>
+          <Typography variant='body2' color='text.secondary' sx={{ mb: 1.5 }}>
+            {product.description?.trim() ? product.description : t('home.noDescription')}
+          </Typography>
+
+          <DetailRow
+            label={t('home.moq')}
+            value={`${product.minimumOrderQuantity ?? '—'} ${t('home.units')}`}
+          />
+          <DetailRow
+            label={t('home.leadTimeLabel')}
+            value={`${product.leadTime ?? '—'} ${t('home.days')}`}
+          />
+          <DetailRow
+            label={t('home.availabilityLabel')}
+            value={availabilityLabels[product.availability] ?? product.availability ?? '—'}
+          />
+
+          {specEntries.length > 0 && (
+            <>
+              <Typography
+                variant='caption'
+                sx={{ fontWeight: 700, display: 'block', mt: 1.5, mb: 0.5 }}
+              >
+                {t('home.technicalSpecs')}
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {specEntries.map(([key, value]) => (
+                  <Chip
+                    key={key}
+                    size='small'
+                    variant='outlined'
+                    label={`${key}: ${String(value)}`}
+                  />
+                ))}
+              </Box>
+            </>
+          )}
+        </Box>
+      </Collapse>
+
       {/* Footer: price and add-to-cart stay visible regardless of expand state. */}
       <Box
         sx={{
@@ -267,54 +315,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
           <AddShoppingCart fontSize='small' />
         </IconButton>
       </Box>
-
-      {/* Expandable details revealed when the card is clicked. */}
-      <Collapse in={expanded} timeout='auto' unmountOnExit>
-        <Box id={detailsId} sx={{ px: { xs: 1.25, sm: 2 }, pb: 2 }}>
-          <Divider sx={{ mb: 1.5 }} />
-
-          <Typography variant='caption' sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>
-            {t('home.descriptionLabel')}
-          </Typography>
-          <Typography variant='body2' color='text.secondary' sx={{ mb: 1.5 }}>
-            {product.description?.trim() ? product.description : t('home.noDescription')}
-          </Typography>
-
-          <DetailRow
-            label={t('home.moq')}
-            value={`${product.minimumOrderQuantity ?? '—'} ${t('home.units')}`}
-          />
-          <DetailRow
-            label={t('home.leadTimeLabel')}
-            value={`${product.leadTime ?? '—'} ${t('home.days')}`}
-          />
-          <DetailRow
-            label={t('home.availabilityLabel')}
-            value={availabilityLabels[product.availability] ?? product.availability ?? '—'}
-          />
-
-          {specEntries.length > 0 && (
-            <>
-              <Typography
-                variant='caption'
-                sx={{ fontWeight: 700, display: 'block', mt: 1.5, mb: 0.5 }}
-              >
-                {t('home.technicalSpecs')}
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {specEntries.map(([key, value]) => (
-                  <Chip
-                    key={key}
-                    size='small'
-                    variant='outlined'
-                    label={`${key}: ${String(value)}`}
-                  />
-                ))}
-              </Box>
-            </>
-          )}
-        </Box>
-      </Collapse>
     </Card>
   );
 };
