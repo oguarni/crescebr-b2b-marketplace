@@ -36,6 +36,7 @@ import {
 
 import { Product } from '@shared/types';
 import { productsService } from '../services/productsService';
+import { formatBRL } from '../utils/currency';
 import ProductCard from '../components/ProductCard';
 import { useCart } from '../contexts/CartContext';
 import { useQuotationRequest } from '../contexts/QuotationContext';
@@ -54,6 +55,9 @@ const HomePage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All Products');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  // Only one product card is expanded at a time; clicking another collapses the
+  // previous one, and clicking outside collapses the open card.
+  const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
 
   // Advanced Filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -64,7 +68,7 @@ const HomePage: React.FC = () => {
   const [specsFilter, setSpecsFilter] = useState<{ [key: string]: string }>({});
   const [allSpecs, setAllSpecs] = useState<{ [key: string]: string[] }>({});
 
-  const { items: cartItems, addItem } = useCart();
+  const { items: cartItems } = useCart();
   const { addItem: addToQuotationRequest } = useQuotationRequest();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const t = useT();
@@ -200,11 +204,9 @@ const HomePage: React.FC = () => {
   };
 
   const handleAddToCart = (product: Product) => {
-    if (!isAuthenticated || user?.role === 'customer') {
-      addToQuotationRequest(product);
-    } else {
-      addItem(product);
-    }
+    // Buyers and visitors build a quotation request. Suppliers cannot purchase,
+    // so the action is hidden for them on the card (see `showAddToCart` below).
+    addToQuotationRequest(product);
   };
 
   if (authLoading) {
@@ -473,11 +475,11 @@ const HomePage: React.FC = () => {
                   min={0}
                   max={50000}
                   step={500}
-                  valueLabelFormat={value => `R$ ${value.toLocaleString()}`}
+                  valueLabelFormat={value => formatBRL(value)}
                 />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant='caption'>R$ {priceRange[0].toLocaleString()}</Typography>
-                  <Typography variant='caption'>R$ {priceRange[1].toLocaleString()}</Typography>
+                  <Typography variant='caption'>{formatBRL(priceRange[0])}</Typography>
+                  <Typography variant='caption'>{formatBRL(priceRange[1])}</Typography>
                 </Box>
               </Box>
             </Grid>
@@ -655,7 +657,19 @@ const HomePage: React.FC = () => {
               }}
             >
               {products.map(product => (
-                <ProductCard key={product.id} product={product} onAddToCart={handleAddToCart} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onAddToCart={handleAddToCart}
+                  showAddToCart={user?.role !== 'supplier'}
+                  expanded={expandedProductId === product.id}
+                  onToggleExpand={() =>
+                    setExpandedProductId(prev => (prev === product.id ? null : product.id))
+                  }
+                  onCollapse={() =>
+                    setExpandedProductId(prev => (prev === product.id ? null : prev))
+                  }
+                />
               ))}
             </Box>
 

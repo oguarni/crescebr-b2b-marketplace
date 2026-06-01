@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 vi.mock('../../services/quotationsService', () => ({
   quotationsService: {
     getSupplierQuotations: vi.fn(),
+    updateSupplierQuotation: vi.fn(),
   },
 }));
 
@@ -206,7 +207,9 @@ describe('SupplierQuotationsPage', () => {
   });
 
   it('handles error when loading quotations fails', async () => {
-    vi.mocked(quotationsService.getSupplierQuotations).mockRejectedValue(new Error('Network error'));
+    vi.mocked(quotationsService.getSupplierQuotations).mockRejectedValue(
+      new Error('Network error')
+    );
 
     await renderPage();
 
@@ -270,6 +273,7 @@ describe('SupplierQuotationsPage', () => {
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('Quotation response submitted successfully');
+      expect(quotationsService.updateSupplierQuotation).toHaveBeenCalled();
     });
   });
 
@@ -285,6 +289,9 @@ describe('SupplierQuotationsPage', () => {
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('Quotation accepted successfully');
+      expect(quotationsService.updateSupplierQuotation).toHaveBeenCalledWith(1, {
+        status: 'completed',
+      });
     });
   });
 
@@ -300,6 +307,10 @@ describe('SupplierQuotationsPage', () => {
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('Quotation rejected');
+      expect(quotationsService.updateSupplierQuotation).toHaveBeenCalledWith(1, {
+        status: 'rejected',
+        adminNotes: 'Not available',
+      });
     });
   });
 
@@ -450,7 +461,9 @@ describe('SupplierQuotationsPage', () => {
       ...mockQuotations[0],
       requestedDeliveryDate: undefined,
     };
-    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([quotationWithoutDeliveryDate]);
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([
+      quotationWithoutDeliveryDate,
+    ]);
 
     await renderPage();
     const user = userEvent.setup();
@@ -833,8 +846,8 @@ describe('SupplierQuotationsPage', () => {
       expect(screen.getByDisplayValue('2000')).toBeInTheDocument();
     });
 
-    // Total should be updated: 2000 * 10 = 20000
-    expect(screen.getByText(/R\$ 20,000/)).toBeInTheDocument();
+    // Total should be updated: 2000 * 10 = 20000 (pt-BR currency format)
+    expect(screen.getByText(/20\.000,00/)).toBeInTheDocument();
   });
 
   it('updates item availability in response dialog', async () => {

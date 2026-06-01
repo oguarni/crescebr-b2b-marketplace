@@ -255,23 +255,21 @@ describe('HomePage', () => {
     expect(screen.getAllByText('Safety Equipment')[0]).toBeInTheDocument();
   });
 
-  it('should call addItem when add to cart button is clicked for supplier', async () => {
-    const user = userEvent.setup();
+  it('should not show an add-to-cart action for suppliers (suppliers cannot purchase)', async () => {
     await renderHomePage();
 
     await waitFor(() => {
       expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
     });
 
-    // The add to cart buttons are IconButtons with AddShoppingCart icon
+    // Suppliers browse the catalog but must not be able to buy, so the
+    // add-to-cart action is not rendered on their product cards.
     const addButtons = screen.getAllByRole('button').filter(btn => {
       return btn.querySelector('[data-testid="AddShoppingCartIcon"]');
     });
 
-    if (addButtons.length > 0) {
-      await user.click(addButtons[0]);
-      expect(mockAddItem).toHaveBeenCalledWith(mockProducts[0]);
-    }
+    expect(addButtons).toHaveLength(0);
+    expect(mockAddItem).not.toHaveBeenCalled();
   });
 
   it('should render pagination when there are multiple pages', async () => {

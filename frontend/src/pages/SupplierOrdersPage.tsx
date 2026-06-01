@@ -56,6 +56,7 @@ import { Order, OrderStatusHistory } from '@shared/types';
 import { ordersService } from '../services/ordersService';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { formatBRL } from '../utils/currency';
 
 interface StatusUpdateDialog {
   open: boolean;
@@ -275,7 +276,7 @@ const SupplierOrdersPage: React.FC = () => {
 
         <Box mb={2}>
           <Typography variant='body2' color='text.secondary'>
-            Items: {order.items?.length || 0} | Total: R$ {order.totalAmount.toLocaleString()}
+            Items: {order.items?.length || 0} | Total: {formatBRL(order.totalAmount)}
           </Typography>
           {order.trackingNumber && (
             <Typography variant='body2' color='text.secondary'>
@@ -656,7 +657,7 @@ const SupplierOrdersPage: React.FC = () => {
                     />
                   </Typography>
                   <Typography variant='body2' color='text.secondary'>
-                    Total: R$ {selectedOrder.totalAmount.toLocaleString()}
+                    Total: {formatBRL(selectedOrder.totalAmount)}
                   </Typography>
                   {selectedOrder.trackingNumber && (
                     <Typography variant='body2' color='text.secondary'>
@@ -690,8 +691,8 @@ const SupplierOrdersPage: React.FC = () => {
                       <TableRow key={index}>
                         <TableCell>{item.product?.name || 'Product'}</TableCell>
                         <TableCell>{item.quantity}</TableCell>
-                        <TableCell>R$ {item.price.toLocaleString()}</TableCell>
-                        <TableCell>R$ {item.totalPrice.toLocaleString()}</TableCell>
+                        <TableCell>{formatBRL(item.price)}</TableCell>
+                        <TableCell>{formatBRL(item.totalPrice)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

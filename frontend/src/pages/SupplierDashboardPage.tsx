@@ -11,6 +11,12 @@ import {
   Chip,
   Button,
   Divider,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -28,11 +34,12 @@ import {
   DashboardRounded,
   RequestQuoteOutlined,
   ShoppingBagOutlined,
+  Logout,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { quotationsService } from '../services/quotationsService';
 import { ordersService } from '../services/ordersService';
-import { Quotation, Order, Product } from '@shared/types';
+import { Quotation, Order } from '@shared/types';
 import toast from 'react-hot-toast';
 
 interface DashboardMetrics {
@@ -45,9 +52,10 @@ interface DashboardMetrics {
 }
 
 const SupplierDashboardPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [_loading, setLoading] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Re-integrated state
   const [metrics, setMetrics] = useState<DashboardMetrics>({
@@ -60,18 +68,42 @@ const SupplierDashboardPage: React.FC = () => {
   });
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [pendingQuotes, setPendingQuotes] = useState<Quotation[]>([]);
-  // lowStockProducts not shown in the current UI but kept for backend completeness if needed
-  const [, setLowStockProducts] = useState<Product[]>([]);
 
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      await Promise.all([
-        loadMetrics(),
-        loadRecentOrders(),
-        loadPendingQuotations(),
-        loadLowStockProducts(),
+      // Supplier-scoped endpoint: the quotations endpoint already returns only
+      // quotations that include this supplier's products (filtered server-side).
+      const [quotes, ordersResult] = await Promise.all([
+        quotationsService.getSupplierQuotations(),
+        ordersService.getUserOrders(),
       ]);
+
+      const pending = quotes.filter(
+        (quote: Quotation) => quote.status === 'pending' || quote.status === 'processed'
+      );
+      setPendingQuotes(pending.slice(0, 4));
+
+      const activeOrders = ordersResult.orders.filter(
+        (order: Order) => order.status === 'pending' || order.status === 'processing'
+      );
+      setRecentOrders(activeOrders.slice(0, 3));
+
+      const monthlyRevenue = ordersResult.orders.reduce(
+        (sum: number, order: Order) => sum + (order.totalAmount || 0),
+        0
+      );
+
+      // Metrics are derived from real data so the dashboard reflects actual
+      // buyer activity instead of placeholder numbers.
+      setMetrics({
+        totalSales: ordersResult.orders.length,
+        monthlyRevenue,
+        activeOrders: activeOrders.length,
+        averageRating: 0,
+        totalProducts: 0,
+        pendingQuotations: pending.length,
+      });
     } catch (_error) {
       console.error('Error loading dashboard data:', _error);
       toast.error('Error loading dashboard data');
@@ -82,57 +114,7 @@ const SupplierDashboardPage: React.FC = () => {
 
   useEffect(() => {
     loadDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const loadMetrics = async () => {
-    try {
-      setMetrics({
-        totalSales: 156,
-        monthlyRevenue: 45600,
-        activeOrders: 8,
-        averageRating: 4.8,
-        totalProducts: 127,
-        pendingQuotations: 12,
-      });
-    } catch (_error) {
-      console.error('Error loading metrics:', _error);
-    }
-  };
-
-  const loadRecentOrders = async () => {
-    try {
-      const result = await ordersService.getUserOrders();
-      const recentActiveOrders = result.orders
-        .filter((order: Order) => order.status === 'pending' || order.status === 'processing')
-        .slice(0, 3); // match new UI length
-      setRecentOrders(recentActiveOrders);
-    } catch (_error) {
-      console.error('Error loading recent orders:', _error);
-    }
-  };
-
-  const loadPendingQuotations = async () => {
-    try {
-      // Supplier-scoped endpoint: returns only quotations that include this
-      // supplier's products (filtered server-side).
-      const data = await quotationsService.getSupplierQuotations();
-      const pending = data
-        .filter((quote: Quotation) => quote.status === 'pending' || quote.status === 'processed')
-        .slice(0, 4); // match new UI length
-      setPendingQuotes(pending);
-    } catch (_error) {
-      console.error('Error loading pending quotations:', _error);
-    }
-  };
-
-  const loadLowStockProducts = async () => {
-    try {
-      setLowStockProducts([]);
-    } catch (_error) {
-      console.error('Error loading low stock products:', _error);
-    }
-  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -180,7 +162,13 @@ const SupplierDashboardPage: React.FC = () => {
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <IconButton color='inherit' edge='start' sx={{ p: 0.5 }}>
+            <IconButton
+              color='inherit'
+              edge='start'
+              sx={{ p: 0.5 }}
+              onClick={() => setDrawerOpen(true)}
+              aria-label='open navigation menu'
+            >
               <MenuIcon />
             </IconButton>
             <Typography
@@ -193,7 +181,7 @@ const SupplierDashboardPage: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Badge
               color='error'
-              variant='dot'
+              badgeContent={metrics.pendingQuotations}
               sx={{
                 '& .MuiBadge-badge': {
                   border: '2px solid',
@@ -203,7 +191,12 @@ const SupplierDashboardPage: React.FC = () => {
                 },
               }}
             >
-              <IconButton color='inherit' sx={{ p: 0.5 }}>
+              <IconButton
+                color='inherit'
+                sx={{ p: 0.5 }}
+                onClick={() => navigate('/supplier/quotations')}
+                aria-label='view pending quotations'
+              >
                 <NotificationsOutlined />
               </IconButton>
             </Badge>
@@ -221,6 +214,53 @@ const SupplierDashboardPage: React.FC = () => {
           </Box>
         </Box>
       </Box>
+
+      {/* Navigation drawer toggled by the header menu button. */}
+      <Drawer anchor='left' open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <Box sx={{ width: 260 }} role='presentation'>
+          <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
+            <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
+              {user?.companyName || 'CresceBR Supplier'}
+            </Typography>
+            <Typography variant='caption'>{user?.email}</Typography>
+          </Box>
+          <List>
+            {[
+              { label: 'Dashboard', icon: <DashboardRounded />, path: '/supplier/dashboard' },
+              { label: 'Quotations', icon: <RequestQuoteOutlined />, path: '/supplier/quotations' },
+              { label: 'Orders', icon: <ShoppingBagOutlined />, path: '/supplier/orders' },
+              { label: 'Catalog', icon: <Inventory2Outlined />, path: '/supplier/products' },
+            ].map(item => (
+              <ListItem key={item.path} disablePadding>
+                <ListItemButton
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    navigate(item.path);
+                  }}
+                >
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+            <Divider />
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={() => {
+                  setDrawerOpen(false);
+                  logout();
+                  navigate('/');
+                }}
+              >
+                <ListItemIcon>
+                  <Logout />
+                </ListItemIcon>
+                <ListItemText primary='Logout' />
+              </ListItemButton>
+            </ListItem>
+          </List>
+        </Box>
+      </Drawer>
 
       {/* Main Content */}
       <Box
@@ -394,6 +434,7 @@ const SupplierDashboardPage: React.FC = () => {
               variant='text'
               size='small'
               sx={{ fontSize: '0.75rem', fontWeight: 600, minWidth: 'auto', p: 0 }}
+              onClick={() => navigate('/supplier/quotations')}
             >
               View All
             </Button>

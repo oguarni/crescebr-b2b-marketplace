@@ -6,8 +6,7 @@ import {
   CardContent,
   CardMedia,
   Chip,
-  Collapse,
-  Divider,
+  ClickAwayListener,
   IconButton,
   Typography,
 } from '@mui/material';
@@ -15,11 +14,25 @@ import { AddShoppingCart, ExpandMore, StorefrontOutlined } from '@mui/icons-mate
 
 import { Product } from '@shared/types';
 import { useT } from '../contexts/LanguageContext';
+import { formatBRL } from '../utils/currency';
 
 interface ProductCardProps {
   product: Product;
-  /** Adds the product to the cart (suppliers) or quotation request (buyers). */
+  /** Adds the product to the buyer's quotation request. */
   onAddToCart: (product: Product) => void;
+  /**
+   * Whether to show the add-to-cart/quote action. Suppliers browse the catalog
+   * but cannot purchase, so the action is hidden for them. Defaults to true.
+   */
+  showAddToCart?: boolean;
+  /**
+   * Controlled expand state. When provided together with `onToggleExpand`, the
+   * parent owns the state so that only one card is expanded at a time. When the
+   * props are omitted, the card falls back to managing its own expand state.
+   */
+  expanded?: boolean;
+  onToggleExpand?: () => void;
+  onCollapse?: () => void;
 }
 
 // Self-contained inline SVG placeholder so missing images never depend on an
@@ -36,20 +49,25 @@ const PLACEHOLDER_IMAGE =
       '</g></svg>'
   );
 
-const formatPrice = (price: number): string =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(price ?? 0);
-
 /**
  * A single product card for the catalog grid. The image and title act as an
- * expand trigger that reveals detailed product information inline, while the
- * footer keeps the price and the add-to-cart action always visible.
+ * expand trigger that reveals detailed product information. When expanded, the
+ * details are rendered as an overlay that drops below the card and covers the
+ * card beneath it (without shifting the rest of the grid). Clicking outside the
+ * card collapses it again.
  */
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+const ProductCard: React.FC<ProductCardProps> = ({
+  product,
+  onAddToCart,
+  showAddToCart = true,
+  expanded: controlledExpanded,
+  onToggleExpand,
+  onCollapse,
+}) => {
   const t = useT();
-  const [expanded, setExpanded] = useState(false);
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const isControlled = controlledExpanded !== undefined;
+  const expanded = isControlled ? controlledExpanded : internalExpanded;
 
   const detailsId = `product-details-${product.id}`;
   // `stockQuantity` is a runtime-only field not present on the Product type.
@@ -64,258 +82,300 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
     custom_order: t('home.madeToOrderOption'),
   };
 
-  const toggleExpanded = () => setExpanded(prev => !prev);
+  const toggleExpanded = () => {
+    if (onToggleExpand) onToggleExpand();
+    if (!isControlled) setInternalExpanded(prev => !prev);
+  };
+
+  const collapse = () => {
+    if (onCollapse) onCollapse();
+    if (!isControlled) setInternalExpanded(false);
+  };
+
+  const handleClickAway = () => {
+    if (expanded) collapse();
+  };
 
   return (
-    <Card
-      variant='outlined'
-      sx={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: 3,
-        overflow: 'hidden',
-        transition: 'box-shadow 0.2s',
-        '&:hover': { boxShadow: 3 },
-      }}
-    >
-      <CardActionArea
-        onClick={toggleExpanded}
-        aria-expanded={expanded}
-        aria-controls={detailsId}
-        aria-label={`${product.name} — ${expanded ? t('home.hideDetails') : t('home.viewDetails')}`}
-        sx={{ display: 'block' }}
-      >
-        <Box
+    <ClickAwayListener onClickAway={handleClickAway}>
+      <Box sx={{ position: 'relative', height: '100%', zIndex: expanded ? 5 : 'auto' }}>
+        <Card
+          variant='outlined'
           sx={{
-            position: 'relative',
-            width: '100%',
-            paddingTop: '75%',
-            bgcolor: 'grey.100',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: 3,
+            // Square the bottom corners while expanded so the details overlay
+            // reads as a seamless continuation of the card.
+            borderBottomLeftRadius: expanded ? 0 : undefined,
+            borderBottomRightRadius: expanded ? 0 : undefined,
             overflow: 'hidden',
+            transition: 'box-shadow 0.2s',
+            boxShadow: expanded ? 6 : undefined,
+            '&:hover': { boxShadow: 3 },
           }}
         >
-          <CardMedia
-            component='img'
-            image={product.imageUrl || PLACEHOLDER_IMAGE}
-            alt={product.name}
-            loading='lazy'
-            onError={event => {
-              // Fall back to the inline placeholder if the remote image fails.
-              const img = event.currentTarget as HTMLImageElement;
-              if (img.src !== PLACEHOLDER_IMAGE) {
-                img.src = PLACEHOLDER_IMAGE;
-              }
-            }}
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            }}
-          />
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              bgcolor: 'rgba(255,255,255,0.9)',
-              backdropFilter: 'blur(4px)',
-              px: 1,
-              py: 0.5,
-              borderRadius: 1,
-              fontSize: '0.625rem',
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              color: 'text.secondary',
-              border: 1,
-              borderColor: 'divider',
-            }}
+          <CardActionArea
+            onClick={toggleExpanded}
+            aria-expanded={expanded}
+            aria-controls={detailsId}
+            aria-label={`${product.name} — ${expanded ? t('home.hideDetails') : t('home.viewDetails')}`}
+            sx={{ display: 'block' }}
           >
-            SKU-{product.id}
-          </Box>
-          {hasStock && (
             <Box
               sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                bgcolor: 'success.main',
-                color: 'success.contrastText',
-                px: 1,
-                py: 0.5,
-                borderBottomRightRadius: 4,
-                fontSize: '0.625rem',
-                fontWeight: 700,
+                position: 'relative',
+                width: '100%',
+                paddingTop: '75%',
+                bgcolor: 'grey.100',
+                overflow: 'hidden',
               }}
             >
-              {t('home.inStockBadge')}
+              <CardMedia
+                component='img'
+                image={product.imageUrl || PLACEHOLDER_IMAGE}
+                alt={product.name}
+                loading='lazy'
+                onError={event => {
+                  // Fall back to the inline placeholder if the remote image fails.
+                  const img = event.currentTarget as HTMLImageElement;
+                  if (img.src !== PLACEHOLDER_IMAGE) {
+                    img.src = PLACEHOLDER_IMAGE;
+                  }
+                }}
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  bgcolor: 'rgba(255,255,255,0.9)',
+                  backdropFilter: 'blur(4px)',
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
+                  fontSize: '0.625rem',
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  color: 'text.secondary',
+                  border: 1,
+                  borderColor: 'divider',
+                }}
+              >
+                SKU-{product.id}
+              </Box>
+              {hasStock && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bgcolor: 'success.main',
+                    color: 'success.contrastText',
+                    px: 1,
+                    py: 0.5,
+                    borderBottomRightRadius: 4,
+                    fontSize: '0.625rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  {t('home.inStockBadge')}
+                </Box>
+              )}
             </Box>
-          )}
-        </Box>
 
-        <CardContent sx={{ p: { xs: 1.25, sm: 2 }, pb: { xs: 1, sm: 1.5 } }}>
-          <Typography
-            variant='caption'
-            noWrap
-            sx={{
-              display: 'block',
-              fontWeight: 700,
-              color: 'primary.main',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              fontSize: '0.625rem',
-            }}
-          >
-            {product.category || t('home.uncategorized')}
-          </Typography>
-
-          <Typography
-            variant='subtitle2'
-            sx={{
-              fontWeight: 600,
-              color: 'text.primary',
-              lineHeight: 1.2,
-              mt: 0.5,
-              mb: 1,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              minHeight: '2.4em',
-              fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-            }}
-          >
-            {product.name}
-          </Typography>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <StorefrontOutlined sx={{ fontSize: 14, color: 'text.secondary' }} />
-            <Typography
-              variant='caption'
-              color='text.secondary'
-              noWrap
-              sx={{ flex: 1, minWidth: 0 }}
-            >
-              {product.supplierId
-                ? t('home.supplierId', { id: product.supplierId })
-                : t('home.fallbackSupplier')}
-            </Typography>
-            <ExpandMore
-              sx={{
-                fontSize: 18,
-                color: 'text.secondary',
-                transition: 'transform 0.2s',
-                transform: expanded ? 'rotate(180deg)' : 'none',
-              }}
-            />
-          </Box>
-        </CardContent>
-      </CardActionArea>
-
-      {/* Expandable details revealed when the card is clicked. */}
-      <Collapse in={expanded} timeout='auto' unmountOnExit>
-        <Box id={detailsId} sx={{ px: { xs: 1.25, sm: 2 }, pb: 2 }}>
-          <Divider sx={{ mb: 1.5 }} />
-
-          <Typography variant='caption' sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>
-            {t('home.descriptionLabel')}
-          </Typography>
-          <Typography variant='body2' color='text.secondary' sx={{ mb: 1.5 }}>
-            {product.description?.trim() ? product.description : t('home.noDescription')}
-          </Typography>
-
-          <DetailRow
-            label={t('home.moq')}
-            value={`${product.minimumOrderQuantity ?? '—'} ${t('home.units')}`}
-          />
-          <DetailRow
-            label={t('home.leadTimeLabel')}
-            value={`${product.leadTime ?? '—'} ${t('home.days')}`}
-          />
-          <DetailRow
-            label={t('home.availabilityLabel')}
-            value={availabilityLabels[product.availability] ?? product.availability ?? '—'}
-          />
-
-          {specEntries.length > 0 && (
-            <>
+            <CardContent sx={{ p: { xs: 1.25, sm: 2 }, pb: { xs: 1, sm: 1.5 } }}>
               <Typography
                 variant='caption'
-                sx={{ fontWeight: 700, display: 'block', mt: 1.5, mb: 0.5 }}
+                noWrap
+                sx={{
+                  display: 'block',
+                  fontWeight: 700,
+                  color: 'primary.main',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  fontSize: '0.625rem',
+                }}
               >
-                {t('home.technicalSpecs')}
+                {product.category || t('home.uncategorized')}
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {specEntries.map(([key, value]) => (
-                  <Chip
-                    key={key}
-                    size='small'
-                    variant='outlined'
-                    label={`${key}: ${String(value)}`}
-                  />
-                ))}
-              </Box>
-            </>
-          )}
-        </Box>
-      </Collapse>
 
-      {/* Footer: price and add-to-cart stay visible regardless of expand state. */}
-      <Box
-        sx={{
-          mt: 'auto',
-          px: { xs: 1.25, sm: 2 },
-          py: 1.25,
-          borderTop: 1,
-          borderColor: 'divider',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 1,
-        }}
-      >
-        <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <Typography variant='caption' sx={{ fontSize: '0.625rem', color: 'text.secondary' }}>
-            {t('home.unitPrice')}
-          </Typography>
-          <Typography
-            variant='subtitle1'
-            noWrap
+              <Typography
+                variant='subtitle2'
+                sx={{
+                  fontWeight: 600,
+                  color: 'text.primary',
+                  lineHeight: 1.2,
+                  mt: 0.5,
+                  mb: 1,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  minHeight: '2.4em',
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                }}
+              >
+                {product.name}
+              </Typography>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <StorefrontOutlined sx={{ fontSize: 14, color: 'text.secondary' }} />
+                <Typography
+                  variant='caption'
+                  color='text.secondary'
+                  noWrap
+                  sx={{ flex: 1, minWidth: 0 }}
+                >
+                  {product.supplierId
+                    ? t('home.supplierId', { id: product.supplierId })
+                    : t('home.fallbackSupplier')}
+                </Typography>
+                <ExpandMore
+                  sx={{
+                    fontSize: 18,
+                    color: 'text.secondary',
+                    transition: 'transform 0.2s',
+                    transform: expanded ? 'rotate(180deg)' : 'none',
+                  }}
+                />
+              </Box>
+            </CardContent>
+          </CardActionArea>
+
+          {/* Footer: price and add-to-cart stay visible regardless of expand state. */}
+          <Box
             sx={{
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              color: 'text.primary',
-              lineHeight: 1,
-              fontSize: { xs: '0.875rem', sm: '1rem' },
+              mt: 'auto',
+              px: { xs: 1.25, sm: 2 },
+              py: 1.25,
+              borderTop: 1,
+              borderColor: 'divider',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1,
             }}
           >
-            {formatPrice(product.price)}
-          </Typography>
-        </Box>
-        <IconButton
-          onClick={event => {
-            // Keep the cart action independent from the expand trigger.
-            event.stopPropagation();
-            onAddToCart(product);
-          }}
-          color='primary'
-          sx={{
-            flexShrink: 0,
-            bgcolor: 'primary.main',
-            color: 'primary.contrastText',
-            borderRadius: 2,
-            p: 1,
-            boxShadow: 1,
-            '&:hover': { bgcolor: 'primary.dark' },
-          }}
-        >
-          <AddShoppingCart fontSize='small' />
-        </IconButton>
+            <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <Typography variant='caption' sx={{ fontSize: '0.625rem', color: 'text.secondary' }}>
+                {t('home.unitPrice')}
+              </Typography>
+              <Typography
+                variant='subtitle1'
+                noWrap
+                sx={{
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  color: 'text.primary',
+                  lineHeight: 1,
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                }}
+              >
+                {formatBRL(product.price)}
+              </Typography>
+            </Box>
+            {showAddToCart && (
+              <IconButton
+                onClick={event => {
+                  // Keep the cart action independent from the expand trigger.
+                  event.stopPropagation();
+                  onAddToCart(product);
+                }}
+                color='primary'
+                sx={{
+                  flexShrink: 0,
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  borderRadius: 2,
+                  p: 1,
+                  boxShadow: 1,
+                  '&:hover': { bgcolor: 'primary.dark' },
+                }}
+              >
+                <AddShoppingCart fontSize='small' />
+              </IconButton>
+            )}
+          </Box>
+        </Card>
+
+        {/* Expandable details: rendered as an overlay anchored to the bottom of
+            the card so it covers the card below without resizing the grid. Only
+            the clicked card shows this; clicking away collapses it. */}
+        {expanded && (
+          <Box
+            id={detailsId}
+            sx={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              zIndex: 5,
+              bgcolor: 'background.paper',
+              border: 1,
+              borderTop: 0,
+              borderColor: 'divider',
+              borderBottomLeftRadius: 12,
+              borderBottomRightRadius: 12,
+              boxShadow: 6,
+              px: { xs: 1.25, sm: 2 },
+              pt: 1.5,
+              pb: 2,
+            }}
+          >
+            <Typography variant='caption' sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>
+              {t('home.descriptionLabel')}
+            </Typography>
+            <Typography variant='body2' color='text.secondary' sx={{ mb: 1.5 }}>
+              {product.description?.trim() ? product.description : t('home.noDescription')}
+            </Typography>
+
+            <DetailRow
+              label={t('home.moq')}
+              value={`${product.minimumOrderQuantity ?? '—'} ${t('home.units')}`}
+            />
+            <DetailRow
+              label={t('home.leadTimeLabel')}
+              value={`${product.leadTime ?? '—'} ${t('home.days')}`}
+            />
+            <DetailRow
+              label={t('home.availabilityLabel')}
+              value={availabilityLabels[product.availability] ?? product.availability ?? '—'}
+            />
+
+            {specEntries.length > 0 && (
+              <>
+                <Typography
+                  variant='caption'
+                  sx={{ fontWeight: 700, display: 'block', mt: 1.5, mb: 0.5 }}
+                >
+                  {t('home.technicalSpecs')}
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {specEntries.map(([key, value]) => (
+                    <Chip
+                      key={key}
+                      size='small'
+                      variant='outlined'
+                      label={`${key}: ${String(value)}`}
+                    />
+                  ))}
+                </Box>
+              </>
+            )}
+          </Box>
+        )}
       </Box>
-    </Card>
+    </ClickAwayListener>
   );
 };
 

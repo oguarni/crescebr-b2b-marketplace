@@ -55,6 +55,7 @@ import { Product } from '@shared/types';
 import { productsService } from '../services/productsService';
 import { useAuth } from '../contexts/AuthContext';
 import { useProducts } from '../hooks';
+import { formatBRL } from '../utils/currency';
 import toast from 'react-hot-toast';
 
 interface ProductFormData {
@@ -523,7 +524,7 @@ const SupplierProductsPage: React.FC = () => {
                             />
                           </Box>
                           <Typography variant='h6' color='primary'>
-                            R$ {product.price.toLocaleString()}
+                            {formatBRL(product.price)}
                           </Typography>
                           <Typography variant='body2' color='text.secondary'>
                             MOQ: {product.minimumOrderQuantity}
@@ -581,7 +582,7 @@ const SupplierProductsPage: React.FC = () => {
                             </Box>
                           </TableCell>
                           <TableCell>{product.category}</TableCell>
-                          <TableCell>R$ {product.price.toLocaleString()}</TableCell>
+                          <TableCell>{formatBRL(product.price)}</TableCell>
                           <TableCell>{product.minimumOrderQuantity}</TableCell>
                           <TableCell>{product.leadTime} days</TableCell>
                           <TableCell>

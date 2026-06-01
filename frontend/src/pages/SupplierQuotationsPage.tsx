@@ -48,6 +48,7 @@ import {
 } from '@mui/icons-material';
 import { Quotation } from '@shared/types';
 import { quotationsService } from '../services/quotationsService';
+import { formatBRL } from '../utils/currency';
 import toast from 'react-hot-toast';
 
 interface QuotationResponse {
@@ -156,29 +157,35 @@ const SupplierQuotationsPage: React.FC = () => {
     });
   };
 
-  const handleAcceptQuotation = async (_quotationId: number) => {
+  const handleAcceptQuotation = async (quotationId: number) => {
     try {
-      // This would call a supplier-specific accept endpoint
+      await quotationsService.updateSupplierQuotation(quotationId, { status: 'completed' });
       toast.success('Quotation accepted successfully');
       loadQuotations();
-    } catch (_error) {
-      toast.error('Error accepting quotation');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error accepting quotation');
     }
   };
 
-  const handleRejectQuotation = async (_quotationId: number, _reason: string) => {
+  const handleRejectQuotation = async (quotationId: number, reason: string) => {
     try {
-      // This would call a supplier-specific reject endpoint
+      await quotationsService.updateSupplierQuotation(quotationId, {
+        status: 'rejected',
+        adminNotes: reason,
+      });
       toast.success('Quotation rejected');
       loadQuotations();
-    } catch (_error) {
-      toast.error('Error rejecting quotation');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error rejecting quotation');
     }
   };
 
   const handleSubmitResponse = async () => {
     try {
-      // This would submit the quotation response
+      await quotationsService.updateSupplierQuotation(responseDialog.response.quotationId, {
+        status: 'processed',
+        adminNotes: responseDialog.response.notes || undefined,
+      });
       toast.success('Quotation response submitted successfully');
       setResponseDialog({
         open: false,
@@ -186,8 +193,8 @@ const SupplierQuotationsPage: React.FC = () => {
         response: initialResponse,
       });
       loadQuotations();
-    } catch (_error) {
-      toast.error('Error submitting quotation response');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error submitting quotation response');
     }
   };
 
@@ -360,7 +367,7 @@ const SupplierQuotationsPage: React.FC = () => {
           </Typography>
           {quotation.totalAmount && (
             <Typography variant='body2' color='text.secondary'>
-              Estimated Value: R$ {quotation.totalAmount.toLocaleString()}
+              Estimated Value: {formatBRL(quotation.totalAmount)}
             </Typography>
           )}
           {quotation.requestedDeliveryDate && (
@@ -700,11 +707,13 @@ const SupplierQuotationsPage: React.FC = () => {
                             type='number'
                             size='small'
                             value={item.unitPrice}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateItemPrice(index, Number(e.target.value))}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                              updateItemPrice(index, Number(e.target.value))
+                            }
                             inputProps={{ min: 0, step: 0.01 }}
                           />
                         </TableCell>
-                        <TableCell>R$ {item.totalPrice.toLocaleString()}</TableCell>
+                        <TableCell>{formatBRL(item.totalPrice)}</TableCell>
                         <TableCell>
                           <Select
                             size='small'
@@ -730,7 +739,7 @@ const SupplierQuotationsPage: React.FC = () => {
                   <TextField
                     fullWidth
                     label='Total Amount (R$)'
-                    value={responseDialog.response.totalAmount.toLocaleString()}
+                    value={formatBRL(responseDialog.response.totalAmount)}
                     InputProps={{ readOnly: true }}
                   />
                 </Grid>

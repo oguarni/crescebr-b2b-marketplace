@@ -186,7 +186,83 @@ const LoginPage: React.FC = () => {
           <Typography component='h1' variant='h4' gutterBottom>
             CresceBR
           </Typography>
-          <Typography component='h2' variant='h6' color='text.secondary' gutterBottom>
+
+          {/* Demo companies come first: the primary call to action for portfolio visitors. */}
+          <Box sx={{ width: '100%' }}>
+            <Typography component='h2' variant='h6' align='center' gutterBottom>
+              {t('login.demoTitle')}
+            </Typography>
+
+            <Typography variant='body2' color='text.secondary' align='center' sx={{ mb: 2 }}>
+              {t('login.demoHelp')}
+            </Typography>
+
+            <Stack spacing={1.5}>
+              {DEMO_ACCOUNTS.map(account => (
+                <Box
+                  key={account.cnpj}
+                  sx={{
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: account.recommended ? 'primary.main' : 'divider',
+                    borderRadius: 1,
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                    <Box sx={{ color: 'primary.main', display: 'flex', mr: 1 }}>{account.icon}</Box>
+                    <Typography variant='subtitle1' fontWeight='bold'>
+                      {t(account.roleKey)}
+                    </Typography>
+                    {account.recommended && (
+                      <Chip
+                        label={t('login.recommendedBadge')}
+                        size='small'
+                        color='primary'
+                        sx={{ ml: 1 }}
+                      />
+                    )}
+                  </Box>
+                  <Typography variant='body2' color='text.secondary'>
+                    {t(account.descriptionKey)}
+                  </Typography>
+                  <Typography
+                    variant='caption'
+                    color='text.secondary'
+                    display='block'
+                    sx={{ mt: 1 }}
+                  >
+                    {t('login.cnpjPrefix')} {account.cnpj}
+                  </Typography>
+                  <Typography variant='caption' color='text.secondary' display='block'>
+                    {t('login.emailPrefix')} {account.email} &nbsp;|&nbsp;{' '}
+                    {t('login.passwordPrefix')} {account.password}
+                  </Typography>
+                  <Button
+                    variant={account.recommended ? 'contained' : 'outlined'}
+                    size='small'
+                    fullWidth
+                    disabled={isLoading}
+                    onClick={() => handleDemoLogin(account)}
+                    sx={{ mt: 1.5 }}
+                  >
+                    {t('login.accessAs', { role: t(account.roleKey) })}
+                  </Button>
+                </Box>
+              ))}
+            </Stack>
+          </Box>
+
+          <Divider sx={{ my: 3, width: '100%' }} />
+
+          {/* Manual sign-in sits below the one-click demo shortcuts. */}
+          <Typography
+            component='h2'
+            variant='h6'
+            color='text.secondary'
+            align='center'
+            gutterBottom
+          >
             {t('login.title')}
           </Typography>
 
@@ -210,7 +286,6 @@ const LoginPage: React.FC = () => {
                 label={t('login.cnpjLabel')}
                 name='cnpj'
                 autoComplete='organization'
-                autoFocus
                 value={cnpj}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCnpj(e.target.value)}
                 placeholder='00.000.000/0000-00'
@@ -232,7 +307,6 @@ const LoginPage: React.FC = () => {
                 label={t('login.emailLabel')}
                 name='email'
                 autoComplete='email'
-                autoFocus
                 value={email}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                 inputProps={{ maxLength: INPUT_LIMITS.email }}
@@ -293,71 +367,6 @@ const LoginPage: React.FC = () => {
                 </Link>
               </Typography>
             </Box>
-          </Box>
-
-          <Box sx={{ mt: 4, width: '100%' }}>
-            <Divider sx={{ mb: 2 }}>
-              <Chip label={t('login.demoTitle')} size='small' />
-            </Divider>
-
-            <Typography variant='body2' color='text.secondary' align='center' sx={{ mb: 2 }}>
-              {t('login.demoHelp')}
-            </Typography>
-
-            <Stack spacing={1.5}>
-              {DEMO_ACCOUNTS.map(account => (
-                <Box
-                  key={account.cnpj}
-                  sx={{
-                    p: 2,
-                    border: '1px solid',
-                    borderColor: account.recommended ? 'primary.main' : 'divider',
-                    borderRadius: 1,
-                    bgcolor: 'background.paper',
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                    <Box sx={{ color: 'primary.main', display: 'flex', mr: 1 }}>{account.icon}</Box>
-                    <Typography variant='subtitle1' fontWeight='bold'>
-                      {t(account.roleKey)}
-                    </Typography>
-                    {account.recommended && (
-                      <Chip
-                        label={t('login.recommendedBadge')}
-                        size='small'
-                        color='primary'
-                        sx={{ ml: 1 }}
-                      />
-                    )}
-                  </Box>
-                  <Typography variant='body2' color='text.secondary'>
-                    {t(account.descriptionKey)}
-                  </Typography>
-                  <Typography
-                    variant='caption'
-                    color='text.secondary'
-                    display='block'
-                    sx={{ mt: 1 }}
-                  >
-                    {t('login.cnpjPrefix')} {account.cnpj}
-                  </Typography>
-                  <Typography variant='caption' color='text.secondary' display='block'>
-                    {t('login.emailPrefix')} {account.email} &nbsp;|&nbsp;{' '}
-                    {t('login.passwordPrefix')} {account.password}
-                  </Typography>
-                  <Button
-                    variant={account.recommended ? 'contained' : 'outlined'}
-                    size='small'
-                    fullWidth
-                    disabled={isLoading}
-                    onClick={() => handleDemoLogin(account)}
-                    sx={{ mt: 1.5 }}
-                  >
-                    {t('login.accessAs', { role: t(account.roleKey) })}
-                  </Button>
-                </Box>
-              ))}
-            </Stack>
           </Box>
         </Paper>
       </Box>

@@ -171,6 +171,25 @@ class QuotationsService {
     return response.data;
   }
 
+  // Suppliers update the status/notes of a quotation that includes their
+  // products (e.g. accept -> processed, decline -> rejected). The backend
+  // restricts this to quotations owned by the supplier's products.
+  async updateSupplierQuotation(
+    id: number,
+    updateData: UpdateQuotationRequest
+  ): Promise<Quotation> {
+    const response = await apiService.put<ApiResponse<Quotation>>(
+      `/quotations/supplier/${id}`,
+      updateData
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to update quotation');
+    }
+
+    return response.data;
+  }
+
   // Admin methods
   async getAllQuotations(): Promise<Quotation[]> {
     const response = await apiService.get<ApiResponse<Quotation[]>>('/quotations/admin/all');
