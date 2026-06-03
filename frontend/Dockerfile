@@ -28,6 +28,11 @@ FROM nginx:1.25-alpine
 # Copy the built files from the build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Ensure every served file is world-readable. Cloud Build uploads the working
+# tree with its on-disk permissions, which can be group-only (e.g. 660); without
+# this, nginx's unprivileged worker cannot read those assets and returns 403.
+RUN chmod -R a+rX /usr/share/nginx/html
+
 # Nginx config is a template: the official entrypoint runs envsubst on it at
 # startup, injecting PORT (set by Cloud Run) and BACKEND_HOST (the backend host).
 COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
