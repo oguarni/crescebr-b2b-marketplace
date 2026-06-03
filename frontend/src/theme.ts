@@ -3,24 +3,24 @@ import { createTheme } from '@mui/material/styles';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1E3A8A', // Deep Ocean Blue
-      light: '#3B82F6',
-      dark: '#1E40AF',
+      main: '#0446B7', // Brand Blue (from logo) — reserved for actions, links, active nav
+      light: '#4F83E8',
+      dark: '#03357F',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#059669', // Forest Green
-      light: '#10B981',
-      dark: '#047857',
+      main: '#01945D', // Brand Green (from logo) — badges, success, growth accent
+      light: '#34B97E',
+      dark: '#047048',
       contrastText: '#ffffff',
     },
     background: {
-      default: '#f8fafc',
+      default: '#f7f8fa',
       paper: '#ffffff',
     },
     text: {
-      primary: '#1f2937',
-      secondary: '#6b7280',
+      primary: '#16191f',
+      secondary: '#5b6470',
     },
   },
   typography: {
@@ -78,6 +78,22 @@ const theme = createTheme({
     },
   },
   components: {
+    // The global header is a neutral white surface so the blue + green logo
+    // stands out (previously the bar used primary blue, hiding the blue logo).
+    // Color is reserved for actions; the chrome stays neutral.
+    MuiAppBar: {
+      defaultProps: {
+        color: 'inherit',
+        elevation: 0,
+      },
+      styleOverrides: {
+        root: {
+          backgroundColor: '#ffffff',
+          color: '#16191f',
+          borderBottom: '1px solid #e3e6eb',
+        },
+      },
+    },
     MuiButton: {
       styleOverrides: {
         root: {

@@ -5,5 +5,30 @@ unset PREFIX
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
+# Secret scan on staged changes (credential-leak / supply-chain guard).
+# Blocks the commit if gitleaks finds a secret. Uses .gitleaks.toml (allowlist
+# for known placeholders/fixtures). Fails open with a warning if gitleaks is not
+# installed, so the hook never blocks a commit just because the tool is missing.
+#   Install: winget install gitleaks
+# Resolve the gitleaks binary. GUI clients (e.g. GitHub Desktop) may not have the
+# updated PATH, so fall back to the winget user-install location.
+GITLEAKS_BIN=""
+if command -v gitleaks >/dev/null 2>&1; then
+  GITLEAKS_BIN="gitleaks"
+elif [ -x "$LOCALAPPDATA/Microsoft/WinGet/Links/gitleaks.exe" ]; then
+  GITLEAKS_BIN="$LOCALAPPDATA/Microsoft/WinGet/Links/gitleaks.exe"
+fi
+
+if [ -n "$GITLEAKS_BIN" ]; then
+  "$GITLEAKS_BIN" git --staged --redact --no-banner || {
+    echo "❌ gitleaks blocked the commit: a potential secret was found in staged changes."
+    echo "   Review above. If it is a verified false positive, add a 'gitleaks:allow'"
+    echo "   comment on the line or extend the allowlist in .gitleaks.toml."
+    exit 1
+  }
+else
+  echo "⚠️  gitleaks not installed — skipping secret scan (install: winget install gitleaks)"
+fi
+
 # Executa o lint-staged (que por sua vez executa os linters)
 ./node_modules/.bin/lint-staged

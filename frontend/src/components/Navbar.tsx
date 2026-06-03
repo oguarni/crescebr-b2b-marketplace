@@ -106,16 +106,11 @@ const Navbar: React.FC = () => {
             gap: 1.5,
           }}
         >
-          <img src='/logo_icon.png' alt='CresceBR Logo' style={{ height: '40px', width: 'auto' }} />
-          <Typography
-            variant='h6'
-            sx={{
-              fontWeight: '900',
-              letterSpacing: '-0.5px',
-            }}
-          >
-            CresceBR
-          </Typography>
+          <img
+            src='/logo-crescebr.png'
+            alt='CresceBR'
+            style={{ height: '46px', width: 'auto', display: 'block' }}
+          />
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -285,38 +280,19 @@ const Navbar: React.FC = () => {
               {isMobile ? (
                 /* Mobile: a single prominent Login button. The login page hosts the
                    one-click demo accounts, so this is the fastest path for new visitors. */
-                <Button
-                  variant='outlined'
-                  color='inherit'
-                  component={Link}
-                  to='/login'
-                  sx={{
-                    borderColor: 'currentColor',
-                    '&:hover': {
-                      borderColor: 'currentColor',
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    },
-                  }}
-                >
+                <Button variant='contained' color='primary' component={Link} to='/login'>
                   {t('nav.login')}
                 </Button>
               ) : (
                 <>
-                  <Button color='inherit' component={Link} to='/login'>
+                  <Button color='primary' component={Link} to='/login'>
                     {t('nav.login')}
                   </Button>
                   <Button
-                    variant='outlined'
-                    color='inherit'
+                    variant='contained'
+                    color='primary'
                     component={Link}
                     to='/register'
-                    sx={{
-                      borderColor: 'currentColor',
-                      '&:hover': {
-                        borderColor: 'currentColor',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      },
-                    }}
                   >
                     {t('nav.register')}
                   </Button>

@@ -1,0 +1,21 @@
+# Gitleaks configuration for crescebr-b2b-marketplace
+# Extends the built-in ruleset and allowlists paths that legitimately contain
+# placeholder/demo/test values (verified during the 2026-06-03 security audit).
+# Keep this allowlist tight — only add paths proven free of real secrets.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Templates, test fixtures, and DEV-only demo seeds — no real secrets"
+paths = [
+  # Environment templates (placeholders only; real .env is gitignored)
+  '''(^|/)\.env\.example$''',
+  # Test files use mock tokens / fake passwords
+  '''.*\.test\.(ts|tsx|js|jsx)$''',
+  '''(^|/)__tests__/''',
+  # DEV-only demo login credentials (gated behind import.meta.env.DEV)
+  '''frontend/src/pages/LoginPage\.tsx$''',
+  # CI uses a throwaway local Postgres service (localhost only)
+  '''(^|/)\.github/workflows/ci\.yml$''',
+]

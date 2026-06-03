@@ -155,6 +155,7 @@ const LoginPage: React.FC = () => {
       <Box
         sx={{
           marginTop: 8,
+          marginBottom: 8,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -183,12 +184,84 @@ const LoginPage: React.FC = () => {
             </Button>
             <LanguageSwitcher />
           </Box>
-          <Typography component='h1' variant='h4' gutterBottom>
-            CresceBR
-          </Typography>
-          <Typography component='h2' variant='h6' color='text.secondary' gutterBottom>
-            {t('login.title')}
-          </Typography>
+
+          <Box
+            component='img'
+            src='/logo-crescebr.png'
+            alt='CresceBR'
+            sx={{ height: 56, width: 'auto', mt: 1, mb: 1 }}
+          />
+
+          {/* Demo companies first: this is a portfolio demo, so one-click sign-in
+              is the primary call to action and sits above the credential form. */}
+          <Box sx={{ width: '100%', mt: 2 }}>
+            <Divider sx={{ mb: 2 }}>
+              <Chip label={t('login.demoTitle')} size='small' />
+            </Divider>
+
+            <Typography variant='body2' color='text.secondary' align='center' sx={{ mb: 2 }}>
+              {t('login.demoHelp')}
+            </Typography>
+
+            <Stack spacing={1.5}>
+              {DEMO_ACCOUNTS.map(account => (
+                <Box
+                  key={account.cnpj}
+                  sx={{
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: account.recommended ? 'primary.main' : 'divider',
+                    borderRadius: 1,
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                    <Box sx={{ color: 'primary.main', display: 'flex', mr: 1 }}>{account.icon}</Box>
+                    <Typography variant='subtitle1' fontWeight='bold'>
+                      {t(account.roleKey)}
+                    </Typography>
+                    {account.recommended && (
+                      <Chip
+                        label={t('login.recommendedBadge')}
+                        size='small'
+                        color='primary'
+                        sx={{ ml: 1 }}
+                      />
+                    )}
+                  </Box>
+                  <Typography variant='body2' color='text.secondary'>
+                    {t(account.descriptionKey)}
+                  </Typography>
+                  <Typography
+                    variant='caption'
+                    color='text.secondary'
+                    display='block'
+                    sx={{ mt: 1 }}
+                  >
+                    {t('login.cnpjPrefix')} {account.cnpj}
+                  </Typography>
+                  <Typography variant='caption' color='text.secondary' display='block'>
+                    {t('login.emailPrefix')} {account.email} &nbsp;|&nbsp;{' '}
+                    {t('login.passwordPrefix')} {account.password}
+                  </Typography>
+                  <Button
+                    variant={account.recommended ? 'contained' : 'outlined'}
+                    size='small'
+                    fullWidth
+                    disabled={isLoading}
+                    onClick={() => handleDemoLogin(account)}
+                    sx={{ mt: 1.5 }}
+                  >
+                    {t('login.accessAs', { role: t(account.roleKey) })}
+                  </Button>
+                </Box>
+              ))}
+            </Stack>
+          </Box>
+
+          <Divider sx={{ width: '100%', my: 3 }}>
+            <Chip label={t('login.title')} size='small' />
+          </Divider>
 
           <Tabs
             value={loginType}
@@ -293,71 +366,6 @@ const LoginPage: React.FC = () => {
                 </Link>
               </Typography>
             </Box>
-          </Box>
-
-          <Box sx={{ mt: 4, width: '100%' }}>
-            <Divider sx={{ mb: 2 }}>
-              <Chip label={t('login.demoTitle')} size='small' />
-            </Divider>
-
-            <Typography variant='body2' color='text.secondary' align='center' sx={{ mb: 2 }}>
-              {t('login.demoHelp')}
-            </Typography>
-
-            <Stack spacing={1.5}>
-              {DEMO_ACCOUNTS.map(account => (
-                <Box
-                  key={account.cnpj}
-                  sx={{
-                    p: 2,
-                    border: '1px solid',
-                    borderColor: account.recommended ? 'primary.main' : 'divider',
-                    borderRadius: 1,
-                    bgcolor: 'background.paper',
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                    <Box sx={{ color: 'primary.main', display: 'flex', mr: 1 }}>{account.icon}</Box>
-                    <Typography variant='subtitle1' fontWeight='bold'>
-                      {t(account.roleKey)}
-                    </Typography>
-                    {account.recommended && (
-                      <Chip
-                        label={t('login.recommendedBadge')}
-                        size='small'
-                        color='primary'
-                        sx={{ ml: 1 }}
-                      />
-                    )}
-                  </Box>
-                  <Typography variant='body2' color='text.secondary'>
-                    {t(account.descriptionKey)}
-                  </Typography>
-                  <Typography
-                    variant='caption'
-                    color='text.secondary'
-                    display='block'
-                    sx={{ mt: 1 }}
-                  >
-                    {t('login.cnpjPrefix')} {account.cnpj}
-                  </Typography>
-                  <Typography variant='caption' color='text.secondary' display='block'>
-                    {t('login.emailPrefix')} {account.email} &nbsp;|&nbsp;{' '}
-                    {t('login.passwordPrefix')} {account.password}
-                  </Typography>
-                  <Button
-                    variant={account.recommended ? 'contained' : 'outlined'}
-                    size='small'
-                    fullWidth
-                    disabled={isLoading}
-                    onClick={() => handleDemoLogin(account)}
-                    sx={{ mt: 1.5 }}
-                  >
-                    {t('login.accessAs', { role: t(account.roleKey) })}
-                  </Button>
-                </Box>
-              ))}
-            </Stack>
           </Box>
         </Paper>
       </Box>
