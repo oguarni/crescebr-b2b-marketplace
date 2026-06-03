@@ -114,7 +114,9 @@ describe('SupplierDashboardPage', () => {
     await renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('CresceBR Supplier')).toBeInTheDocument();
+      // The "BR" in the title is rendered as an inline BrazilFlag SVG (aria-label
+      // "Brazil"), so the heading reads "Cresce <flag> Supplier" across elements.
+      expect(screen.getByRole('heading', { name: /Cresce.*Supplier/i })).toBeInTheDocument();
     });
   });
 
@@ -167,7 +169,9 @@ describe('SupplierDashboardPage', () => {
   it('handles error when loading dashboard data', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(ordersService.getUserOrders).mockRejectedValue(new Error('Network error'));
-    vi.mocked(quotationsService.getSupplierQuotations).mockRejectedValue(new Error('Network error'));
+    vi.mocked(quotationsService.getSupplierQuotations).mockRejectedValue(
+      new Error('Network error')
+    );
 
     await renderPage();
 

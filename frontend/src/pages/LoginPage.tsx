@@ -155,6 +155,7 @@ const LoginPage: React.FC = () => {
       <Box
         sx={{
           marginTop: 8,
+          marginBottom: 8,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -183,15 +184,19 @@ const LoginPage: React.FC = () => {
             </Button>
             <LanguageSwitcher />
           </Box>
-          <Typography component='h1' variant='h4' gutterBottom>
-            CresceBR
-          </Typography>
+          <Box
+            component='img'
+            src='/logo-crescebr.png'
+            alt='CresceBR'
+            sx={{ height: 56, width: 'auto', mt: 1, mb: 1 }}
+          />
 
-          {/* Demo companies come first: the primary call to action for portfolio visitors. */}
-          <Box sx={{ width: '100%' }}>
-            <Typography component='h2' variant='h6' align='center' gutterBottom>
-              {t('login.demoTitle')}
-            </Typography>
+          {/* Demo companies first: this is a portfolio demo, so one-click sign-in
+              is the primary call to action and sits above the credential form. */}
+          <Box sx={{ width: '100%', mt: 2 }}>
+            <Divider sx={{ mb: 2 }}>
+              <Chip label={t('login.demoTitle')} size='small' />
+            </Divider>
 
             <Typography variant='body2' color='text.secondary' align='center' sx={{ mb: 2 }}>
               {t('login.demoHelp')}
@@ -253,18 +258,9 @@ const LoginPage: React.FC = () => {
             </Stack>
           </Box>
 
-          <Divider sx={{ my: 3, width: '100%' }} />
-
-          {/* Manual sign-in sits below the one-click demo shortcuts. */}
-          <Typography
-            component='h2'
-            variant='h6'
-            color='text.secondary'
-            align='center'
-            gutterBottom
-          >
-            {t('login.title')}
-          </Typography>
+          <Divider sx={{ width: '100%', my: 3 }}>
+            <Chip label={t('login.title')} size='small' />
+          </Divider>
 
           <Tabs
             value={loginType}

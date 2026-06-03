@@ -40,6 +40,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { quotationsService } from '../services/quotationsService';
 import { ordersService } from '../services/ordersService';
 import { Quotation, Order } from '@shared/types';
+import BrazilFlag from '../components/BrazilFlag';
 import toast from 'react-hot-toast';
 
 interface DashboardMetrics {
@@ -175,7 +176,11 @@ const SupplierDashboardPage: React.FC = () => {
               variant='h6'
               sx={{ fontWeight: 600, letterSpacing: '-0.025em', fontSize: '1.125rem' }}
             >
-              CresceBR Supplier
+              Cresce
+              <BrazilFlag size='0.7em' />
+              <Box component='span' sx={{ ml: 0.5 }}>
+                Supplier
+              </Box>
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

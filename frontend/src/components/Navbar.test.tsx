@@ -111,7 +111,7 @@ describe('Navbar', () => {
 
   it('renders CresceBR logo', () => {
     renderNavbar();
-    expect(screen.getByText('CresceBR')).toBeInTheDocument();
+    expect(screen.getByAltText('CresceBR')).toBeInTheDocument();
   });
 
   it('shows login and register buttons when user is not authenticated', () => {

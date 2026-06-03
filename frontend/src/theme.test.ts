@@ -11,25 +11,25 @@ describe('theme', () => {
   });
 
   describe('palette', () => {
-    it('defines primary colors (Deep Ocean Blue)', () => {
-      expect(theme.palette.primary.main).toBe('#1E3A8A');
-      expect(theme.palette.primary.light).toBe('#3B82F6');
-      expect(theme.palette.primary.dark).toBe('#1E40AF');
+    it('defines primary colors (Brand Blue from logo)', () => {
+      expect(theme.palette.primary.main).toBe('#0446B7');
+      expect(theme.palette.primary.light).toBe('#4F83E8');
+      expect(theme.palette.primary.dark).toBe('#03357F');
       expect(theme.palette.primary.contrastText).toBe('#ffffff');
     });
 
-    it('defines secondary colors (Forest Green)', () => {
-      expect(theme.palette.secondary.main).toBe('#059669');
-      expect(theme.palette.secondary.light).toBe('#10B981');
-      expect(theme.palette.secondary.dark).toBe('#047857');
+    it('defines secondary colors (Brand Green from logo)', () => {
+      expect(theme.palette.secondary.main).toBe('#01945D');
+      expect(theme.palette.secondary.light).toBe('#34B97E');
+      expect(theme.palette.secondary.dark).toBe('#047048');
       expect(theme.palette.secondary.contrastText).toBe('#ffffff');
     });
 
     it('defines background and text colors', () => {
-      expect(theme.palette.background.default).toBe('#f8fafc');
+      expect(theme.palette.background.default).toBe('#f7f8fa');
       expect(theme.palette.background.paper).toBe('#ffffff');
-      expect(theme.palette.text.primary).toBe('#1f2937');
-      expect(theme.palette.text.secondary).toBe('#6b7280');
+      expect(theme.palette.text.primary).toBe('#16191f');
+      expect(theme.palette.text.secondary).toBe('#5b6470');
     });
   });
 

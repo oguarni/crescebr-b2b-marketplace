@@ -76,7 +76,8 @@ describe('RegisterPage', () => {
   it('should render the registration form with key fields', async () => {
     await renderPage();
 
-    expect(screen.getByText('CresceBR')).toBeInTheDocument();
+    // "BR" is an inline BrazilFlag SVG, so the brand renders as "Cresce <flag>".
+    expect(screen.getByRole('heading', { name: /Cresce/i, level: 1 })).toBeInTheDocument();
     expect(screen.getByText('Cadastro Empresarial - B2B')).toBeInTheDocument();
     expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
     expect(screen.getByLabelText('Senha *')).toBeInTheDocument();

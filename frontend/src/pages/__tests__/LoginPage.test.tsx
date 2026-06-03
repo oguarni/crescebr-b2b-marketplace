@@ -52,7 +52,7 @@ describe('LoginPage', () => {
 
   it('should render the login form', async () => {
     await renderPage();
-    expect(screen.getByText('CresceBR')).toBeInTheDocument();
+    expect(screen.getByAltText('CresceBR')).toBeInTheDocument();
     expect(screen.getByText('Faça login em sua conta')).toBeInTheDocument();
     expect(screen.getByLabelText(/CNPJ/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Senha/)).toBeInTheDocument();

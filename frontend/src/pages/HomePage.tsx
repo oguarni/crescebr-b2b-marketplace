@@ -321,7 +321,7 @@ const HomePage: React.FC = () => {
                 pl: 5,
                 pr: 2,
                 fontSize: '0.875rem',
-                '&.Mui-focused': { boxShadow: 'inset 0 0 0 2px #1E3A8A' },
+                '&.Mui-focused': { boxShadow: 'inset 0 0 0 2px #0446B7' },
               }}
             />
           </Box>

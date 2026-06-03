@@ -33,6 +33,7 @@ import { SelectChangeEvent } from '@mui/material/Select';
 import { useAuth } from '../contexts/AuthContext';
 import { useT } from '../contexts/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import BrazilFlag from '../components/BrazilFlag';
 import { viaCepService } from '../services/viaCepService';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 import toast from 'react-hot-toast';
@@ -284,7 +285,8 @@ const RegisterPage: React.FC = () => {
             <LanguageSwitcher />
           </Box>
           <Typography component='h1' variant='h4' gutterBottom>
-            CresceBR
+            Cresce
+            <BrazilFlag size='0.7em' />
           </Typography>
           <Typography component='h2' variant='h6' color='text.secondary' gutterBottom>
             {t('register.subtitle')}
