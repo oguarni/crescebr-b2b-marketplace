@@ -29,7 +29,7 @@ describe('Product Validators', () => {
     it('should pass with all optional fields included', async () => {
       const result = await runValidators(productValidation, {
         ...validBody,
-        specifications: 'Weight: 500g, Material: Steel',
+        specifications: { Weight: '500g', Material: 'Steel' },
         minimumOrderQuantity: 10,
       });
       expect(result.isEmpty()).toBe(true);
@@ -195,15 +195,15 @@ describe('Product Validators', () => {
       expect(result.isEmpty()).toBe(true);
     });
 
-    it('should pass with valid string specifications', async () => {
+    it('should pass with valid object specifications', async () => {
       const result = await runValidators(productValidation, {
         ...validBody,
-        specifications: 'Size: Large, Color: Blue',
+        specifications: { Size: 'Large', Color: 'Blue' },
       });
       expect(result.isEmpty()).toBe(true);
     });
 
-    it('should fail with non-string specifications', async () => {
+    it('should fail with non-object specifications', async () => {
       const result = await runValidators(productValidation, {
         ...validBody,
         specifications: 12345,
@@ -211,7 +211,70 @@ describe('Product Validators', () => {
       expect(result.isEmpty()).toBe(false);
       const errors = result.array();
       const specError = errors.find(e => (e as FieldValidationError).path === 'specifications');
-      expect(specError?.msg).toBe('Specifications must be a string');
+      expect(specError?.msg).toBe('Specifications must be an object');
+    });
+
+    // Field-length caps (DoS / oversized-input mitigation)
+    it('should fail when name exceeds the max length', async () => {
+      const result = await runValidators(productValidation, {
+        ...validBody,
+        name: 'x'.repeat(201),
+      });
+      expect(result.isEmpty()).toBe(false);
+      const err = result.array().find(e => (e as FieldValidationError).path === 'name');
+      expect(err?.msg).toBe('Product name must be at most 200 characters');
+    });
+
+    it('should fail when description exceeds the max length', async () => {
+      const result = await runValidators(productValidation, {
+        ...validBody,
+        description: 'x'.repeat(5001),
+      });
+      expect(result.isEmpty()).toBe(false);
+      const err = result.array().find(e => (e as FieldValidationError).path === 'description');
+      expect(err?.msg).toBe('Product description must be at most 5000 characters');
+    });
+
+    it('should fail when category exceeds the max length', async () => {
+      const result = await runValidators(productValidation, {
+        ...validBody,
+        category: 'x'.repeat(81),
+      });
+      expect(result.isEmpty()).toBe(false);
+      const err = result.array().find(e => (e as FieldValidationError).path === 'category');
+      expect(err?.msg).toBe('Category must be at most 80 characters');
+    });
+
+    it('should fail when specifications has too many entries', async () => {
+      const tooMany: Record<string, string> = {};
+      for (let i = 0; i < 51; i++) tooMany[`k${i}`] = 'v';
+      const result = await runValidators(productValidation, {
+        ...validBody,
+        specifications: tooMany,
+      });
+      expect(result.isEmpty()).toBe(false);
+      const err = result.array().find(e => (e as FieldValidationError).path === 'specifications');
+      expect(err?.msg).toBe('Specifications cannot have more than 50 entries');
+    });
+
+    it('should fail when a specification value is too long', async () => {
+      const result = await runValidators(productValidation, {
+        ...validBody,
+        specifications: { Material: 'x'.repeat(501) },
+      });
+      expect(result.isEmpty()).toBe(false);
+      const err = result.array().find(e => (e as FieldValidationError).path === 'specifications');
+      expect(err?.msg).toBe('Specification "Material" value is too long');
+    });
+
+    it('should fail when tierPricing exceeds the max number of tiers', async () => {
+      const result = await runValidators(productValidation, {
+        ...validBody,
+        tierPricing: new Array(51).fill({ minQuantity: 1, price: 1 }),
+      });
+      expect(result.isEmpty()).toBe(false);
+      const err = result.array().find(e => (e as FieldValidationError).path === 'tierPricing');
+      expect(err?.msg).toBe('Tier pricing must be an array of at most 50 tiers');
     });
 
     // minimumOrderQuantity validation (optional)

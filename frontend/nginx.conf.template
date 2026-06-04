@@ -9,6 +9,11 @@ server {
     # Needed to resolve the backend Cloud Run hostname at request time.
     resolver 8.8.8.8 8.8.4.4 valid=30s;
 
+    # HSTS: the site is HTTPS-only (Cloud Run / managed cert), so instruct
+    # browsers to refuse plain HTTP for a year. No `preload` yet — that is a
+    # one-way commitment and should only be added once the apex + all
+    # subdomains are confirmed HTTPS.
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Frame-Options "DENY" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
@@ -45,15 +50,22 @@ server {
     location ~* \.(?:js|css|woff2?|ttf|eot|otf|svg|jpg|jpeg|gif|png|ico|webp|avif)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header X-Content-Type-Options "nosniff" always;
         access_log off;
         try_files $uri =404;
     }
 
     location = /index.html {
+        # nginx resets inherited add_header directives when a location defines
+        # its own, so the full security-header set must be repeated here or the
+        # HTML document would ship without HSTS/Referrer-Policy/Permissions-Policy.
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header X-Frame-Options "DENY" always;
         add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
     }
 
     location / {

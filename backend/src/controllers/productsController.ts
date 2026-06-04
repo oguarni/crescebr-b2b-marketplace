@@ -101,7 +101,15 @@ export const importProductsFromCSV = asyncHandler(
           cb(new Error('Only CSV files are allowed'), false);
         }
       },
-      limits: { fileSize: 10 * 1024 * 1024 },
+      // Bound not just file size but also the number of files/fields and the
+      // size of any non-file form fields, so a single request cannot exhaust
+      // memory or smuggle extra uploads past the single-file expectation.
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10 MB
+        files: 1,
+        fields: 10,
+        fieldSize: 1024 * 100, // 100 KB per text field (e.g. batchSize)
+      },
     }).single('csvFile');
 
     upload(req, res, async (err: Error) => {

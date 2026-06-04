@@ -8,9 +8,12 @@ export const verifyCompanyValidation = [
     .withMessage('Status must be "approved" or "rejected"'),
   body('reason')
     .optional({ values: 'falsy' })
-    .trim()
     .isString()
-    .withMessage('Reason must be a string'),
+    .withMessage('Reason must be a string')
+    .trim()
+    .escape()
+    .isLength({ max: 1000 })
+    .withMessage('Reason must be at most 1000 characters'),
   body('validateCNPJ').optional().isBoolean().withMessage('validateCNPJ must be a boolean'),
 ];
 
@@ -22,9 +25,12 @@ export const updateCompanyStatusValidation = [
     .withMessage('Status must be "approved" or "rejected"'),
   body('reason')
     .optional({ values: 'falsy' })
-    .trim()
     .isString()
-    .withMessage('Reason must be a string'),
+    .withMessage('Reason must be a string')
+    .trim()
+    .escape()
+    .isLength({ max: 1000 })
+    .withMessage('Reason must be at most 1000 characters'),
 ];
 
 /** PUT /admin/products/:productId/moderate */
