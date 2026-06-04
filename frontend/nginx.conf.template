@@ -18,6 +18,11 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    # Auto-upgrade any legacy http:// subresource (e.g. a supplier-supplied
+    # product image URL) to https:// before it is fetched. Without this, a single
+    # http:// image on an authenticated page downgrades the whole page to mixed
+    # content and the browser shows "Not secure" even though the cert is valid.
+    add_header Content-Security-Policy "upgrade-insecure-requests" always;
 
     gzip on;
     gzip_vary on;
@@ -66,6 +71,7 @@ server {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+        add_header Content-Security-Policy "upgrade-insecure-requests" always;
     }
 
     location / {
