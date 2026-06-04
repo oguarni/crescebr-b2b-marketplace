@@ -12,10 +12,12 @@ export const updateQuotationValidation = [
     .withMessage('Invalid status'),
   body('adminNotes')
     .optional()
+    .isString()
+    .withMessage('Admin notes must be a string')
     .trim()
     .escape()
-    .isString()
-    .withMessage('Admin notes must be a string'),
+    .isLength({ max: 2000 })
+    .withMessage('Admin notes must be at most 2000 characters'),
 ];
 
 export const calculateQuoteValidation = [
@@ -24,16 +26,20 @@ export const calculateQuoteValidation = [
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
   body('buyerLocation')
     .optional()
+    .isString()
+    .withMessage('Buyer location must be a string')
     .trim()
     .escape()
-    .isString()
-    .withMessage('Buyer location must be a string'),
+    .isLength({ max: 120 })
+    .withMessage('Buyer location is too long'),
   body('supplierLocation')
     .optional()
+    .isString()
+    .withMessage('Supplier location must be a string')
     .trim()
     .escape()
-    .isString()
-    .withMessage('Supplier location must be a string'),
+    .isLength({ max: 120 })
+    .withMessage('Supplier location is too long'),
   body('shippingMethod')
     .optional()
     .isIn(['standard', 'express', 'economy'])
@@ -45,10 +51,12 @@ export const compareSupplierQuotesValidation = [
   body('quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
   body('buyerLocation')
     .optional()
+    .isString()
+    .withMessage('Buyer location must be a string')
     .trim()
     .escape()
-    .isString()
-    .withMessage('Buyer location must be a string'),
+    .isLength({ max: 120 })
+    .withMessage('Buyer location is too long'),
   body('supplierIds').optional().isArray().withMessage('Supplier IDs must be an array'),
   body('shippingMethod')
     .optional()

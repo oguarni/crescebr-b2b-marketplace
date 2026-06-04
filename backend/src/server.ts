@@ -35,8 +35,12 @@ app.use(
   })
 );
 app.use(morgan('combined'));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+// Body-size caps bound request payloads to mitigate memory-exhaustion abuse.
+// CSV uploads go through multer (multipart) with its own file-size limit, so
+// the JSON parser does not need to be large. urlencoded uses `extended: false`
+// (flat keys only) plus a low parameter cap to limit parameter-pollution.
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '100kb', parameterLimit: 1000 }));
 
 // API Routes
 app.use(API_PREFIX, routes);
