@@ -1,0 +1,5 @@
+# Intentionally empty. All routes are served by the crescebr-frontend Cloud Run
+# service via the Firebase Hosting rewrite (see firebase.json). Keeping this
+# directory empty ensures every request reaches nginx (which owns the security
+# headers, caching, SPA fallback and /api/v1 proxy) instead of being served
+# as a static file by Firebase.
