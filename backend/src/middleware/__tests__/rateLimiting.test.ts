@@ -24,6 +24,7 @@ jest.mock('../../config/redis', () => ({
 const createMockReq = (overrides: Partial<Request> = {}): Request => {
   return {
     ip: '127.0.0.1',
+    headers: {},
     connection: { remoteAddress: '127.0.0.1' },
     user: undefined,
     ...overrides,
@@ -77,6 +78,7 @@ import {
   createCustomRateLimit,
   progressiveRateLimit,
   rateLimiter,
+  getClientIp,
 } from '../rateLimiting';
 
 describe('Rate Limiting Middleware', () => {
@@ -101,6 +103,44 @@ describe('Rate Limiting Middleware', () => {
 
   afterAll(() => {
     rateLimiter.destroy();
+  });
+
+  // ---------------------------------------------------------------
+  // getClientIp — resolves the originating client IP for rate-limit keys
+  // ---------------------------------------------------------------
+  describe('getClientIp', () => {
+    it('prefers the left-most X-Forwarded-For entry over req.ip', () => {
+      const req = createMockReq({
+        ip: '10.0.0.1',
+        headers: { 'x-forwarded-for': '203.0.113.7, 70.41.3.18, 150.172.238.178' },
+      });
+      expect(getClientIp(req)).toBe('203.0.113.7');
+    });
+
+    it('handles X-Forwarded-For provided as an array', () => {
+      const req = createMockReq({
+        ip: '10.0.0.1',
+        headers: { 'x-forwarded-for': ['203.0.113.9', '70.41.3.18'] },
+      });
+      expect(getClientIp(req)).toBe('203.0.113.9');
+    });
+
+    it('falls back to req.ip when no X-Forwarded-For header is present', () => {
+      expect(getClientIp(createMockReq({ ip: '198.51.100.5' }))).toBe('198.51.100.5');
+    });
+
+    it('falls back to socket.remoteAddress when req.ip is missing', () => {
+      const req = createMockReq({ ip: undefined });
+      (req as any).socket = { remoteAddress: '192.0.2.44' };
+      expect(getClientIp(req)).toBe('192.0.2.44');
+    });
+
+    it("returns 'unknown' when no IP source is available", () => {
+      const req = createMockReq({ ip: undefined });
+      (req as any).socket = undefined;
+      (req as any).connection = undefined;
+      expect(getClientIp(req)).toBe('unknown');
+    });
   });
 
   // ---------------------------------------------------------------

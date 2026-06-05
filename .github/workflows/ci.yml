@@ -48,6 +48,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # `.npmrc` sets `ignore-scripts=true` (supply-chain hardening), which skips
+      # sqlite3's native build during `npm ci`. The backend test suite uses an
+      # in-memory SQLite database via Sequelize, so rebuild just that one native
+      # module with scripts enabled.
+      - name: Build sqlite3 native binding
+        run: npm rebuild sqlite3 --foreground-scripts --ignore-scripts=false
+
       - name: Build shared types
         run: npm run shared:build
 
