@@ -52,7 +52,7 @@
   "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "https://github.com/crescebr/b2b-marketplace.git"
+    "url": "https://github.com/oguarni/crescebr-b2b-marketplace.git"
   },
   "engines": {
     "node": ">=20.0.0",
