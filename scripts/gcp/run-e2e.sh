@@ -20,6 +20,18 @@ fi
 echo "==> Making sure PostgreSQL is up"
 sudo service postgresql start || true
 
+# Reset the database to a clean state so migrate + seed are deterministic.
+# The seeder (20240101000001-initial-data) is a plain bulkInsert with no
+# conflict handling, so re-running it against a populated DB fails on the
+# unique email constraint. Dropping the DB each run keeps E2E repeatable.
+# WITH (FORCE) (PostgreSQL 13+) drops even if a stale connection lingers.
+DB_NAME="${DB_NAME:-crescebr}"
+echo "==> Resetting the '$DB_NAME' database for a clean run"
+sudo -u postgres psql -v ON_ERROR_STOP=1 <<SQL
+DROP DATABASE IF EXISTS ${DB_NAME} WITH (FORCE);
+CREATE DATABASE ${DB_NAME};
+SQL
+
 echo "==> Installing workspace dependencies (frontend/backend/shared)"
 npm run setup
 

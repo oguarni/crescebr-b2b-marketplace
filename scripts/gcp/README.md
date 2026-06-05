@@ -13,6 +13,22 @@ You drive it from Windows PowerShell with `gcloud`; the heavy work is in the clo
 
 ---
 
+## TL;DR — one command (recommended)
+
+Once the VM exists and is provisioned (steps 1–3 below, one time), every test run
+is a single command. It starts the VM, syncs the branch, runs the suite, pulls the
+report, and **always stops the VM afterwards** (even if tests fail or you Ctrl-C):
+
+```powershell
+.\scripts\gcp\run-e2e-cloud.ps1                 # tests your current branch
+.\scripts\gcp\run-e2e-cloud.ps1 -Branch main    # tests a specific branch
+.\scripts\gcp\run-e2e-cloud.ps1 -KeepUp         # don't auto-stop (re-run / manual testing)
+```
+
+The manual step-by-step below is still here for first-time setup and debugging.
+
+---
+
 ## 1. Create the VM
 
 ```powershell
