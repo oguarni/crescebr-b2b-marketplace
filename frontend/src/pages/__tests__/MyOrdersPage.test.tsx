@@ -399,7 +399,7 @@ describe('MyOrdersPage', () => {
     });
   });
 
-  it('shows access denied for non-customer users', async () => {
+  it('allows suppliers to view their own orders (acting as buyers)', async () => {
     const authModule = await import('../../contexts/AuthContext');
     vi.spyOn(authModule, 'useAuth').mockReturnValue({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -410,10 +410,11 @@ describe('MyOrdersPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Acesso negado. Apenas clientes podem visualizar pedidos.')
-      ).toBeInTheDocument();
+      expect(screen.getByText('Meus Pedidos')).toBeInTheDocument();
     });
+    expect(
+      screen.queryByText('Acesso negado. Apenas clientes podem visualizar pedidos.')
+    ).not.toBeInTheDocument();
   });
 
   // Loading spinner test runs LAST to avoid contaminating other tests

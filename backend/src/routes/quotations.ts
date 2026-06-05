@@ -27,15 +27,11 @@ const router = Router();
 // All quotation routes require authentication and general rate limiting
 router.use(authenticateJWT, generalRateLimit);
 
-// Customer routes - only customers can create and view their quotations
-router.post(
-  '/',
-  requireRole('customer'),
-  createQuotationValidation,
-  handleValidationErrors,
-  createQuotation
-);
-router.get('/', requireRole('customer'), getCustomerQuotations);
+// Buyer routes - any authenticated company can act as a buyer (request and
+// view its own quotations). Results are scoped to the caller's company id in
+// the service layer, so suppliers only ever see the quotations they requested.
+router.post('/', createQuotationValidation, handleValidationErrors, createQuotation);
+router.get('/', getCustomerQuotations);
 
 // Supplier routes - suppliers can view quotations that include their products.
 // Declared before '/:id' so the literal path is not captured as an id param.

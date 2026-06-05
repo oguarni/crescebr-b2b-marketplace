@@ -255,7 +255,7 @@ describe('HomePage', () => {
     expect(screen.getAllByText('Safety Equipment')[0]).toBeInTheDocument();
   });
 
-  it('should call addItem when add to cart button is clicked for supplier', async () => {
+  it('should add to quotation request for supplier (acting as buyer)', async () => {
     const user = userEvent.setup();
     await renderHomePage();
 
@@ -263,14 +263,18 @@ describe('HomePage', () => {
       expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
     });
 
-    // The add to cart buttons are IconButtons with AddShoppingCart icon
+    // Suppliers act as buyers, so the add button routes to the quotation request
     const addButtons = screen.getAllByRole('button').filter(btn => {
-      return btn.querySelector('[data-testid="AddShoppingCartIcon"]');
+      return (
+        btn.querySelector('[data-testid="AddShoppingCartIcon"]') ||
+        btn.querySelector('[data-testid="RequestQuoteOutlinedIcon"]')
+      );
     });
 
     if (addButtons.length > 0) {
       await user.click(addButtons[0]);
-      expect(mockAddItem).toHaveBeenCalledWith(mockProducts[0]);
+      expect(mockAddToQuotationRequest).toHaveBeenCalledWith(mockProducts[0]);
+      expect(mockAddItem).not.toHaveBeenCalled();
     }
   });
 

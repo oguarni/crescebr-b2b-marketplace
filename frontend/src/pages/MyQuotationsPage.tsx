@@ -12,7 +12,6 @@ import {
   Avatar,
   Divider,
   CircularProgress,
-  Alert,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -24,13 +23,11 @@ import {
   ShoppingCart,
 } from '@mui/icons-material';
 import { ordersService } from '../services/ordersService';
-import { useAuth } from '../contexts/AuthContext';
 import { useQuotations } from '../hooks';
 import toast from 'react-hot-toast';
 
 const MyQuotationsPage: React.FC = () => {
   const [creatingOrder, setCreatingOrder] = useState<number | null>(null);
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { quotations, loading, error: quotationsError } = useQuotations();
 
@@ -107,21 +104,6 @@ const MyQuotationsPage: React.FC = () => {
       setCreatingOrder(null);
     }
   };
-
-  if (user?.role !== 'customer') {
-    return (
-      <Container maxWidth='md'>
-        <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Alert severity='error' sx={{ mb: 4 }}>
-            Acesso negado. Apenas clientes podem visualizar cotações.
-          </Alert>
-          <Button variant='contained' component={Link} to='/' startIcon={<ArrowBack />}>
-            Voltar ao Início
-          </Button>
-        </Box>
-      </Container>
-    );
-  }
 
   if (loading) {
     return (

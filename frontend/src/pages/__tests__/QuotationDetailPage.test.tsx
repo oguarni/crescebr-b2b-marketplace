@@ -45,6 +45,7 @@ vi.mock('react-router-dom', async importOriginal => {
 
 const mockQuotation = {
   id: 42,
+  companyId: 1,
   status: 'processed',
   companyName: 'Supplier Corp',
   adminNotes: 'Approved',
@@ -177,6 +178,32 @@ describe('QuotationDetailPage', () => {
       renderPage();
 
       expect(screen.getByText(/Criar Pedido|Create Order|Gerar Pedido/i)).toBeInTheDocument();
+    });
+
+    it('shows "Create Order" for a supplier that owns the quotation (acting as buyer)', () => {
+      mockUseAuth.mockReturnValue({ user: { id: 1, role: 'supplier' } });
+      mockUseQuotation.mockReturnValue({
+        quotation: { ...mockQuotation, companyId: 1, status: 'processed' },
+        loading: false,
+        error: null,
+      });
+
+      renderPage();
+
+      expect(screen.getByText(/Criar Pedido|Create Order|Gerar Pedido/i)).toBeInTheDocument();
+    });
+
+    it('does not show "Create Order" for a supplier viewing another company\'s quotation', () => {
+      mockUseAuth.mockReturnValue({ user: { id: 10, role: 'supplier' } });
+      mockUseQuotation.mockReturnValue({
+        quotation: { ...mockQuotation, companyId: 1, status: 'processed' },
+        loading: false,
+        error: null,
+      });
+
+      renderPage();
+
+      expect(screen.queryByText(/Criar Pedido|Create Order/i)).not.toBeInTheDocument();
     });
 
     it('does not show "Create Order" for customer with pending quotation', () => {

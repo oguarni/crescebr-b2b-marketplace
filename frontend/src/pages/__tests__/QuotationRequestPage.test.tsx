@@ -310,7 +310,7 @@ describe('QuotationRequestPage', () => {
       expect(screen.getByRole('button', { name: /solicitar cotação/i })).toBeDisabled();
     });
 
-    it('should show role warning for non-customer users', () => {
+    it('should let suppliers submit quotation requests (acting as buyers)', () => {
       mockAuthContext.isAuthenticated = true;
       mockAuthContext.user = {
         id: 1,
@@ -324,7 +324,29 @@ describe('QuotationRequestPage', () => {
 
       renderQuotationRequestPage();
 
-      expect(screen.getByText('Apenas clientes podem solicitar cotações')).toBeInTheDocument();
+      expect(
+        screen.queryByText('Apenas empresas compradoras podem solicitar cotações')
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /solicitar cotação/i })).toBeEnabled();
+    });
+
+    it('should show role warning for admin users', () => {
+      mockAuthContext.isAuthenticated = true;
+      mockAuthContext.user = {
+        id: 1,
+        email: 'admin@test.com',
+        role: 'admin',
+        companyName: 'Test Admin',
+        status: 'approved',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as unknown as User;
+
+      renderQuotationRequestPage();
+
+      expect(
+        screen.getByText('Apenas empresas compradoras podem solicitar cotações')
+      ).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /solicitar cotação/i })).toBeDisabled();
     });
 
@@ -472,7 +494,24 @@ describe('QuotationRequestPage', () => {
       });
     });
 
-    it('should disable submit button for non-customer users', async () => {
+    it('should disable submit button for non-buyer users (admin)', async () => {
+      mockAuthContext.user = {
+        id: 1,
+        email: 'admin@test.com',
+        role: 'admin',
+        companyName: 'Test Admin',
+        status: 'approved',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as unknown as User;
+
+      renderQuotationRequestPage();
+
+      const submitButton = screen.getByRole('button', { name: /solicitar cotação/i });
+      expect(submitButton).toBeDisabled();
+    });
+
+    it('should enable submit button for suppliers (acting as buyers)', async () => {
       mockAuthContext.user = {
         id: 1,
         email: 'supplier@test.com',
@@ -486,7 +525,7 @@ describe('QuotationRequestPage', () => {
       renderQuotationRequestPage();
 
       const submitButton = screen.getByRole('button', { name: /solicitar cotação/i });
-      expect(submitButton).toBeDisabled();
+      expect(submitButton).toBeEnabled();
     });
   });
 

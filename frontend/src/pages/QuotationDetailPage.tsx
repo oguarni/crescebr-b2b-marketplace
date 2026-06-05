@@ -52,14 +52,17 @@ const QuotationDetailPage: React.FC = () => {
   };
 
   const isAdmin = user?.role === 'admin';
-  const isCustomer = user?.role === 'customer';
   const isSupplier = user?.role === 'supplier';
-  const canCreateOrder = isCustomer && quotation?.status === 'processed';
+  // The buyer who requested the quotation owns it, regardless of their role.
+  const isOwner = !!quotation && quotation.companyId === user?.id;
+  const canCreateOrder = isOwner && quotation?.status === 'processed';
 
-  // Send each role back to a list page it is actually allowed to access.
+  // Send each role back to a list page it is actually allowed to access. A
+  // supplier viewing its own purchase came from the buyer list; a supplier
+  // viewing a quotation for its products came from the supplier list.
   const backTo = isAdmin
     ? '/admin/quotations'
-    : isSupplier
+    : isSupplier && !isOwner
       ? '/supplier/quotations'
       : '/my-quotations';
 

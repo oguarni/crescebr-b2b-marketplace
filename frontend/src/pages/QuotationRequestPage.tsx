@@ -104,8 +104,8 @@ const QuotationRequestPage: React.FC = () => {
       return;
     }
 
-    if (user?.role !== 'customer') {
-      toast.error('Apenas clientes podem solicitar cotações');
+    if (user?.role !== 'customer' && user?.role !== 'supplier') {
+      toast.error('Apenas empresas compradoras podem solicitar cotações');
       return;
     }
 
@@ -455,9 +455,9 @@ const QuotationRequestPage: React.FC = () => {
                 </Alert>
               )}
 
-              {isAuthenticated && user?.role !== 'customer' && (
+              {isAuthenticated && user?.role !== 'customer' && user?.role !== 'supplier' && (
                 <Alert severity='warning' sx={{ mb: 2 }}>
-                  Apenas clientes podem solicitar cotações
+                  Apenas empresas compradoras podem solicitar cotações
                 </Alert>
               )}
 
@@ -467,7 +467,11 @@ const QuotationRequestPage: React.FC = () => {
                 size='large'
                 startIcon={isSubmitting ? <CircularProgress size={20} color='inherit' /> : <Send />}
                 onClick={handleSubmitQuotationRequest}
-                disabled={isSubmitting || !isAuthenticated || user?.role !== 'customer'}
+                disabled={
+                  isSubmitting ||
+                  !isAuthenticated ||
+                  (user?.role !== 'customer' && user?.role !== 'supplier')
+                }
               >
                 {isSubmitting ? 'Enviando...' : 'Solicitar Cotação'}
               </Button>

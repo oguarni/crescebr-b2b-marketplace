@@ -55,7 +55,7 @@ const App: React.FC = () => {
                   <Route
                     path='my-quotations'
                     element={
-                      <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                      <ProtectedRoute allowedRoles={['customer', 'supplier', 'admin']}>
                         <MyQuotationsPage />
                       </ProtectedRoute>
                     }
@@ -63,7 +63,7 @@ const App: React.FC = () => {
                   <Route
                     path='quote-comparison'
                     element={
-                      <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                      <ProtectedRoute allowedRoles={['customer', 'supplier', 'admin']}>
                         <QuoteComparisonPage />
                       </ProtectedRoute>
                     }
@@ -71,7 +71,7 @@ const App: React.FC = () => {
                   <Route
                     path='my-orders'
                     element={
-                      <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                      <ProtectedRoute allowedRoles={['customer', 'supplier', 'admin']}>
                         <MyOrdersPage />
                       </ProtectedRoute>
                     }

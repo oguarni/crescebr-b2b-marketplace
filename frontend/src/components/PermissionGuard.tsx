@@ -80,6 +80,17 @@ export const CustomerOnly: React.FC<{ children: React.ReactNode; fallback?: Reac
   </PermissionGuard>
 );
 
+// Any company that can act as a buyer (customers and suppliers purchasing from
+// other suppliers). Use for buyer-facing actions like requesting quotations.
+export const BuyerOnly: React.FC<{ children: React.ReactNode; fallback?: React.ReactNode }> = ({
+  children,
+  fallback,
+}) => (
+  <PermissionGuard allowedRoles={['customer', 'supplier']} fallback={fallback}>
+    {children}
+  </PermissionGuard>
+);
+
 export const ApprovedSupplierOnly: React.FC<{
   children: React.ReactNode;
   fallback?: React.ReactNode;

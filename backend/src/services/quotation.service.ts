@@ -65,13 +65,15 @@ class QuotationService {
       throw new Error('Quotation not found');
     }
 
-    // Access control
-    if (userRole === 'customer' && quotation.companyId !== userId) {
-      throw new Error('Access denied');
-    }
+    // Access control. Admins see everything. Otherwise a user may view a
+    // quotation when either:
+    //  - they own it (they requested it as a buyer), or
+    //  - they are a supplier and it includes at least one of their products.
+    const isOwner = quotation.companyId === userId;
+    const isRelatedSupplier =
+      userRole === 'supplier' && this.containsSupplierProduct(quotation, userId);
 
-    // Suppliers may only access quotations that include at least one of their products
-    if (userRole === 'supplier' && !this.containsSupplierProduct(quotation, userId)) {
+    if (userRole !== 'admin' && !isOwner && !isRelatedSupplier) {
       throw new Error('Access denied');
     }
 

@@ -215,14 +215,14 @@ describe('MyQuotationsPage', () => {
     });
   });
 
-  it('shows access denied for non-customer users', async () => {
+  it('allows suppliers to view their own quotations (acting as buyers)', async () => {
     mockUserRole = 'supplier';
     vi.mocked(quotationsService.getCustomerQuotations).mockResolvedValue([]);
 
     await renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/Apenas clientes podem visualizar cotações/)).toBeInTheDocument();
+      expect(screen.getByText('Nenhuma cotação encontrada')).toBeInTheDocument();
     });
   });
 

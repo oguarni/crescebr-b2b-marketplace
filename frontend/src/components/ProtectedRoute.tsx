@@ -155,7 +155,7 @@ export const usePermissions = () => {
   };
 
   const canRequestQuotes = (): boolean => {
-    return user?.role === 'customer' || user?.role === 'admin';
+    return user?.role === 'customer' || user?.role === 'supplier' || user?.role === 'admin';
   };
 
   return {

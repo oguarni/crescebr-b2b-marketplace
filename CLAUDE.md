@@ -223,6 +223,7 @@ After completing any refactoring task:
 - Docker security: `USER node` in backend Dockerfile; DB/Redis ports bound to `127.0.0.1` — fixed (2026-04-04)
 - Test credentials visible in LoginPage UI — wrapped in `import.meta.env.DEV` (2026-04-04)
 - Supplier RBAC: suppliers blocked from quotations (they hit the admin-only `GET /quotations/admin/all`, and the Supplier Dashboard failed with "Access denied"). Added supplier-scoped `GET /quotations/supplier` (server-side filtered to the supplier's products), made `PUT /quotations/supplier/:id` ownership-checked, scoped `getById` for suppliers, fixed the dashboard's broken detail/order navigation, and added the `supplier/quotations/:id` route — fixed (2026-05-29)
+- Buyer access for suppliers: a supplier-role account got "Acesso negado ... Roles permitidos: customer, admin" on `/my-quotations` because buyer routes/pages were hardcoded to `customer`. Product rule is now **any authenticated company can act as a buyer** (the "both" use case). Opened `POST/GET /quotations` to any authenticated user (scoped to the caller's `companyId`); `quotation.service.getById` now allows the owner regardless of role. Frontend buyer routes allow `['customer','supplier','admin']`, added a `BuyerOnly` guard, routed suppliers into the quotation-request flow, and keyed "Create Order" to ownership — fixed (2026-06-05)
 
 ### Open
 1. **Backend tests OOM**: `jest --runInBand` hits heap limit without `--max-old-space-size=4096` in `backend/package.json` test script (CI has it via `NODE_OPTIONS`)

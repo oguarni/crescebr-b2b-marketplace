@@ -51,7 +51,6 @@ import {
 } from '@mui/icons-material';
 import { Order } from '@shared/types';
 import { ordersService } from '../services/ordersService';
-import { useAuth } from '../contexts/AuthContext';
 import { useOrders } from '../hooks';
 import toast from 'react-hot-toast';
 
@@ -73,7 +72,6 @@ const MyOrdersPage: React.FC = () => {
   const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
   const [timelineLoading, setTimelineLoading] = useState(false);
 
-  const { user } = useAuth();
   const navigate = useNavigate();
   const {
     orders,
@@ -135,21 +133,6 @@ const MyOrdersPage: React.FC = () => {
     const color = ordersService.getStatusColor(status);
     return color === 'default' ? 'grey' : color;
   };
-
-  if (user?.role !== 'customer') {
-    return (
-      <Container maxWidth='md'>
-        <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Alert severity='error' sx={{ mb: 4 }}>
-            Acesso negado. Apenas clientes podem visualizar pedidos.
-          </Alert>
-          <Button variant='contained' onClick={() => navigate('/')}>
-            Voltar ao Início
-          </Button>
-        </Box>
-      </Container>
-    );
-  }
 
   return (
     <Container maxWidth='lg'>

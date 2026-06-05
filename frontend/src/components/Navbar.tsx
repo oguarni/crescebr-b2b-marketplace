@@ -32,7 +32,12 @@ import { useQuotationRequest } from '../contexts/QuotationContext';
 import { useT } from '../contexts/LanguageContext';
 import LanguageSwitcher from './LanguageSwitcher';
 
-import { AdminOnly, SupplierOnly, CustomerOnly, ApprovedSupplierOnly } from './PermissionGuard';
+import {
+  AdminOnly,
+  SupplierOnly,
+  BuyerOnly,
+  ApprovedSupplierOnly,
+} from './PermissionGuard';
 import toast from 'react-hot-toast';
 
 const Navbar: React.FC = () => {
@@ -117,7 +122,7 @@ const Navbar: React.FC = () => {
           <LanguageSwitcher />
 
           {/* Dynamic Action Buttons Based on Permissions */}
-          <CustomerOnly>
+          <BuyerOnly>
             <IconButton
               color='inherit'
               onClick={() => navigate('/quotation-request')}
@@ -127,7 +132,7 @@ const Navbar: React.FC = () => {
                 <RequestQuote />
               </Badge>
             </IconButton>
-          </CustomerOnly>
+          </BuyerOnly>
 
           <AdminOnly>
             <IconButton color='inherit' onClick={toggleCart} aria-label='shopping cart'>
@@ -197,8 +202,8 @@ const Navbar: React.FC = () => {
 
                 <Divider />
 
-                {/* Customer Menu Items */}
-                <CustomerOnly>
+                {/* Buyer Menu Items (customers and suppliers acting as buyers) */}
+                <BuyerOnly>
                   <MenuItem onClick={handleMyQuotations}>
                     <Assignment sx={{ mr: 1 }} />
                     {t('nav.myQuotations')}
@@ -211,7 +216,7 @@ const Navbar: React.FC = () => {
                     <Compare sx={{ mr: 1 }} />
                     {t('nav.comparePrices')}
                   </MenuItem>
-                </CustomerOnly>
+                </BuyerOnly>
 
                 {/* Supplier Menu Items */}
                 <SupplierOnly>

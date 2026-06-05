@@ -574,10 +574,10 @@ describe('usePermissions hook', () => {
     expect(result.current.canRequestQuotes()).toBe(true);
   });
 
-  it('canRequestQuotes returns false for supplier', () => {
+  it('canRequestQuotes returns true for supplier (acting as buyer)', () => {
     mockUseAuth.mockReturnValue(makeAuthReturn('supplier'));
     const { result } = renderHook(() => usePermissions());
-    expect(result.current.canRequestQuotes()).toBe(false);
+    expect(result.current.canRequestQuotes()).toBe(true);
   });
 
   it('exposes user from auth context', () => {

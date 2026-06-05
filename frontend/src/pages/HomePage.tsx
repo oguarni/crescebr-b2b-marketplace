@@ -204,7 +204,9 @@ const HomePage: React.FC = () => {
   };
 
   const handleAddToCart = (product: Product) => {
-    if (!isAuthenticated || user?.role === 'customer') {
+    // Buyers (customers and suppliers acting as buyers) request quotations;
+    // admins use the direct cart flow.
+    if (!isAuthenticated || user?.role === 'customer' || user?.role === 'supplier') {
       addToQuotationRequest(product);
     } else {
       addItem(product);
