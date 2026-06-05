@@ -24,6 +24,9 @@ jest.mock('../../config/redis', () => ({
 const createMockReq = (overrides: Partial<Request> = {}): Request => {
   return {
     ip: '127.0.0.1',
+    // getClientIp reads req.headers['x-forwarded-for'] first (Cloud Run proxy
+    // chain), so a headers object must always be present or key generation throws.
+    headers: {},
     connection: { remoteAddress: '127.0.0.1' },
     user: undefined,
     ...overrides,

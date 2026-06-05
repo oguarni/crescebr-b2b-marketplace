@@ -114,7 +114,9 @@ describe('SupplierDashboardPage', () => {
     await renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('CresceBR Supplier')).toBeInTheDocument();
+      // Header brand is "Cresce" + <BrazilFlag> + a nested "Supplier" span, so
+      // the supplier label is its own text node rather than "CresceBR Supplier".
+      expect(screen.getByText('Supplier')).toBeInTheDocument();
     });
   });
 
