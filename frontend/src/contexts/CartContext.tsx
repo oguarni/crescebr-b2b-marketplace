@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Product, CartItem } from '@shared/types';
 import toast from 'react-hot-toast';
+import { getOrderStep } from '../utils/orderQuantity';
 
 interface CartState {
   items: CartItem[];
@@ -35,6 +36,10 @@ const initialState: CartState = {
 const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
     case 'ADD_ITEM': {
+      // Quantities move in whole multiples of the product's minimum order
+      // quantity (MOQ). A new line starts at the MOQ and each repeat add bumps
+      // it by another MOQ, so a product with an MOQ of 10 goes 10 → 20 → 30.
+      const step = getOrderStep(action.payload);
       const existingItem = state.items.find(item => item.productId === action.payload.id);
       let newItems: CartItem[];
 
@@ -43,8 +48,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
           item.productId === action.payload.id
             ? {
                 ...item,
-                quantity: item.quantity + 1,
-                totalPrice: (item.quantity + 1) * action.payload.price,
+                quantity: item.quantity + step,
+                totalPrice: (item.quantity + step) * action.payload.price,
               }
             : item
         );
@@ -53,8 +58,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
           id: Date.now(), // Simple ID generation
           productId: action.payload.id,
           product: action.payload,
-          quantity: 1,
-          totalPrice: action.payload.price,
+          quantity: step,
+          totalPrice: step * action.payload.price,
         };
         newItems = [...state.items, newItem];
       }

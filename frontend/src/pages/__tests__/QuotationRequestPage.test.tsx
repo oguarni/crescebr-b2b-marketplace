@@ -292,6 +292,49 @@ describe('QuotationRequestPage', () => {
     });
   });
 
+  describe('Minimum order quantity stepping', () => {
+    beforeEach(() => {
+      // A product with an MOQ of 10, currently at 20 units, so stepping does not
+      // collide with the remove-at-zero behaviour.
+      mockQuotationContext.items = [
+        {
+          id: 1,
+          productId: 1,
+          product: { ...mockProducts[0], minimumOrderQuantity: 10 } as unknown as Product,
+          quantity: 20,
+          totalPrice: 30000,
+        },
+      ];
+      mockQuotationContext.totalItems = 20;
+    });
+
+    it('increases by the MOQ when clicking the plus button (20 -> 30)', async () => {
+      const user = userEvent.setup();
+      renderQuotationRequestPage();
+
+      const plusButtons = screen.getAllByLabelText(/add/i);
+      await user.click(plusButtons[0]);
+
+      expect(mockQuotationContext.updateQuantity).toHaveBeenCalledWith(1, 30);
+    });
+
+    it('decreases by the MOQ when clicking the minus button (20 -> 10)', async () => {
+      const user = userEvent.setup();
+      renderQuotationRequestPage();
+
+      const minusButtons = screen.getAllByLabelText(/remove/i);
+      await user.click(minusButtons[0]);
+
+      expect(mockQuotationContext.updateQuantity).toHaveBeenCalledWith(1, 10);
+    });
+
+    it('shows the minimum order quantity hint for the product', () => {
+      renderQuotationRequestPage();
+
+      expect(screen.getByText('Pedido mínimo: 10 unidades')).toBeInTheDocument();
+    });
+  });
+
   describe('Authentication and Authorization', () => {
     beforeEach(() => {
       mockQuotationContext.items = mockQuotationItems;

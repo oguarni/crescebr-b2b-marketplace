@@ -28,6 +28,7 @@ import {
   Business,
   Category,
   ArrowBack,
+  Construction,
 } from '@mui/icons-material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,6 +38,12 @@ import BrazilFlag from '../components/BrazilFlag';
 import { viaCepService } from '../services/viaCepService';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 import toast from 'react-hot-toast';
+
+// Self-service account creation is temporarily disabled while the onboarding /
+// company-verification flow is being rebuilt. Flip this back to `true` to
+// re-enable the registration form below. Typed as `boolean` on purpose so the
+// form code stays reachable for the type checker and linter.
+const REGISTRATION_ENABLED: boolean = false;
 
 const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -250,6 +257,69 @@ const RegisterPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Registration is under construction: show a notice instead of the form so
+  // visitors cannot attempt to create an account. Demo companies on the login
+  // page remain the way to explore the marketplace.
+  if (!REGISTRATION_ENABLED) {
+    return (
+      <Container component='main' maxWidth='sm'>
+        <Box
+          sx={{
+            marginTop: 8,
+            marginBottom: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <Paper
+            elevation={3}
+            sx={{
+              padding: 4,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              width: '100%',
+            }}
+          >
+            <Box
+              sx={{
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <Button onClick={handleBack} startIcon={<ArrowBack />} color='inherit' size='small'>
+                {t('common.back')}
+              </Button>
+              <LanguageSwitcher />
+            </Box>
+
+            <Typography component='h1' variant='h4' gutterBottom>
+              Cresce
+              <BrazilFlag size='0.7em' />
+            </Typography>
+
+            <Construction sx={{ fontSize: 72, color: 'primary.main', mt: 1, mb: 1 }} />
+
+            <Typography component='h2' variant='h5' align='center' gutterBottom>
+              {t('register.underConstruction.title')}
+            </Typography>
+
+            <Alert severity='info' sx={{ width: '100%', mt: 1, mb: 3 }}>
+              {t('register.underConstruction.message')}
+            </Alert>
+
+            <Button fullWidth variant='contained' size='large' onClick={() => navigate('/login')}>
+              {t('register.underConstruction.backToLogin')}
+            </Button>
+          </Paper>
+        </Box>
+      </Container>
+    );
+  }
 
   return (
     <Container component='main' maxWidth='md'>

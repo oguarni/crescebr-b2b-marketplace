@@ -61,7 +61,7 @@ vi.mock('../contexts/CartContext', () => ({
 
 // Mock useQuotationRequest hook
 const mockQuotationContext = {
-  items: [],
+  items: [] as Array<{ id: number; productId: number; quantity: number }>,
   totalItems: 0,
   totalPrice: 0,
   isOpen: false,
@@ -107,6 +107,8 @@ describe('Navbar', () => {
     vi.clearAllMocks();
     mockAuthContext.user = null;
     mockAuthContext.isAuthenticated = false;
+    mockQuotationContext.items = [];
+    mockQuotationContext.totalItems = 0;
   });
 
   it('renders CresceBR logo', () => {
@@ -114,10 +116,10 @@ describe('Navbar', () => {
     expect(screen.getByAltText('CresceBR')).toBeInTheDocument();
   });
 
-  it('shows login and register buttons when user is not authenticated', () => {
+  it('shows the login button but no register button (registration is under construction)', () => {
     renderNavbar();
     expect(screen.getByText('Entrar')).toBeInTheDocument();
-    expect(screen.getByText('Cadastrar')).toBeInTheDocument();
+    expect(screen.queryByText('Cadastrar')).not.toBeInTheDocument();
   });
 
   it('shows only the login button on mobile (register is hidden)', () => {
@@ -220,6 +222,23 @@ describe('Navbar', () => {
     renderNavbar();
 
     expect(screen.getByLabelText('quotation request')).toBeInTheDocument();
+  });
+
+  it('badge counts distinct line items, not total units', () => {
+    // Three distinct products with MOQ-stepped quantities (10 + 20 + 5 = 35
+    // units). The badge must show the line-item count (3), not the unit total.
+    mockQuotationContext.items = [
+      { id: 1, productId: 1, quantity: 10 },
+      { id: 2, productId: 2, quantity: 20 },
+      { id: 3, productId: 3, quantity: 5 },
+    ];
+    mockQuotationContext.totalItems = 35;
+
+    renderNavbar();
+
+    const quoteButton = screen.getByLabelText('quotation request');
+    expect(quoteButton).toHaveTextContent('3');
+    expect(quoteButton).not.toHaveTextContent('35');
   });
 
   it('navigates to my-quotations when menu item clicked', async () => {

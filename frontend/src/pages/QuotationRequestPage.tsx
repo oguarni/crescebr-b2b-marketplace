@@ -28,6 +28,7 @@ import { Remove, Add, Delete, Send, ArrowBack, Info, TrendingDown } from '@mui/i
 import { useQuotationRequest } from '../contexts/QuotationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { quotationsService } from '../services/quotationsService';
+import { getOrderStep } from '../utils/orderQuantity';
 import toast from 'react-hot-toast';
 
 interface QuoteCalculation {
@@ -193,152 +194,177 @@ const QuotationRequestPage: React.FC = () => {
                   </Tooltip>
                 )}
               </Box>
-              {items.map((item, index) => (
-                <React.Fragment key={item.id}>
-                  <Box sx={{ display: 'flex', py: 2, alignItems: 'center' }}>
-                    <Avatar
-                      src={item.product.imageUrl}
-                      alt={item.product.name}
-                      variant='rounded'
-                      sx={{ width: 80, height: 80, mr: 2 }}
-                      imgProps={{
-                        onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
-                          e.currentTarget.src =
-                            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik00MCAyNEw1NiA0MEg0OFY1NkgzMlY0MEgyNEw0MCAyNFoiIGZpbGw9IiM5MDkwOTAiLz4KPHN2Zz4K';
-                        },
-                      }}
-                    />
+              {items.map((item, index) => {
+                // Step the quantity in whole multiples of the product's MOQ.
+                const step = getOrderStep(item.product);
+                return (
+                  <React.Fragment key={item.id}>
+                    <Box sx={{ display: 'flex', py: 2, alignItems: 'center' }}>
+                      <Avatar
+                        src={item.product.imageUrl}
+                        alt={item.product.name}
+                        variant='rounded'
+                        sx={{ width: 80, height: 80, mr: 2 }}
+                        imgProps={{
+                          onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
+                            e.currentTarget.src =
+                              'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik00MCAyNEw1NiA0MEg0OFY1NkgzMlY0MEgyNEw0MCAyNFoiIGZpbGw9IiM5MDkwOTAiLz4KPHN2Zz4K';
+                          },
+                        }}
+                      />
 
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Typography variant='h6' gutterBottom>
-                        {item.product.name}
-                      </Typography>
-                      <Typography variant='body2' color='text.secondary' gutterBottom>
-                        {item.product.description.length > 100
-                          ? `${item.product.description.substring(0, 100)}...`
-                          : item.product.description}
-                      </Typography>
-                      <Typography variant='body2' color='text.secondary'>
-                        Categoria: {item.product.category}
-                      </Typography>
-                      {(() => {
-                        const calculation = getItemCalculation(item.productId);
-                        return (
-                          <Box sx={{ mt: 1 }}>
-                            <Typography variant='body2' color='text.secondary'>
-                              Preço base:{' '}
-                              {new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL',
-                              }).format(item.product.price)}
-                            </Typography>
-                            {calculation && (
-                              <>
-                                {calculation.tierDiscount > 0 && (
-                                  <Box
-                                    sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant='h6' gutterBottom>
+                          {item.product.name}
+                        </Typography>
+                        <Typography variant='body2' color='text.secondary' gutterBottom>
+                          {item.product.description.length > 100
+                            ? `${item.product.description.substring(0, 100)}...`
+                            : item.product.description}
+                        </Typography>
+                        <Typography variant='body2' color='text.secondary'>
+                          Categoria: {item.product.category}
+                        </Typography>
+                        {(() => {
+                          const calculation = getItemCalculation(item.productId);
+                          return (
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant='body2' color='text.secondary'>
+                                Preço base:{' '}
+                                {new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format(item.product.price)}
+                              </Typography>
+                              {calculation && (
+                                <>
+                                  {calculation.tierDiscount > 0 && (
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1,
+                                        mt: 0.5,
+                                      }}
+                                    >
+                                      <Chip
+                                        icon={<TrendingDown />}
+                                        label={`${(calculation.tierDiscount * 100).toFixed(1)}% OFF`}
+                                        color='success'
+                                        size='small'
+                                      />
+                                      <Typography variant='caption' color='text.secondary'>
+                                        Desconto por volume
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                  <Typography
+                                    variant='body2'
+                                    color='primary'
+                                    sx={{ fontWeight: 'bold', mt: 0.5 }}
                                   >
-                                    <Chip
-                                      icon={<TrendingDown />}
-                                      label={`${(calculation.tierDiscount * 100).toFixed(1)}% OFF`}
-                                      color='success'
-                                      size='small'
-                                    />
-                                    <Typography variant='caption' color='text.secondary'>
-                                      Desconto por volume
-                                    </Typography>
-                                  </Box>
-                                )}
-                                <Typography
-                                  variant='body2'
-                                  color='primary'
-                                  sx={{ fontWeight: 'bold', mt: 0.5 }}
-                                >
-                                  Preço unitário:{' '}
-                                  {new Intl.NumberFormat('pt-BR', {
-                                    style: 'currency',
-                                    currency: 'BRL',
-                                  }).format(calculation.unitPriceAfterDiscount)}
-                                </Typography>
-                                <Typography
-                                  variant='body2'
-                                  color='success.main'
-                                  sx={{ fontWeight: 'medium' }}
-                                >
-                                  Subtotal:{' '}
-                                  {new Intl.NumberFormat('pt-BR', {
-                                    style: 'currency',
-                                    currency: 'BRL',
-                                  }).format(calculation.subtotal)}
-                                </Typography>
-                                {calculation.savings > 0 && (
-                                  <Typography variant='caption' color='success.main'>
-                                    Economia:{' '}
+                                    Preço unitário:{' '}
                                     {new Intl.NumberFormat('pt-BR', {
                                       style: 'currency',
                                       currency: 'BRL',
-                                    }).format(calculation.savings)}
+                                    }).format(calculation.unitPriceAfterDiscount)}
                                   </Typography>
-                                )}
-                              </>
-                            )}
-                            {isCalculating && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                <CircularProgress size={16} />
-                                <Typography variant='caption'>Calculando preços...</Typography>
-                              </Box>
-                            )}
-                          </Box>
-                        );
-                      })()}
-                    </Box>
-
-                    <Box
-                      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', ml: 2 }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <IconButton
-                          size='small'
-                          onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                          aria-label='remove'
-                        >
-                          <Remove />
-                        </IconButton>
-                        <TextField
-                          size='small'
-                          value={item.quantity}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                            const qty = parseInt(e.target.value) || 0;
-                            handleQuantityChange(item.id, qty);
-                          }}
-                          sx={{ width: 80, mx: 1 }}
-                          inputProps={{ min: 0, style: { textAlign: 'center' } }}
-                        />
-                        <IconButton
-                          size='small'
-                          onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                          aria-label='add'
-                        >
-                          <Add />
-                        </IconButton>
+                                  <Typography
+                                    variant='body2'
+                                    color='success.main'
+                                    sx={{ fontWeight: 'medium' }}
+                                  >
+                                    Subtotal:{' '}
+                                    {new Intl.NumberFormat('pt-BR', {
+                                      style: 'currency',
+                                      currency: 'BRL',
+                                    }).format(calculation.subtotal)}
+                                  </Typography>
+                                  {calculation.savings > 0 && (
+                                    <Typography variant='caption' color='success.main'>
+                                      Economia:{' '}
+                                      {new Intl.NumberFormat('pt-BR', {
+                                        style: 'currency',
+                                        currency: 'BRL',
+                                      }).format(calculation.savings)}
+                                    </Typography>
+                                  )}
+                                </>
+                              )}
+                              {isCalculating && (
+                                <Box
+                                  sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}
+                                >
+                                  <CircularProgress size={16} />
+                                  <Typography variant='caption'>Calculando preços...</Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          );
+                        })()}
                       </Box>
 
-                      <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
-                        {item.quantity} unidade{item.quantity !== 1 ? 's' : ''}
-                      </Typography>
-
-                      <IconButton
-                        color='error'
-                        onClick={() => removeItem(item.id)}
-                        aria-label='delete'
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          ml: 2,
+                        }}
                       >
-                        <Delete />
-                      </IconButton>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <IconButton
+                            size='small'
+                            onClick={() => handleQuantityChange(item.id, item.quantity - step)}
+                            aria-label='remove'
+                          >
+                            <Remove />
+                          </IconButton>
+                          <TextField
+                            size='small'
+                            value={item.quantity}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                              const qty = parseInt(e.target.value) || 0;
+                              handleQuantityChange(item.id, qty);
+                            }}
+                            sx={{ width: 80, mx: 1 }}
+                            inputProps={{ min: step, step, style: { textAlign: 'center' } }}
+                          />
+                          <IconButton
+                            size='small'
+                            onClick={() => handleQuantityChange(item.id, item.quantity + step)}
+                            aria-label='add'
+                          >
+                            <Add />
+                          </IconButton>
+                        </Box>
+
+                        <Typography
+                          variant='body2'
+                          color='text.secondary'
+                          sx={{ mb: step > 1 ? 0.5 : 2 }}
+                        >
+                          {item.quantity} unidade{item.quantity !== 1 ? 's' : ''}
+                        </Typography>
+                        {step > 1 && (
+                          <Typography variant='caption' color='text.secondary' sx={{ mb: 2 }}>
+                            Pedido mínimo: {step} unidades
+                          </Typography>
+                        )}
+
+                        <IconButton
+                          color='error'
+                          onClick={() => removeItem(item.id)}
+                          aria-label='delete'
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Box>
                     </Box>
-                  </Box>
-                  {index < items.length - 1 && <Divider />}
-                </React.Fragment>
-              ))}
+                    {index < items.length - 1 && <Divider />}
+                  </React.Fragment>
+                );
+              })}
             </CardContent>
           </Card>
 

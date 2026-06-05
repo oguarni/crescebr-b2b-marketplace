@@ -42,6 +42,7 @@ export const pt = {
     submit: 'Entrar',
     noAccount: 'Não tem uma conta? ',
     registerCta: 'Cadastre-se',
+    registerUnavailable: 'O cadastro de novas contas está em construção.',
     demoTitle: 'Empresas de demonstração',
     demoHelp:
       'Clique em uma empresa para entrar automaticamente. Tudo é fictício e nenhuma cobrança é feita.',
@@ -95,6 +96,12 @@ export const pt = {
     submit: 'Cadastrar',
     haveAccount: 'Já tem uma conta? ',
     loginCta: 'Faça login',
+    underConstruction: {
+      title: 'Cadastro em construção',
+      message:
+        'A criação de novas contas ainda não está disponível — esta área está em construção. Para explorar o marketplace, entre com uma das empresas de demonstração na tela de login.',
+      backToLogin: 'Ir para o login',
+    },
     companySize: {
       label: 'Porte da Empresa',
       micro: 'Microempresa',

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -356,11 +356,8 @@ const LoginPage: React.FC = () => {
               {isLoading ? <CircularProgress size={24} /> : t('login.submit')}
             </Button>
             <Box textAlign='center'>
-              <Typography variant='body2'>
-                {t('login.noAccount')}
-                <Link to='/register' style={{ color: 'inherit', textDecoration: 'underline' }}>
-                  {t('login.registerCta')}
-                </Link>
+              <Typography variant='body2' color='text.secondary'>
+                {t('login.registerUnavailable')}
               </Typography>
             </Box>
           </Box>

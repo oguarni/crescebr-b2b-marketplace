@@ -30,6 +30,23 @@ out/
 .env.*.local
 
 # ──────────────────────────────────────────────
+# Keys, certificates & service-account credentials
+# (never commit — GCP/Cloud Run/Firebase deploy target)
+# ──────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+*-key.json
+*-keyfile.json
+service-account*.json
+serviceAccount*.json
+gcp-*.json
+google-credentials*.json
+credentials.json
+.gcp/
+
+# ──────────────────────────────────────────────
 # Logs
 # ──────────────────────────────────────────────
 logs/
@@ -45,6 +62,11 @@ pnpm-debug.log*
 # ──────────────────────────────────────────────
 .firebase/
 firebase-debug.log*
+firebase-debug.*.log*
+# Hosting public dir is intentionally empty (rewrites go to Cloud Run); keep only
+# the placeholder, never any build assets accidentally copied in.
+/firebase-public/*
+!/firebase-public/.gitkeep
 
 # ──────────────────────────────────────────────
 # Test & Coverage
@@ -68,6 +90,7 @@ test.sqlite
 .prettiercache
 .cache/
 .parcel-cache/
+.vite/
 .vitest/
 
 # ──────────────────────────────────────────────

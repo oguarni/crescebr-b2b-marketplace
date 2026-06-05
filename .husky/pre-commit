@@ -1,7 +1,7 @@
-# Remove a variável PREFIX para evitar conflito com NVM no GitHub Desktop
+# Drop the PREFIX env var to avoid an NVM conflict under GitHub Desktop
 unset PREFIX
 
-# Carrega o NVM para encontrar o Node e o NPM
+# Load NVM so Node and npm are on PATH
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
@@ -9,9 +9,10 @@ export NVM_DIR="$HOME/.nvm"
 # Blocks the commit if gitleaks finds a secret. Uses .gitleaks.toml (allowlist
 # for known placeholders/fixtures). Fails open with a warning if gitleaks is not
 # installed, so the hook never blocks a commit just because the tool is missing.
-#   Install: winget install gitleaks
+#   Install (Linux/macOS): https://github.com/gitleaks/gitleaks#installing
+#   Install (Windows):      winget install gitleaks
 # Resolve the gitleaks binary. GUI clients (e.g. GitHub Desktop) may not have the
-# updated PATH, so fall back to the winget user-install location.
+# updated PATH, so fall back to the Windows winget user-install location.
 GITLEAKS_BIN=""
 if command -v gitleaks >/dev/null 2>&1; then
   GITLEAKS_BIN="gitleaks"
@@ -27,8 +28,8 @@ if [ -n "$GITLEAKS_BIN" ]; then
     exit 1
   }
 else
-  echo "⚠️  gitleaks not installed — skipping secret scan (install: winget install gitleaks)"
+  echo "⚠️  gitleaks not installed — skipping secret scan (install: https://github.com/gitleaks/gitleaks#installing)"
 fi
 
-# Executa o lint-staged (que por sua vez executa os linters)
+# Run lint-staged (which in turn runs the linters)
 ./node_modules/.bin/lint-staged

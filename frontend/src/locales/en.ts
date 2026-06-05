@@ -43,6 +43,7 @@ export const en: typeof pt = {
     submit: 'Sign in',
     noAccount: "Don't have an account? ",
     registerCta: 'Sign up',
+    registerUnavailable: 'New account registration is under construction.',
     demoTitle: 'Demo companies',
     demoHelp:
       'Click a company to sign in automatically. Everything is fictitious and no charges are made.',
@@ -96,6 +97,12 @@ export const en: typeof pt = {
     submit: 'Sign up',
     haveAccount: 'Already have an account? ',
     loginCta: 'Sign in',
+    underConstruction: {
+      title: 'Registration under construction',
+      message:
+        "Creating new accounts isn't available yet — this area is still under construction. To explore the marketplace, sign in with one of the demo companies on the login screen.",
+      backToLogin: 'Go to sign in',
+    },
     companySize: {
       label: 'Company Size',
       micro: 'Micro-business',

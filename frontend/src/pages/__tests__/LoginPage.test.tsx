@@ -176,8 +176,9 @@ describe('LoginPage', () => {
     expect(screen.getByText(/admin@crescebr.com/)).toBeInTheDocument();
   });
 
-  it('should show register link', async () => {
+  it('should show a registration under construction notice instead of a register link', async () => {
     await renderPage();
-    expect(screen.getByText('Cadastre-se')).toBeInTheDocument();
+    expect(screen.getByText('O cadastro de novas contas está em construção.')).toBeInTheDocument();
+    expect(screen.queryByText('Cadastre-se')).not.toBeInTheDocument();
   });
 });

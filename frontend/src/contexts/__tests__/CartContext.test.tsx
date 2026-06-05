@@ -39,6 +39,16 @@ const mockProduct2: Product = {
   price: 200,
 };
 
+// A product whose minimum order quantity (MOQ) is greater than 1. Buyers order
+// in whole multiples of the MOQ (10 → 20 → 30).
+const mockProductMoq: Product = {
+  ...mockProduct,
+  id: 3,
+  name: 'Bulk Product',
+  price: 50,
+  minimumOrderQuantity: 10,
+};
+
 describe('CartContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -85,6 +95,38 @@ describe('CartContext', () => {
     expect(result.current.items[0].totalPrice).toBe(200);
     expect(result.current.totalItems).toBe(2);
     expect(result.current.totalPrice).toBe(200);
+  });
+
+  it('starts a new item at the product minimum order quantity', () => {
+    const { result } = renderHook(() => useCart(), { wrapper });
+
+    act(() => {
+      result.current.addItem(mockProductMoq);
+    });
+
+    expect(result.current.items[0].quantity).toBe(10);
+    expect(result.current.items[0].totalPrice).toBe(500);
+    expect(result.current.totalItems).toBe(10);
+    expect(result.current.totalPrice).toBe(500);
+  });
+
+  it('increments by the minimum order quantity when re-adding (10 -> 20 -> 30)', () => {
+    const { result } = renderHook(() => useCart(), { wrapper });
+
+    act(() => {
+      result.current.addItem(mockProductMoq);
+    });
+    act(() => {
+      result.current.addItem(mockProductMoq);
+    });
+    act(() => {
+      result.current.addItem(mockProductMoq);
+    });
+
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.items[0].quantity).toBe(30);
+    expect(result.current.items[0].totalPrice).toBe(1500);
+    expect(result.current.totalItems).toBe(30);
   });
 
   it('adds multiple items with quantity parameter', () => {

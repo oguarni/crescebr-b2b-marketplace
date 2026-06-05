@@ -143,11 +143,40 @@ backend/seeders/
 # ──────────────────────────────────────────────
 .prettierrc.json
 .prettierignore
+eslint.config.js
+.npmrc
+.gitattributes
+.gitleaks.toml
 LICENSE
+LICENSING.md
 *.example
 **/.env.example
 backend/config/
 backend/nodemon.json
+
+# ──────────────────────────────────────────────
+# Deploy / hosting config (infra wiring, not code logic)
+# ──────────────────────────────────────────────
+cloudbuild.yaml
+.gcloudignore
+firebase.json
+.firebaserc
+# Hosting public dir is intentionally empty (rewrites go to Cloud Run)
+firebase-public/
+
+# ──────────────────────────────────────────────
+# Keys, certificates & service-account credentials
+# ──────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+*-key.json
+service-account*.json
+serviceAccount*.json
+gcp-*.json
+credentials.json
+.gcp/
 
 # ──────────────────────────────────────────────
 # Claude memory & runtime (private, not code context)

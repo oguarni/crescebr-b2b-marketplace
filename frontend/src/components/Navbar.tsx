@@ -10,8 +10,6 @@ import {
   Menu,
   MenuItem,
   Box,
-  useMediaQuery,
-  useTheme,
   Divider,
 } from '@mui/material';
 import {
@@ -39,12 +37,13 @@ const Navbar: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { isAuthenticated, user, logout } = useAuth();
   const { totalItems, toggleCart } = useCart();
-  const { totalItems: quotationItems } = useQuotationRequest();
+  // The quote badge counts distinct line items (one per product), not total
+  // units. Quantities step in whole multiples of each product's MOQ, so a unit
+  // total (10, 20, 30…) would misrepresent how many products are in the request.
+  const { items: quotationItems } = useQuotationRequest();
   const t = useT();
 
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -123,7 +122,7 @@ const Navbar: React.FC = () => {
               onClick={() => navigate('/quotation-request')}
               aria-label='quotation request'
             >
-              <Badge badgeContent={quotationItems} color='secondary'>
+              <Badge badgeContent={quotationItems.length} color='secondary'>
                 <RequestQuote />
               </Badge>
             </IconButton>
@@ -143,7 +142,7 @@ const Navbar: React.FC = () => {
               onClick={() => navigate('/quotation-request')}
               aria-label='quotation request'
             >
-              <Badge badgeContent={quotationItems} color='secondary'>
+              <Badge badgeContent={quotationItems.length} color='secondary'>
                 <RequestQuote />
               </Badge>
             </IconButton>
@@ -276,23 +275,13 @@ const Navbar: React.FC = () => {
               </Menu>
             </>
           ) : (
+            /* Account creation is under construction, so registration is not
+               offered here — only a login button. The login page hosts the
+               one-click demo accounts, the fastest path for new visitors. */
             <Box sx={{ display: 'flex', gap: 1 }}>
-              {isMobile ? (
-                /* Mobile: a single prominent Login button. The login page hosts the
-                   one-click demo accounts, so this is the fastest path for new visitors. */
-                <Button variant='contained' color='primary' component={Link} to='/login'>
-                  {t('nav.login')}
-                </Button>
-              ) : (
-                <>
-                  <Button color='primary' component={Link} to='/login'>
-                    {t('nav.login')}
-                  </Button>
-                  <Button variant='contained' color='primary' component={Link} to='/register'>
-                    {t('nav.register')}
-                  </Button>
-                </>
-              )}
+              <Button variant='contained' color='primary' component={Link} to='/login'>
+                {t('nav.login')}
+              </Button>
             </Box>
           )}
         </Box>
