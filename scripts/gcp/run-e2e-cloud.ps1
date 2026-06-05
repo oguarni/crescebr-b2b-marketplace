@@ -74,13 +74,20 @@ try {
   }
 
   # --- Wait for SSH to accept connections ----------------------------------
-  Write-Step "Waiting for SSH to come up"
+  # A cold-booted VM refuses SSH for a while; gcloud writes that to stderr.
+  # Redirecting a native exe's stderr under $ErrorActionPreference='Stop'
+  # promotes it to a terminating error, which would abort the retry loop on the
+  # first miss. Drop to 'Continue' for the probe and gate purely on the exit code.
+  Write-Step "Waiting for SSH to come up (cold boots can take a couple minutes)"
   $ready = $false
-  foreach ($attempt in 1..30) {
-    gcloud compute ssh $Instance @gcommon --command='true' 2>$null | Out-Null
+  $eapPrev = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  foreach ($attempt in 1..40) {
+    gcloud compute ssh $Instance @gcommon --command='true' 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) { $ready = $true; break }
     Start-Sleep -Seconds 5
   }
+  $ErrorActionPreference = $eapPrev
   if (-not $ready) {
     throw "SSH never became ready. If the operator IP changed, update the 'crescebr-allow-ssh' firewall rule's --source-ranges."
   }
@@ -106,12 +113,23 @@ bash scripts/gcp/run-e2e.sh
   # --- Pull the HTML report down -------------------------------------------
   if (-not $NoReport) {
     Write-Step "Fetching HTML report to .\e2e\playwright-report"
-    try {
-      gcloud compute scp --recurse @gcommon "${Instance}:~/app/e2e/playwright-report" .\e2e\playwright-report
-      Write-Host "    open .\e2e\playwright-report\index.html" -ForegroundColor Green
-    } catch {
-      Write-Warn "Could not fetch report: $($_.Exception.Message)"
+    # Resolve the report dir ON the VM so the remote shell expands '~' and we
+    # don't guess the CWD layout (pscp won't expand '~' itself). Probe both the
+    # config-relative and root-relative locations.
+    $eapPrev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $reportDir = gcloud compute ssh $Instance @gcommon `
+      --command='for d in ~/app/e2e/playwright-report ~/app/playwright-report; do [ -d "$d" ] && echo "$d" && break; done' 2>&1 |
+      Where-Object { $_ -match '/playwright-report' } | Select-Object -First 1
+    if ($reportDir) {
+      $reportDir = $reportDir.Trim()
+      gcloud compute scp --recurse @gcommon "${Instance}:$reportDir" .\e2e\playwright-report 2>&1 | Out-Null
+      if ($LASTEXITCODE -eq 0) { Write-Host "    open .\e2e\playwright-report\index.html" -ForegroundColor Green }
+      else { Write-Warn "Report copy failed from $reportDir" }
+    } else {
+      Write-Warn "No HTML report directory found on the VM (skipping)."
     }
+    $ErrorActionPreference = $eapPrev
   }
 
   exit $testExit
