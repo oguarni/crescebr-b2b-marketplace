@@ -24,7 +24,7 @@ const theme = createTheme({
     },
   },
   typography: {
-    fontFamily: '"Inter", "Open Sans", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontFamily: '"Inter", sans-serif',
       fontWeight: 700,
@@ -62,12 +62,12 @@ const theme = createTheme({
       lineHeight: 1.4,
     },
     body1: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", sans-serif',
       fontSize: '1rem',
       lineHeight: 1.5,
     },
     body2: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", sans-serif',
       fontSize: '0.875rem',
       lineHeight: 1.5,
     },

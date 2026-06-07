@@ -50,9 +50,9 @@ describe('theme', () => {
       expect(theme.typography.h6.fontWeight).toBe(600);
     });
 
-    it('configures body variants with Open Sans', () => {
-      expect(theme.typography.body1.fontFamily).toContain('Open Sans');
-      expect(theme.typography.body2.fontFamily).toContain('Open Sans');
+    it('configures body variants with Inter', () => {
+      expect(theme.typography.body1.fontFamily).toContain('Inter');
+      expect(theme.typography.body2.fontFamily).toContain('Inter');
     });
 
     it('disables uppercase transform on buttons', () => {
