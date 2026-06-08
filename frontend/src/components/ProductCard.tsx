@@ -15,6 +15,7 @@ import { AddShoppingCart, ExpandMore, StorefrontOutlined } from '@mui/icons-mate
 import { Product } from '@shared/types';
 import { useT } from '../contexts/LanguageContext';
 import { formatBRL } from '../utils/currency';
+import { optimizeImageUrl } from '../utils/imageUrl';
 
 interface ProductCardProps {
   product: Product;
@@ -134,7 +135,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             >
               <CardMedia
                 component='img'
-                image={product.imageUrl || PLACEHOLDER_IMAGE}
+                image={optimizeImageUrl(product.imageUrl) || PLACEHOLDER_IMAGE}
                 alt={product.name}
                 loading='lazy'
                 onError={event => {

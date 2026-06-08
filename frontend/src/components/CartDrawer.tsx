@@ -19,6 +19,7 @@ import { Close, Remove, Add, Delete, ShoppingCartCheckout } from '@mui/icons-mat
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrderStep } from '../utils/orderQuantity';
+import { optimizeImageUrl } from '../utils/imageUrl';
 
 const CartDrawer: React.FC = () => {
   const { isOpen, items, totalPrice, toggleCart, updateQuantity, removeItem, clearCart } =
@@ -90,7 +91,7 @@ const CartDrawer: React.FC = () => {
                     <ListItem sx={{ py: 2, alignItems: 'flex-start' }}>
                       <ListItemAvatar>
                         <Avatar
-                          src={item.product.imageUrl}
+                          src={optimizeImageUrl(item.product.imageUrl, { width: 120 })}
                           alt={item.product.name}
                           variant='rounded'
                           sx={{ width: 60, height: 60 }}
