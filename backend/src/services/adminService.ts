@@ -243,8 +243,12 @@ export const adminService = {
   }) {
     const whereClause: Record<string, unknown> = {};
     if (filters.startDate && filters.endDate) {
+      // Date-only strings parse to midnight UTC; pushing the end bound to the
+      // end of that day keeps orders created on the end date inside the range.
+      const endOfDay = new Date(filters.endDate);
+      endOfDay.setUTCHours(23, 59, 59, 999);
       whereClause.createdAt = {
-        [Op.between]: [new Date(filters.startDate), new Date(filters.endDate)],
+        [Op.between]: [new Date(filters.startDate), endOfDay],
       };
     }
     if (filters.status) {
