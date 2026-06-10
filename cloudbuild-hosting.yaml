@@ -1,0 +1,33 @@
+# Deploys the frontend to Firebase Hosting without a local Node toolchain
+# (the workspace lives on an exFAT volume where npm workspace symlinks fail).
+# Reuses the dist already baked into the frontend image by cloudbuild.yaml.
+substitutions:
+  _REGION: southamerica-east1
+  _REPO: crescebr
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  # Extract the production build out of the frontend image.
+  - name: gcr.io/cloud-builders/docker
+    id: extract-dist
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        docker pull ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/frontend:latest
+        docker create --name frontend ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/frontend:latest
+        mkdir -p frontend
+        docker cp frontend:/usr/share/nginx/html frontend/dist
+        ls frontend/dist
+
+  # Deploy frontend/dist (per firebase.json) using the build service account.
+  - name: node:20
+    id: deploy-hosting
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        npx --yes firebase-tools@13 deploy --only hosting --project $PROJECT_ID --non-interactive

@@ -165,7 +165,7 @@ describe('AdminTransactionMonitoringPage', () => {
 
     await waitFor(() => {
       expect(mockAdminRequest).toHaveBeenCalledWith(
-        '/admin/transaction-monitoring',
+        '/admin/transactions',
         expect.objectContaining({ params: expect.any(Object) })
       );
     });

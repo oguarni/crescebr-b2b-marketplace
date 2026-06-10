@@ -116,7 +116,7 @@ const AdminTransactionMonitoringPage: React.FC = () => {
       if (dateRange.endDate) params.endDate = dateRange.endDate;
       if (statusFilter) params.status = statusFilter;
 
-      const response = await authService.adminRequest('/admin/transaction-monitoring', {
+      const response = await authService.adminRequest('/admin/transactions', {
         params,
       }) as { data: TransactionData };
 

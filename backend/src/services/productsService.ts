@@ -1,5 +1,14 @@
-import { Op } from 'sequelize';
+import { Op, Sequelize } from 'sequelize';
 import Product, { ProductAttributes } from '../models/Product';
+import User from '../models/User';
+
+// Public product listings expose only the supplier's display identity, never
+// credentials or contact internals.
+const SUPPLIER_INCLUDE = {
+  model: User,
+  as: 'supplier',
+  attributes: ['id', 'companyName', 'corporateName'],
+};
 
 export interface ProductFilters {
   category?: string;
@@ -60,7 +69,7 @@ function buildWhereClause(filters: ProductFilters): Record<string | symbol, unkn
   const where: Record<string | symbol, any> = {};
 
   if (category && typeof category === 'string') {
-    where.category = { [Op.like]: `%${category}%` };
+    where.category = { [Op.iLike]: `%${category}%` };
   }
 
   if (search && typeof search === 'string') {
@@ -69,17 +78,21 @@ function buildWhereClause(filters: ProductFilters): Record<string | symbol, unkn
       .split(' ')
       .filter(term => term.length > 0);
     where[Op.or] = [
-      { name: { [Op.like]: `%${search}%` } },
-      { description: { [Op.like]: `%${search}%` } },
-      { category: { [Op.like]: `%${search}%` } },
-      { specifications: { [Op.like]: `%${search}%` } },
+      { name: { [Op.iLike]: `%${search}%` } },
+      { description: { [Op.iLike]: `%${search}%` } },
+      { category: { [Op.iLike]: `%${search}%` } },
+      // `specifications` is a JSON column; Postgres has no LIKE operator for
+      // json, so cast it to text before matching.
+      Sequelize.where(Sequelize.cast(Sequelize.col('Product.specifications'), 'TEXT'), {
+        [Op.iLike]: `%${search}%`,
+      }),
     ];
 
     if (searchTerms.length > 1) {
       searchTerms.forEach(term => {
         where[Op.or].push(
-          { name: { [Op.like]: `%${term}%` } },
-          { description: { [Op.like]: `%${term}%` } }
+          { name: { [Op.iLike]: `%${term}%` } },
+          { description: { [Op.iLike]: `%${term}%` } }
         );
       });
     }
@@ -231,6 +244,7 @@ export const productsService = {
 
     const { count, rows: products } = await Product.findAndCountAll({
       where,
+      include: [SUPPLIER_INCLUDE],
       limit: Number(limit),
       offset,
       order: [[sortField, order]],
@@ -264,7 +278,7 @@ export const productsService = {
   },
 
   async getById(id: number): Promise<Product | null> {
-    return Product.findByPk(id);
+    return Product.findByPk(id, { include: [SUPPLIER_INCLUDE] });
   },
 
   async create(data: {

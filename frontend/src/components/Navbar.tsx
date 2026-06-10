@@ -98,18 +98,23 @@ const Navbar: React.FC = () => {
           to='/'
           sx={{
             flexGrow: 1,
+            // Let the logo shrink on narrow screens instead of pushing the
+            // action buttons past the viewport edge.
+            minWidth: 0,
             display: 'flex',
             alignItems: 'center',
             textDecoration: 'none',
             color: 'inherit',
             gap: 1.5,
+            '& img': {
+              height: { xs: 34, sm: 46 },
+              maxWidth: '100%',
+              width: 'auto',
+              display: 'block',
+            },
           }}
         >
-          <img
-            src='/logo-crescebr.png'
-            alt='CresceBR'
-            style={{ height: '46px', width: 'auto', display: 'block' }}
-          />
+          <img src='/logo-crescebr.png' alt='CresceBR' />
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

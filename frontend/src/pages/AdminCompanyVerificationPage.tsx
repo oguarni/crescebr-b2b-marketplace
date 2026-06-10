@@ -96,7 +96,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
     setError('');
 
     try {
-      const response = (await authService.adminRequest('/admin/verification-queue', {
+      const response = (await authService.adminRequest('/admin/companies/queue', {
         params: {
           page: String(page),
           limit: '10',
@@ -120,7 +120,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
   const handleVerifyCompany = async (companyId: number, status: 'approved' | 'rejected') => {
     try {
       const response = (await authService.adminRequest(`/admin/companies/${companyId}/verify`, {
-        method: 'POST',
+        method: 'PUT',
         data: {
           status,
           reason: verificationReason || undefined,
