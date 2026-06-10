@@ -57,15 +57,18 @@ export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, 
 });
 
 export const getUserOrders = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const companyId = req.user!.id;
   const { status, page = 1, limit = 20 } = req.query;
+  // Customers see the orders they placed; suppliers see orders that contain
+  // their products (they never place orders themselves).
+  const scope =
+    req.user!.role === 'supplier' ? { supplierId: req.user!.id } : { companyId: req.user!.id };
 
   try {
     const result = await OrderStatusService.getOrdersByStatus(
       (status as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | undefined) ||
         undefined,
       {
-        companyId,
+        ...scope,
         limit: parseInt(limit as string),
         offset: (parseInt(page as string) - 1) * parseInt(limit as string),
       }

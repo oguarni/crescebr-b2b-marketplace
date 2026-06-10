@@ -1,6 +1,9 @@
+import { Op } from 'sequelize';
 import Order from '../models/Order';
 import User from '../models/User';
 import Quotation from '../models/Quotation';
+import QuotationItem from '../models/QuotationItem';
+import Product from '../models/Product';
 
 export interface NfeUpdateData {
   nfeAccessKey?: string;
@@ -95,7 +98,7 @@ export class OrderStatusService {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'email', 'role'],
+          attributes: ['id', 'email', 'role', 'companyName'],
         },
         {
           model: Quotation,
@@ -162,7 +165,7 @@ export class OrderStatusService {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'email', 'role'],
+          attributes: ['id', 'email', 'role', 'companyName'],
         },
         {
           model: Quotation,
@@ -188,7 +191,7 @@ export class OrderStatusService {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'email', 'role'],
+          attributes: ['id', 'email', 'role', 'companyName'],
         },
         {
           model: Quotation,
@@ -248,6 +251,7 @@ export class OrderStatusService {
     status: OrderStatus | undefined,
     filters: {
       companyId?: number;
+      supplierId?: number;
       startDate?: Date;
       endDate?: Date;
       limit?: number;
@@ -264,6 +268,27 @@ export class OrderStatusService {
       whereClause.companyId = filters.companyId;
     }
 
+    // Suppliers do not own orders; they see orders whose quotation contains at
+    // least one of their products. Scoped server-side so other suppliers'
+    // orders are never leaked to the client.
+    if (filters.supplierId) {
+      const supplierItems = (await QuotationItem.findAll({
+        attributes: ['quotationId'],
+        include: [
+          {
+            model: Product,
+            as: 'product',
+            attributes: [],
+            where: { supplierId: filters.supplierId },
+            required: true,
+          },
+        ],
+        raw: true,
+      })) as unknown as Array<{ quotationId: number }>;
+      const quotationIds = [...new Set(supplierItems.map(item => item.quotationId))];
+      whereClause.quotationId = { [Op.in]: quotationIds };
+    }
+
     if (filters.startDate && filters.endDate) {
       whereClause.createdAt = {
         [require('sequelize').Op.between]: [filters.startDate, filters.endDate],
@@ -276,7 +301,7 @@ export class OrderStatusService {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'email', 'role'],
+          attributes: ['id', 'email', 'role', 'companyName'],
         },
         {
           model: Quotation,
