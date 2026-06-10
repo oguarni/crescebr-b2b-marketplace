@@ -205,7 +205,9 @@ module.exports = {
         name: 'Safety Helmet - Industrial Grade',
         description: 'ANSI Z89.1 compliant industrial safety helmet with adjustable suspension.',
         price: 45.00,
-        imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd',
+        // Product shot from Wikimedia Commons; the construction-site Unsplash
+        // photo used above stays on the structural materials only.
+        imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Ameriza-entilated_safety_helmet.jpg/960px-Ameriza-entilated_safety_helmet.jpg',
         supplierId: supplierId,
         category: 'Safety',
         unitPrice: 45.00,

@@ -1,0 +1,38 @@
+# One-off: give the Safety Helmet product its own photo. It shared the
+# construction-site Unsplash image with the steel rebar product, so the
+# catalog showed the same picture twice. Mirrors the change in
+# backend/seeders/20240101000001-initial-data.cjs for the already-seeded DB.
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/crescebr-portfolio-9048/secrets/db-password/versions/latest
+      env: DB_PASSWORD
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    id: start-proxy
+    args:
+      - run
+      - -d
+      - --network=cloudbuild
+      - --name=sqlproxy
+      - gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+      - --address=0.0.0.0
+      - --port=5432
+      - crescebr-portfolio-9048:southamerica-east1:crescebr-db
+
+  - name: postgres:15
+    id: fix-image
+    entrypoint: bash
+    secretEnv: ['DB_PASSWORD']
+    args:
+      - -c
+      - |
+        set -e
+        sleep 5
+        export PGPASSWORD="$$DB_PASSWORD"
+        psql -h sqlproxy -U crescebr_app -d crescebr -c "UPDATE products SET \"imageUrl\" = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Ameriza-entilated_safety_helmet.jpg/960px-Ameriza-entilated_safety_helmet.jpg' WHERE name = 'Safety Helmet - Industrial Grade';"
+        echo "--- helmet row after update ---"
+        psql -h sqlproxy -U crescebr_app -d crescebr -c "SELECT id, name, \"imageUrl\" FROM products WHERE name = 'Safety Helmet - Industrial Grade';"

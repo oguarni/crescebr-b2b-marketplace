@@ -39,11 +39,11 @@ import { viaCepService } from '../services/viaCepService';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 import toast from 'react-hot-toast';
 
-// Self-service account creation is temporarily disabled while the onboarding /
-// company-verification flow is being rebuilt. Flip this back to `true` to
-// re-enable the registration form below. Typed as `boolean` on purpose so the
-// form code stays reachable for the type checker and linter.
-const REGISTRATION_ENABLED: boolean = false;
+// Self-service account creation. Flip to `false` to swap the form for an
+// "under construction" notice (used while the onboarding / company-verification
+// flow was being rebuilt). Typed as `boolean` on purpose so both branches stay
+// reachable for the type checker and linter.
+const REGISTRATION_ENABLED: boolean = true;
 
 const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState({

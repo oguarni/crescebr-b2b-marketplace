@@ -116,13 +116,13 @@ describe('Navbar', () => {
     expect(screen.getByAltText('CresceBR')).toBeInTheDocument();
   });
 
-  it('shows the login button but no register button (registration is under construction)', () => {
+  it('shows the login and register buttons for anonymous visitors', () => {
     renderNavbar();
     expect(screen.getByText('Entrar')).toBeInTheDocument();
-    expect(screen.queryByText('Cadastrar')).not.toBeInTheDocument();
+    expect(screen.getByText('Cadastrar')).toBeInTheDocument();
   });
 
-  it('shows only the login button on mobile (register is hidden)', () => {
+  it('shows the login button on mobile', () => {
     // Force the mobile breakpoint so useMediaQuery(down('md')) reports true.
     const originalMatchMedia = window.matchMedia;
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -139,7 +139,6 @@ describe('Navbar', () => {
     try {
       renderNavbar();
       expect(screen.getByText('Entrar')).toBeInTheDocument();
-      expect(screen.queryByText('Cadastrar')).not.toBeInTheDocument();
     } finally {
       window.matchMedia = originalMatchMedia;
     }

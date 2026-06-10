@@ -280,10 +280,18 @@ const Navbar: React.FC = () => {
               </Menu>
             </>
           ) : (
-            /* Account creation is under construction, so registration is not
-               offered here — only a login button. The login page hosts the
-               one-click demo accounts, the fastest path for new visitors. */
+            /* Register stays hidden on xs so the narrow toolbar keeps a single
+               primary action; the login page hosts the one-click demo accounts,
+               the fastest path for new visitors. */
             <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                color='inherit'
+                component={Link}
+                to='/register'
+                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+              >
+                {t('nav.register')}
+              </Button>
               <Button variant='contained' color='primary' component={Link} to='/login'>
                 {t('nav.login')}
               </Button>
