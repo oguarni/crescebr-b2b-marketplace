@@ -254,7 +254,7 @@ export const adminService = {
     const orders = await Order.findAll({
       where: whereClause,
       include: [
-        { model: User, as: 'buyer', attributes: ['id', 'email', 'companyName', 'role'] },
+        { model: User, as: 'user', attributes: ['id', 'email', 'companyName', 'role'] },
         { model: Quotation, as: 'quotation', attributes: ['id', 'totalAmount', 'status'] },
       ],
       order: [['createdAt', 'DESC']],
