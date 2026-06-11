@@ -50,6 +50,12 @@ export interface Product {
   imageUrl: string;
   category: string;
   supplierId: number;
+  /** Supplier display identity, included by the products API for catalog display. */
+  supplier?: {
+    id: number;
+    companyName?: string | null;
+    corporateName?: string | null;
+  };
   tierPricing: PricingTier[];
   specifications: Record<string, any>;
   unitPrice: number;

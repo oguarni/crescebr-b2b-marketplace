@@ -98,18 +98,23 @@ const Navbar: React.FC = () => {
           to='/'
           sx={{
             flexGrow: 1,
+            // Let the logo shrink on narrow screens instead of pushing the
+            // action buttons past the viewport edge.
+            minWidth: 0,
             display: 'flex',
             alignItems: 'center',
             textDecoration: 'none',
             color: 'inherit',
             gap: 1.5,
+            '& img': {
+              height: { xs: 34, sm: 46 },
+              maxWidth: '100%',
+              width: 'auto',
+              display: 'block',
+            },
           }}
         >
-          <img
-            src='/logo-crescebr.png'
-            alt='CresceBR'
-            style={{ height: '46px', width: 'auto', display: 'block' }}
-          />
+          <img src='/logo-crescebr.png' alt='CresceBR' />
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -275,10 +280,18 @@ const Navbar: React.FC = () => {
               </Menu>
             </>
           ) : (
-            /* Account creation is under construction, so registration is not
-               offered here — only a login button. The login page hosts the
-               one-click demo accounts, the fastest path for new visitors. */
+            /* Register stays hidden on xs so the narrow toolbar keeps a single
+               primary action; the login page hosts the one-click demo accounts,
+               the fastest path for new visitors. */
             <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                color='inherit'
+                component={Link}
+                to='/register'
+                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+              >
+                {t('nav.register')}
+              </Button>
               <Button variant='contained' color='primary' component={Link} to='/login'>
                 {t('nav.login')}
               </Button>

@@ -327,6 +327,7 @@ const HomePage: React.FC = () => {
           </Box>
           <IconButton
             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            aria-label={t('home.advancedFilters')}
             sx={{ bgcolor: 'grey.100', borderRadius: 2, p: 1, '&:hover': { bgcolor: 'grey.200' } }}
           >
             <Badge
@@ -339,6 +340,7 @@ const HomePage: React.FC = () => {
           </IconButton>
           <IconButton
             onClick={() => navigate('/cart')}
+            aria-label={t('home.cartAria')}
             sx={{ bgcolor: 'grey.100', borderRadius: 2, p: 1, '&:hover': { bgcolor: 'grey.200' } }}
           >
             <Badge
@@ -692,6 +694,7 @@ const HomePage: React.FC = () => {
       {/* Floating Action Button (Mobile Filter) */}
       <IconButton
         onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+        aria-label={t('home.advancedFilters')}
         sx={{
           position: 'fixed',
           bottom: 80,

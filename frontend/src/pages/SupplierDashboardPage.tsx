@@ -24,19 +24,18 @@ import {
   PendingActions,
   LocalShipping,
   TrendingUp,
-  ArrowUpward,
   EditNote,
   VisibilityOutlined,
   Inventory2Outlined,
   PrecisionManufacturingOutlined,
-  CheckCircle,
-  CloudQueue,
   DashboardRounded,
   RequestQuoteOutlined,
   ShoppingBagOutlined,
   Logout,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import type { TranslationKey } from '../locales';
 import { quotationsService } from '../services/quotationsService';
 import { ordersService } from '../services/ordersService';
 import { Quotation, Order } from '@shared/types';
@@ -54,6 +53,8 @@ interface DashboardMetrics {
 
 const SupplierDashboardPage: React.FC = () => {
   const { user, logout } = useAuth();
+  const { t, language } = useLanguage();
+  const dateLocale = language === 'pt' ? 'pt-BR' : 'en-US';
   const navigate = useNavigate();
   const [_loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -107,7 +108,7 @@ const SupplierDashboardPage: React.FC = () => {
       });
     } catch (_error) {
       console.error('Error loading dashboard data:', _error);
-      toast.error('Error loading dashboard data');
+      toast.error(t('supplierDashboard.loadError'));
     } finally {
       setLoading(false);
     }
@@ -168,7 +169,7 @@ const SupplierDashboardPage: React.FC = () => {
               edge='start'
               sx={{ p: 0.5 }}
               onClick={() => setDrawerOpen(true)}
-              aria-label='open navigation menu'
+              aria-label={t('supplierDashboard.menuAria')}
             >
               <MenuIcon />
             </IconButton>
@@ -179,7 +180,7 @@ const SupplierDashboardPage: React.FC = () => {
               Cresce
               <BrazilFlag size='0.7em' />
               <Box component='span' sx={{ ml: 0.5 }}>
-                Supplier
+                {t('supplierDashboard.brandSuffix')}
               </Box>
             </Typography>
           </Box>
@@ -200,7 +201,7 @@ const SupplierDashboardPage: React.FC = () => {
                 color='inherit'
                 sx={{ p: 0.5 }}
                 onClick={() => navigate('/supplier/quotations')}
-                aria-label='view pending quotations'
+                aria-label={t('supplierDashboard.notificationsAria')}
               >
                 <NotificationsOutlined />
               </IconButton>
@@ -225,16 +226,32 @@ const SupplierDashboardPage: React.FC = () => {
         <Box sx={{ width: 260 }} role='presentation'>
           <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
             <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-              {user?.companyName || 'CresceBR Supplier'}
+              {user?.companyName || t('supplierDashboard.fallbackCompany')}
             </Typography>
             <Typography variant='caption'>{user?.email}</Typography>
           </Box>
           <List>
             {[
-              { label: 'Dashboard', icon: <DashboardRounded />, path: '/supplier/dashboard' },
-              { label: 'Quotations', icon: <RequestQuoteOutlined />, path: '/supplier/quotations' },
-              { label: 'Orders', icon: <ShoppingBagOutlined />, path: '/supplier/orders' },
-              { label: 'Catalog', icon: <Inventory2Outlined />, path: '/supplier/products' },
+              {
+                label: t('supplierDashboard.nav.dashboard'),
+                icon: <DashboardRounded />,
+                path: '/supplier/dashboard',
+              },
+              {
+                label: t('supplierDashboard.nav.quotations'),
+                icon: <RequestQuoteOutlined />,
+                path: '/supplier/quotations',
+              },
+              {
+                label: t('supplierDashboard.nav.orders'),
+                icon: <ShoppingBagOutlined />,
+                path: '/supplier/orders',
+              },
+              {
+                label: t('supplierDashboard.nav.catalog'),
+                icon: <Inventory2Outlined />,
+                path: '/supplier/products',
+              },
             ].map(item => (
               <ListItem key={item.path} disablePadding>
                 <ListItemButton
@@ -260,7 +277,7 @@ const SupplierDashboardPage: React.FC = () => {
                 <ListItemIcon>
                   <Logout />
                 </ListItemIcon>
-                <ListItemText primary='Logout' />
+                <ListItemText primary={t('supplierDashboard.nav.logout')} />
               </ListItemButton>
             </ListItem>
           </List>
@@ -300,7 +317,7 @@ const SupplierDashboardPage: React.FC = () => {
                     letterSpacing: '0.05em',
                   }}
                 >
-                  Pending
+                  {t('supplierDashboard.metrics.pending')}
                 </Typography>
                 <PendingActions sx={{ color: 'warning.main', fontSize: 20 }} />
               </Box>
@@ -315,7 +332,7 @@ const SupplierDashboardPage: React.FC = () => {
                   variant='caption'
                   sx={{ color: 'text.secondary', fontSize: '0.625rem', mt: 0.5, display: 'block' }}
                 >
-                  Quotations
+                  {t('supplierDashboard.metrics.pendingSub')}
                 </Typography>
               </Box>
             </Card>
@@ -347,7 +364,7 @@ const SupplierDashboardPage: React.FC = () => {
                     letterSpacing: '0.05em',
                   }}
                 >
-                  Active
+                  {t('supplierDashboard.metrics.active')}
                 </Typography>
                 <LocalShipping sx={{ color: 'info.main', fontSize: 20 }} />
               </Box>
@@ -362,7 +379,7 @@ const SupplierDashboardPage: React.FC = () => {
                   variant='caption'
                   sx={{ color: 'text.secondary', fontSize: '0.625rem', mt: 0.5, display: 'block' }}
                 >
-                  Orders
+                  {t('supplierDashboard.metrics.activeSub')}
                 </Typography>
               </Box>
             </Card>
@@ -394,7 +411,7 @@ const SupplierDashboardPage: React.FC = () => {
                     letterSpacing: '0.05em',
                   }}
                 >
-                  Revenue
+                  {t('supplierDashboard.metrics.revenue')}
                 </Typography>
                 <TrendingUp sx={{ color: 'success.main', fontSize: 20 }} />
               </Box>
@@ -410,12 +427,6 @@ const SupplierDashboardPage: React.FC = () => {
                 >
                   {formatPrice(metrics.monthlyRevenue)}
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', color: 'success.main', mt: 0.5 }}>
-                  <ArrowUpward sx={{ fontSize: 10, mr: 0.5 }} />
-                  <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-                    12%
-                  </Typography>
-                </Box>
               </Box>
             </Card>
           </Grid>
@@ -433,7 +444,7 @@ const SupplierDashboardPage: React.FC = () => {
                 color: 'text.secondary',
               }}
             >
-              Quotation Queue
+              {t('supplierDashboard.quotationQueue')}
             </Typography>
             <Button
               variant='text'
@@ -441,7 +452,7 @@ const SupplierDashboardPage: React.FC = () => {
               sx={{ fontSize: '0.75rem', fontWeight: 600, minWidth: 'auto', p: 0 }}
               onClick={() => navigate('/supplier/quotations')}
             >
-              View All
+              {t('supplierDashboard.viewAll')}
             </Button>
           </Box>
 
@@ -460,11 +471,15 @@ const SupplierDashboardPage: React.FC = () => {
                 color: 'text.secondary',
               }}
             >
-              <Box sx={{ gridColumn: 'span 2' }}>ID</Box>
-              <Box sx={{ gridColumn: 'span 3' }}>Buyer</Box>
-              <Box sx={{ gridColumn: 'span 3' }}>Status</Box>
-              <Box sx={{ gridColumn: 'span 2', textAlign: 'right' }}>Value</Box>
-              <Box sx={{ gridColumn: 'span 2', textAlign: 'center' }}>Action</Box>
+              <Box sx={{ gridColumn: 'span 2' }}>{t('supplierDashboard.columns.id')}</Box>
+              <Box sx={{ gridColumn: 'span 3' }}>{t('supplierDashboard.columns.buyer')}</Box>
+              <Box sx={{ gridColumn: 'span 3' }}>{t('supplierDashboard.columns.status')}</Box>
+              <Box sx={{ gridColumn: 'span 2', textAlign: 'right' }}>
+                {t('supplierDashboard.columns.value')}
+              </Box>
+              <Box sx={{ gridColumn: 'span 2', textAlign: 'center' }}>
+                {t('supplierDashboard.columns.action')}
+              </Box>
             </Box>
             <Box
               sx={{
@@ -505,7 +520,11 @@ const SupplierDashboardPage: React.FC = () => {
                           #QT-{quote.id}
                         </Typography>
                         <Chip
-                          label={displayStatus}
+                          label={
+                            displayStatus === 'New'
+                              ? t('supplierDashboard.statusNew')
+                              : t('supplierDashboard.statusReview')
+                          }
                           size='small'
                           sx={{
                             height: 18,
@@ -540,19 +559,20 @@ const SupplierDashboardPage: React.FC = () => {
                           noWrap
                           sx={{ fontWeight: 600, color: 'text.primary' }}
                         >
-                          {quote.company?.companyName || 'Empresa Local'}
+                          {quote.company?.companyName || t('supplierDashboard.fallbackBuyer')}
                         </Typography>
                         <Typography
                           variant='caption'
                           noWrap
                           sx={{ color: 'text.secondary', display: 'block', mt: 0.5, maxWidth: 200 }}
                         >
-                          {quote.items.length} item(s) •{' '}
-                          {new Date(quote.createdAt || Date.now()).toLocaleDateString()}
+                          {t('supplierDashboard.itemsCount', { count: quote.items.length })} •{' '}
+                          {new Date(quote.createdAt || Date.now()).toLocaleDateString(dateLocale)}
                         </Typography>
                       </Box>
                       <IconButton
                         size='small'
+                        aria-label={t('supplierDashboard.quoteActionAria', { id: quote.id })}
                         onClick={() => navigate(`/supplier/quotations/${quote.id}`)}
                         sx={{
                           bgcolor: displayStatus === 'Review' ? 'primary.main' : 'background.paper',
@@ -593,7 +613,7 @@ const SupplierDashboardPage: React.FC = () => {
                 color: 'text.secondary',
               }}
             >
-              Recent Orders
+              {t('supplierDashboard.recentOrders')}
             </Typography>
           </Box>
 
@@ -672,7 +692,7 @@ const SupplierDashboardPage: React.FC = () => {
                           noWrap
                           sx={{ fontWeight: 600, color: 'text.primary' }}
                         >
-                          Order #{order.id}
+                          {t('supplierDashboard.orderLabel', { id: order.id })}
                         </Typography>
                         <Typography
                           variant='caption'
@@ -716,17 +736,16 @@ const SupplierDashboardPage: React.FC = () => {
                               mt: 0.5,
                               fontSize: '0.625rem',
                               color: 'text.secondary',
-                              textTransform: 'capitalize',
                             }}
                           >
-                            {order.status}
+                            {t(`supplierDashboard.orderStatus.${order.status}` as TranslationKey)}
                           </Typography>
                         </Box>
                         <Typography
                           variant='caption'
                           sx={{ fontSize: '0.625rem', color: 'text.secondary' }}
                         >
-                          {new Date(order.createdAt || Date.now()).toLocaleDateString()}
+                          {new Date(order.createdAt || Date.now()).toLocaleDateString(dateLocale)}
                         </Typography>
                       </Box>
                     </Box>
@@ -737,66 +756,6 @@ const SupplierDashboardPage: React.FC = () => {
           </Card>
         </Box>
 
-        {/* System Status */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <Typography
-            variant='subtitle2'
-            sx={{
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              color: 'text.secondary',
-            }}
-          >
-            System Status
-          </Typography>
-          <Grid container spacing={1.5}>
-            <Grid item xs={6}>
-              <Card
-                variant='outlined'
-                sx={{
-                  borderRadius: 2,
-                  p: 1.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Box>
-                  <Typography variant='caption' sx={{ color: 'text.secondary', display: 'block' }}>
-                    Catalog Import
-                  </Typography>
-                  <Typography variant='body2' sx={{ fontWeight: 600, color: 'success.main' }}>
-                    Healthy
-                  </Typography>
-                </Box>
-                <CheckCircle sx={{ color: 'success.main', fontSize: 20 }} />
-              </Card>
-            </Grid>
-            <Grid item xs={6}>
-              <Card
-                variant='outlined'
-                sx={{
-                  borderRadius: 2,
-                  p: 1.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Box>
-                  <Typography variant='caption' sx={{ color: 'text.secondary', display: 'block' }}>
-                    API Sync
-                  </Typography>
-                  <Typography variant='body2' sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                    Idle
-                  </Typography>
-                </Box>
-                <CloudQueue sx={{ color: 'text.disabled', fontSize: 20 }} />
-              </Card>
-            </Grid>
-          </Grid>
-        </Box>
       </Box>
 
       {/* Fixed Bottom Navigation */}
@@ -825,7 +784,7 @@ const SupplierDashboardPage: React.FC = () => {
           >
             <DashboardRounded sx={{ fontSize: 24, mb: 0.5 }} />
             <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              Dashboard
+              {t('supplierDashboard.nav.dashboard')}
             </Typography>
           </Box>
           <Box
@@ -842,7 +801,7 @@ const SupplierDashboardPage: React.FC = () => {
           >
             <RequestQuoteOutlined sx={{ fontSize: 24, mb: 0.5 }} />
             <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              Quotes
+              {t('supplierDashboard.nav.quotations')}
             </Typography>
           </Box>
           <Box
@@ -858,21 +817,9 @@ const SupplierDashboardPage: React.FC = () => {
             }}
             onClick={() => navigate('/supplier/orders')}
           >
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                right: '30%',
-                transform: 'translateX(4px)',
-                width: 8,
-                height: 8,
-                bgcolor: 'error.main',
-                borderRadius: '50%',
-              }}
-            />
             <ShoppingBagOutlined sx={{ fontSize: 24, mb: 0.5 }} />
             <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              Orders
+              {t('supplierDashboard.nav.orders')}
             </Typography>
           </Box>
           <Box
@@ -889,7 +836,7 @@ const SupplierDashboardPage: React.FC = () => {
           >
             <Inventory2Outlined sx={{ fontSize: 24, mb: 0.5 }} />
             <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              Catalog
+              {t('supplierDashboard.nav.catalog')}
             </Typography>
           </Box>
         </Box>

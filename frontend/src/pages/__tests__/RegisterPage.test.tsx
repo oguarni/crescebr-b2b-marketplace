@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import RegisterPage from '../RegisterPage';
@@ -46,42 +46,83 @@ const renderPage = async () => {
   });
 };
 
-// Self-service registration is currently disabled (under construction). The page
-// renders an informational notice instead of the registration form so visitors
-// cannot attempt to create an account.
-describe('RegisterPage (registration under construction)', () => {
+// Fills every field that validateForm() requires, leaving the optional ones
+// untouched. Industry sector is a MUI Select, so it is chosen via the listbox.
+const fillRequiredFields = async (
+  user: ReturnType<typeof userEvent.setup>,
+  { confirmPassword = 'secret123' }: { confirmPassword?: string } = {}
+) => {
+  await user.type(screen.getByLabelText('Email *'), 'compras@metalpar.com.br');
+  await user.type(screen.getByLabelText('Senha *'), 'secret123');
+  await user.type(screen.getByLabelText('Confirmar Senha *'), confirmPassword);
+  await user.type(screen.getByLabelText('CPF *'), '12345678901');
+  // CEP is a required control: jsdom blocks form submission while any required
+  // field is empty, so leaving it blank would silently skip handleSubmit.
+  // viaCepService.isValidCep is mocked to false, so no address lookup fires.
+  await user.type(screen.getByLabelText('CEP *'), '85501-000');
+  await user.type(screen.getByLabelText('Endereço Completo *'), 'Rua das Indústrias, 100, Curitiba - PR');
+  await user.type(screen.getByLabelText('Nome da Empresa *'), 'MetalPar');
+  await user.type(screen.getByLabelText('Razão Social *'), 'MetalPar Indústria Ltda');
+  await user.type(screen.getByLabelText('CNPJ *'), '12345678000190');
+
+  await user.click(screen.getByRole('combobox', { name: /Setor da Indústria/ }));
+  await user.click(await screen.findByRole('option', { name: 'Máquinas' }));
+};
+
+describe('RegisterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('shows the under-construction title and message', async () => {
+  it('renders the registration form with the required fields', async () => {
     await renderPage();
 
-    expect(screen.getByText('Cadastro em construção')).toBeInTheDocument();
-    expect(screen.getByText(/ainda não está disponível/i)).toBeInTheDocument();
+    expect(screen.getByText('Cadastro Empresarial - B2B')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email *')).toBeInTheDocument();
+    expect(screen.getByLabelText('Senha *')).toBeInTheDocument();
+    expect(screen.getByLabelText('Confirmar Senha *')).toBeInTheDocument();
+    expect(screen.getByLabelText('CNPJ *')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Cadastrar$/i })).toBeInTheDocument();
   });
 
-  it('does not render the registration form fields or submit button', async () => {
-    await renderPage();
-
-    expect(screen.queryByLabelText('Senha *')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Confirmar Senha *')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/CNPJ/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Cadastrar$/i })).not.toBeInTheDocument();
-  });
-
-  it('never calls register because there is no form to submit', async () => {
-    await renderPage();
-
-    expect(mockRegister).not.toHaveBeenCalled();
-  });
-
-  it('navigates to the login page when the buyer clicks the action button', async () => {
+  it('shows a validation error and does not register when passwords differ', async () => {
     const user = userEvent.setup();
     await renderPage();
 
-    await user.click(screen.getByRole('button', { name: /Ir para o login/i }));
+    await fillRequiredFields(user, { confirmPassword: 'different456' });
+    await user.click(screen.getByRole('button', { name: /^Cadastrar$/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/login');
+    expect(await screen.findByText('As senhas não coincidem')).toBeInTheDocument();
+    expect(mockRegister).not.toHaveBeenCalled();
+  });
+
+  it('registers the company and navigates home on success', async () => {
+    mockRegister.mockResolvedValueOnce(undefined);
+    const user = userEvent.setup();
+    await renderPage();
+
+    await fillRequiredFields(user);
+    await user.click(screen.getByRole('button', { name: /^Cadastrar$/i }));
+
+    await waitFor(() => {
+      expect(mockRegister).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'compras@metalpar.com.br',
+          password: 'secret123',
+          companyName: 'MetalPar',
+          corporateName: 'MetalPar Indústria Ltda',
+          industrySector: 'machinery',
+          companyType: 'buyer',
+        })
+      );
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('/');
+  });
+
+  it('links back to the login page', async () => {
+    await renderPage();
+
+    const loginLink = screen.getByRole('link', { name: 'Faça login' });
+    expect(loginLink).toHaveAttribute('href', '/login');
   });
 });

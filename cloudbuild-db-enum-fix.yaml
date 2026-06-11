@@ -1,0 +1,41 @@
+# One-off: align the live enum_orders_status with the Order model.
+# The DB schema was created from an older model revision and rejects
+# status values the current code writes (e.g. 'pending').
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/crescebr-portfolio-9048/secrets/db-password/versions/latest
+      env: DB_PASSWORD
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    id: start-proxy
+    args:
+      - run
+      - -d
+      - --network=cloudbuild
+      - --name=sqlproxy
+      - gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+      - --address=0.0.0.0
+      - --port=5432
+      - crescebr-portfolio-9048:southamerica-east1:crescebr-db
+
+  - name: postgres:15
+    id: fix-enum
+    entrypoint: bash
+    secretEnv: ['DB_PASSWORD']
+    args:
+      - -c
+      - |
+        set -e
+        sleep 5
+        export PGPASSWORD="$$DB_PASSWORD"
+        echo "--- current enum values ---"
+        psql -h sqlproxy -U crescebr_app -d crescebr -c "SELECT unnest(enum_range(NULL::enum_orders_status));"
+        for v in pending processing shipped delivered cancelled; do
+          psql -h sqlproxy -U crescebr_app -d crescebr -c "ALTER TYPE enum_orders_status ADD VALUE IF NOT EXISTS '$$v';"
+        done
+        echo "--- enum values after ---"
+        psql -h sqlproxy -U crescebr_app -d crescebr -c "SELECT unnest(enum_range(NULL::enum_orders_status));"

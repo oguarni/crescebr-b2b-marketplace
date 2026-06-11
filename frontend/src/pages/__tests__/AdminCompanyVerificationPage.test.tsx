@@ -83,7 +83,7 @@ describe('AdminCompanyVerificationPage', () => {
       renderPage();
 
       await waitFor(() => {
-        expect(screen.getByText(/Error loading verification queue/i)).toBeInTheDocument();
+        expect(screen.getByText(/Erro ao carregar a fila de verificação/i)).toBeInTheDocument();
       });
     });
   });
@@ -111,8 +111,8 @@ describe('AdminCompanyVerificationPage', () => {
       await waitFor(() => {
         // Company card is rendered in the queue section
         expect(screen.getByText('Supplier Corp')).toBeInTheDocument();
-        // The Verification Queue header is present
-        expect(screen.getByText(/Verification Queue/i)).toBeInTheDocument();
+        // The Verification Queue header is present (pt-BR)
+        expect(screen.getByText(/Fila de Verificação/i)).toBeInTheDocument();
       });
     });
 
@@ -637,7 +637,7 @@ describe('AdminCompanyVerificationPage', () => {
   });
 
   describe('status display for non-pending companies', () => {
-    it('shows "Approved" text for approved company instead of action buttons', async () => {
+    it('shows "Aprovada" text for approved company instead of action buttons', async () => {
       const approvedCompany = { ...mockCompany, status: 'approved' };
       mockAdminRequest.mockResolvedValue({
         data: { ...mockVerificationQueue, companies: [approvedCompany] },
@@ -646,11 +646,11 @@ describe('AdminCompanyVerificationPage', () => {
       renderPage();
 
       await waitFor(() => {
-        expect(screen.getByText('Approved')).toBeInTheDocument();
+        expect(screen.getByText('Aprovada')).toBeInTheDocument();
       });
     });
 
-    it('shows "Rejected" text for rejected company instead of action buttons', async () => {
+    it('shows "Rejeitada" text for rejected company instead of action buttons', async () => {
       const rejectedCompany = { ...mockCompany, status: 'rejected' };
       mockAdminRequest.mockResolvedValue({
         data: { ...mockVerificationQueue, companies: [rejectedCompany] },
@@ -659,7 +659,7 @@ describe('AdminCompanyVerificationPage', () => {
       renderPage();
 
       await waitFor(() => {
-        expect(screen.getByText('Rejected')).toBeInTheDocument();
+        expect(screen.getByText('Rejeitada')).toBeInTheDocument();
       });
     });
   });
@@ -671,7 +671,7 @@ describe('AdminCompanyVerificationPage', () => {
       renderPage();
 
       await waitFor(() => {
-        expect(screen.getByText(/Error loading verification queue/i)).toBeInTheDocument();
+        expect(screen.getByText(/Erro ao carregar a fila de verificação/i)).toBeInTheDocument();
       });
     });
 
@@ -681,7 +681,7 @@ describe('AdminCompanyVerificationPage', () => {
       renderPage();
 
       await waitFor(() => {
-        expect(screen.getByText(/Error loading verification queue/i)).toBeInTheDocument();
+        expect(screen.getByText(/Erro ao carregar a fila de verificação/i)).toBeInTheDocument();
       });
     });
   });

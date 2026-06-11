@@ -409,7 +409,10 @@ describe('productsService', () => {
       const result = await productsService.getById(1);
 
       expect(result).toEqual(mockProduct);
-      expect(MockProduct.findByPk).toHaveBeenCalledWith(1);
+      expect(MockProduct.findByPk).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ include: expect.any(Array) })
+      );
     });
 
     it('should return null when product not found', async () => {

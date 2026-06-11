@@ -21,7 +21,7 @@ const QUOTATION_INCLUDES = {
     {
       model: User,
       as: 'user',
-      attributes: ['id', 'email', 'cpf', 'address', 'role'],
+      attributes: ['id', 'email', 'cpf', 'address', 'role', 'companyName', 'corporateName', 'cnpj'],
     },
   ],
 };

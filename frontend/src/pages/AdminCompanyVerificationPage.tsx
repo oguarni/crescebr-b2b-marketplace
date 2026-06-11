@@ -37,7 +37,6 @@ import {
   LocationOn,
   Category,
   Search,
-  FilterList,
   Close,
   Check,
 } from '@mui/icons-material';
@@ -88,6 +87,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
   const [currentTab, setCurrentTab] = useState(0);
   const [filter, setFilter] = useState<'all' | 'pending' | 'unvalidated_cnpj'>('pending');
   const [page, setPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
   const [verificationReason, setVerificationReason] = useState('');
   const [cnpjValidating, setCnpjValidating] = useState(false);
 
@@ -96,7 +96,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
     setError('');
 
     try {
-      const response = (await authService.adminRequest('/admin/verification-queue', {
+      const response = (await authService.adminRequest('/admin/companies/queue', {
         params: {
           page: String(page),
           limit: '10',
@@ -106,7 +106,8 @@ const AdminCompanyVerificationPage: React.FC = () => {
 
       setVerificationQueue(response.data as Parameters<typeof setVerificationQueue>[0]);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error loading verification queue';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Erro ao carregar a fila de verificação';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -120,7 +121,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
   const handleVerifyCompany = async (companyId: number, status: 'approved' | 'rejected') => {
     try {
       const response = (await authService.adminRequest(`/admin/companies/${companyId}/verify`, {
-        method: 'POST',
+        method: 'PUT',
         data: {
           status,
           reason: verificationReason || undefined,
@@ -134,7 +135,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
       setSelectedCompany(null);
       loadVerificationQueue();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error verifying company';
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao verificar empresa';
       toast.error(errorMessage);
     }
   };
@@ -149,7 +150,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
         }
       )) as { data: { user: Parameters<typeof setSelectedCompany>[0] } };
 
-      toast.success('CNPJ validation completed successfully');
+      toast.success('CNPJ validado com sucesso');
 
       // Update the selected company data
       if (selectedCompany?.id === companyId) {
@@ -158,7 +159,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
 
       loadVerificationQueue();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error validating CNPJ';
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao validar CNPJ';
       toast.error(errorMessage);
     } finally {
       setCnpjValidating(false);
@@ -190,6 +191,18 @@ const AdminCompanyVerificationPage: React.FC = () => {
     };
     return typeMap[type] || type;
   };
+
+  // Client-side filter over the loaded page: matches the company name
+  // (case-insensitive) or the CNPJ ignoring punctuation.
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const searchDigits = normalizedSearch.replace(/\D/g, '');
+  const visibleCompanies = (verificationQueue?.companies ?? []).filter(company => {
+    if (!normalizedSearch) return true;
+    const nameMatch = company.companyName.toLowerCase().includes(normalizedSearch);
+    const cnpjMatch =
+      searchDigits.length > 0 && company.cnpj.replace(/\D/g, '').includes(searchDigits);
+    return nameMatch || cnpjMatch;
+  });
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
@@ -290,9 +303,9 @@ const AdminCompanyVerificationPage: React.FC = () => {
             variant='h6'
             sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}
           >
-            Verification Queue
+            Fila de Verificação
             <Chip
-              label={`${verificationQueue?.totalCount || 0} Pending`}
+              label={`${verificationQueue?.totalCount || 0} empresa(s)`}
               size='small'
               sx={{
                 bgcolor: 'primary.light',
@@ -303,9 +316,6 @@ const AdminCompanyVerificationPage: React.FC = () => {
               }}
             />
           </Typography>
-          <Button variant='text' size='small' sx={{ fontWeight: 'medium' }}>
-            View All
-          </Button>
         </Box>
 
         {/* Filter Tabs */}
@@ -333,7 +343,9 @@ const AdminCompanyVerificationPage: React.FC = () => {
           <TextField
             fullWidth
             size='small'
-            placeholder='Search by CNPJ or Name'
+            placeholder='Buscar por CNPJ ou nome'
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
             slotProps={{
               input: {
                 startAdornment: (
@@ -344,13 +356,6 @@ const AdminCompanyVerificationPage: React.FC = () => {
               },
             }}
           />
-          <Button
-            variant='outlined'
-            color='inherit'
-            sx={{ minWidth: 'auto', px: 2, borderColor: 'divider' }}
-          >
-            <FilterList />
-          </Button>
         </Box>
 
         {/* Queue Items */}
@@ -359,12 +364,12 @@ const AdminCompanyVerificationPage: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress size={30} />
             </Box>
-          ) : verificationQueue?.companies.length === 0 ? (
+          ) : visibleCompanies.length === 0 ? (
             <Typography sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
               Nenhuma empresa encontrada.
             </Typography>
           ) : (
-            verificationQueue?.companies.map((company, _idx) => (
+            visibleCompanies.map((company, _idx) => (
               <Box
                 key={company.id}
                 sx={{
@@ -457,7 +462,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
                         color: 'text.secondary',
                       }}
                     >
-                      Location
+                      Localização
                     </Typography>
                     <Typography variant='caption' sx={{ fontWeight: 'medium' }}>
                       {company.city || 'N/A'}, {company.state || 'N/A'}
@@ -468,6 +473,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
                       <>
                         <IconButton
                           size='small'
+                          aria-label={`Rejeitar ${company.companyName}`}
                           sx={{
                             bgcolor: 'error.light',
                             color: 'error.main',
@@ -485,6 +491,7 @@ const AdminCompanyVerificationPage: React.FC = () => {
                         </IconButton>
                         <IconButton
                           size='small'
+                          aria-label={`Aprovar ${company.companyName}`}
                           sx={{
                             bgcolor: 'success.light',
                             color: 'success.main',
@@ -511,11 +518,12 @@ const AdminCompanyVerificationPage: React.FC = () => {
                           mr: 1,
                         }}
                       >
-                        {company.status === 'approved' ? 'Approved' : 'Rejected'}
+                        {company.status === 'approved' ? 'Aprovada' : 'Rejeitada'}
                       </Typography>
                     )}
                     <IconButton
                       size='small'
+                      aria-label={`Ver detalhes de ${company.companyName}`}
                       sx={{
                         bgcolor: 'action.hover',
                         color: 'text.secondary',

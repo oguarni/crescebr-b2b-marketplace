@@ -115,8 +115,8 @@ describe('SupplierDashboardPage', () => {
 
     await waitFor(() => {
       // The "BR" in the title is rendered as an inline BrazilFlag SVG (aria-label
-      // "Brazil"), so the heading reads "Cresce <flag> Supplier" across elements.
-      expect(screen.getByRole('heading', { name: /Cresce.*Supplier/i })).toBeInTheDocument();
+      // "Brazil"), so the heading reads "Cresce <flag> Fornecedor" across elements.
+      expect(screen.getByRole('heading', { name: /Cresce.*Fornecedor/i })).toBeInTheDocument();
     });
   });
 
@@ -124,9 +124,9 @@ describe('SupplierDashboardPage', () => {
     await renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Pending')).toBeInTheDocument();
-      expect(screen.getByText('Active')).toBeInTheDocument();
-      expect(screen.getByText('Revenue')).toBeInTheDocument();
+      expect(screen.getByText('Pendentes')).toBeInTheDocument();
+      expect(screen.getByText('Ativos')).toBeInTheDocument();
+      expect(screen.getByText('Receita')).toBeInTheDocument();
     });
   });
 
@@ -138,9 +138,9 @@ describe('SupplierDashboardPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Recent Orders')).toBeInTheDocument();
-      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
-      expect(screen.getByText('Order #ORD-002')).toBeInTheDocument();
+      expect(screen.getByText('Pedidos Recentes')).toBeInTheDocument();
+      expect(screen.getByText('Pedido #ORD-001')).toBeInTheDocument();
+      expect(screen.getByText('Pedido #ORD-002')).toBeInTheDocument();
     });
   });
 
@@ -152,7 +152,7 @@ describe('SupplierDashboardPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Quotation Queue')).toBeInTheDocument();
+      expect(screen.getByText('Fila de Cotações')).toBeInTheDocument();
       expect(screen.getByText('#QT-1')).toBeInTheDocument();
       expect(screen.getByText('#QT-2')).toBeInTheDocument();
     });

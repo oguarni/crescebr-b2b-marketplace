@@ -84,7 +84,16 @@ describe('QuotationRepository', () => {
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'email', 'cpf', 'address', 'role'],
+            attributes: [
+              'id',
+              'email',
+              'cpf',
+              'address',
+              'role',
+              'companyName',
+              'corporateName',
+              'cnpj',
+            ],
           },
         ],
       });
@@ -157,7 +166,16 @@ describe('QuotationRepository', () => {
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'email', 'cpf', 'address', 'role'],
+            attributes: [
+              'id',
+              'email',
+              'cpf',
+              'address',
+              'role',
+              'companyName',
+              'corporateName',
+              'cnpj',
+            ],
           },
         ],
         order: [['createdAt', 'DESC']],

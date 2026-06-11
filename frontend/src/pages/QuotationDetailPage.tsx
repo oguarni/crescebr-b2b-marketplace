@@ -20,7 +20,6 @@ import {
   ArrowBack,
   Storefront,
   InfoOutlined,
-  MoreVert,
   LocalShipping,
   Inventory2,
   ArrowForward,
@@ -29,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import { ordersService } from '../services/ordersService';
 import { useAuth } from '../contexts/AuthContext';
+import { useT } from '../contexts/LanguageContext';
 import { useQuotation } from '../hooks';
 import toast from 'react-hot-toast';
 
@@ -37,6 +37,7 @@ const QuotationDetailPage: React.FC = () => {
   const [creatingOrder, setCreatingOrder] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const t = useT();
   const { quotation, loading, error } = useQuotation(parseInt(id ?? '0'));
 
   const formatPrice = (price: number) => {
@@ -68,10 +69,10 @@ const QuotationDetailPage: React.FC = () => {
     setCreatingOrder(true);
     try {
       await ordersService.createOrderFromQuotation({ quotationId: quotation.id });
-      toast.success('Order created successfully!');
+      toast.success(t('quotationDetail.createOrderSuccess'));
       navigate('/my-orders');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create order';
+      const errorMessage = err instanceof Error ? err.message : t('quotationDetail.createOrderError');
       toast.error(errorMessage);
     } finally {
       setCreatingOrder(false);
@@ -92,10 +93,10 @@ const QuotationDetailPage: React.FC = () => {
     return (
       <Box sx={{ textAlign: 'center', py: 8, px: 2 }}>
         <Alert severity='error' sx={{ mb: 4, maxWidth: 400, mx: 'auto' }}>
-          {error || 'Cotação não encontrada.'}
+          {error || t('quotationDetail.notFound')}
         </Alert>
         <Button variant='contained' component={Link} to='/' startIcon={<ArrowBack />}>
-          Voltar para Início
+          {t('quotationDetail.backHome')}
         </Button>
       </Box>
     );
@@ -152,15 +153,9 @@ const QuotationDetailPage: React.FC = () => {
               noWrap
               sx={{ fontWeight: 500, color: 'text.primary', fontSize: '1.125rem' }}
             >
-              Quotation #QT-{quotation.id}
+              {t('quotationDetail.title', { id: String(quotation.id) })}
             </Typography>
           </Box>
-          <Button
-            color='primary'
-            sx={{ fontWeight: 500, textTransform: 'none', fontSize: '0.875rem' }}
-          >
-            Save Draft
-          </Button>
         </Box>
 
         {/* Progress Stepper */}
@@ -198,7 +193,7 @@ const QuotationDetailPage: React.FC = () => {
               >
                 <Check fontSize='small' />
               </Box>
-              <Typography variant='caption'>Select Items</Typography>
+              <Typography variant='caption'>{t('quotationDetail.stepSelectItems')}</Typography>
             </Box>
 
             <Box sx={{ flex: 1, height: 1, bgcolor: 'divider', mx: 2, mt: -2 }} />
@@ -227,7 +222,7 @@ const QuotationDetailPage: React.FC = () => {
               >
                 2
               </Box>
-              <Typography variant='caption'>Review Pricing</Typography>
+              <Typography variant='caption'>{t('quotationDetail.stepReviewPricing')}</Typography>
             </Box>
 
             <Box sx={{ flex: 1, height: 1, bgcolor: 'divider', mx: 2, mt: -2 }} />
@@ -255,7 +250,7 @@ const QuotationDetailPage: React.FC = () => {
               >
                 3
               </Box>
-              <Typography variant='caption'>Confirm</Typography>
+              <Typography variant='caption'>{t('quotationDetail.stepConfirm')}</Typography>
             </Box>
           </Box>
         </Box>
@@ -315,10 +310,11 @@ const QuotationDetailPage: React.FC = () => {
                   noWrap
                   sx={{ fontWeight: 500, color: 'text.primary' }}
                 >
-                  {(quotation.company || quotation.user)?.companyName || 'Empresa Desconhecida'}
+                  {(quotation.company || quotation.user)?.companyName ||
+                    t('quotationDetail.unknownCompany')}
                 </Typography>
                 <Chip
-                  label='Verified'
+                  label={t('quotationDetail.verified')}
                   size='small'
                   sx={{
                     height: 20,
@@ -363,7 +359,7 @@ const QuotationDetailPage: React.FC = () => {
             '& .MuiAlert-message': { fontSize: '0.875rem' },
           }}
         >
-          Tier discounts applied automatically based on total volume. Taxes calculated for ICMS-ST.
+          {t('quotationDetail.tierInfo')}
         </Alert>
 
         {/* Items List */}
@@ -424,9 +420,6 @@ const QuotationDetailPage: React.FC = () => {
                     </Typography>
                   </Box>
                 </Box>
-                <IconButton size='small' sx={{ color: 'text.secondary' }}>
-                  <MoreVert fontSize='small' />
-                </IconButton>
               </Box>
 
               <Table size='small'>
@@ -442,7 +435,9 @@ const QuotationDetailPage: React.FC = () => {
                   }}
                 >
                   <TableRow>
-                    <TableCell sx={{ color: 'text.secondary' }}>Base Price</TableCell>
+                    <TableCell sx={{ color: 'text.secondary' }}>
+                      {t('quotationDetail.basePrice')}
+                    </TableCell>
                     <TableCell
                       align='right'
                       sx={{ fontFamily: 'monospace', color: 'text.primary' }}
@@ -451,7 +446,9 @@ const QuotationDetailPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell sx={{ color: 'text.secondary' }}>Qty</TableCell>
+                    <TableCell sx={{ color: 'text.secondary' }}>
+                      {t('quotationDetail.qty')}
+                    </TableCell>
                     <TableCell
                       align='right'
                       sx={{ fontFamily: 'monospace', color: 'text.primary' }}
@@ -461,14 +458,16 @@ const QuotationDetailPage: React.FC = () => {
                   </TableRow>
                   <TableRow sx={{ bgcolor: '#ecfdf5' }}>
                     <TableCell sx={{ color: '#059669', fontWeight: 500 }}>
-                      Vol. Discount (5%)
+                      {t('quotationDetail.volDiscount')}
                     </TableCell>
                     <TableCell align='right' sx={{ color: '#059669', fontFamily: 'monospace' }}>
                       - {formatPrice(volDiscount)}
                     </TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell sx={{ color: 'text.secondary' }}>Tax (IPI + ICMS)</TableCell>
+                    <TableCell sx={{ color: 'text.secondary' }}>
+                      {t('quotationDetail.tax')}
+                    </TableCell>
                     <TableCell
                       align='right'
                       sx={{ fontFamily: 'monospace', color: 'text.primary' }}
@@ -479,7 +478,9 @@ const QuotationDetailPage: React.FC = () => {
                   <TableRow
                     sx={{ bgcolor: 'grey.50', '& .MuiTableCell-root': { borderBottom: 'none' } }}
                   >
-                    <TableCell sx={{ fontWeight: 500, color: 'text.primary' }}>Subtotal</TableCell>
+                    <TableCell sx={{ fontWeight: 500, color: 'text.primary' }}>
+                      {t('quotationDetail.subtotal')}
+                    </TableCell>
                     <TableCell
                       align='right'
                       sx={{ fontFamily: 'monospace', fontWeight: 'bold', color: 'text.primary' }}
@@ -507,7 +508,7 @@ const QuotationDetailPage: React.FC = () => {
               px: 0.5,
             }}
           >
-            Logistics & Fees
+            {t('quotationDetail.logisticsFees')}
           </Typography>
           <Card
             variant='outlined'
@@ -531,7 +532,7 @@ const QuotationDetailPage: React.FC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <LocalShipping sx={{ color: 'text.secondary', fontSize: 20 }} />
                   <Typography variant='body2' color='text.primary'>
-                    Freight (FOB)
+                    {t('quotationDetail.freight')}
                   </Typography>
                 </Box>
                 <Typography variant='body2' sx={{ fontFamily: 'monospace', color: 'text.primary' }}>
@@ -549,7 +550,7 @@ const QuotationDetailPage: React.FC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Inventory2 sx={{ color: 'text.secondary', fontSize: 20 }} />
                   <Typography variant='body2' color='text.primary'>
-                    Packaging
+                    {t('quotationDetail.packaging')}
                   </Typography>
                 </Box>
                 <Typography variant='body2' sx={{ fontFamily: 'monospace', color: 'text.primary' }}>
@@ -566,7 +567,7 @@ const QuotationDetailPage: React.FC = () => {
             <Card variant='outlined' sx={{ borderRadius: 2, bgcolor: 'grey.50' }}>
               <CardContent sx={{ p: 2 }}>
                 <Typography variant='subtitle2' sx={{ fontWeight: 600, mb: 1 }}>
-                  Observações do Administrador
+                  {t('quotationDetail.adminNotes')}
                 </Typography>
                 <Typography variant='body2' color='text.secondary'>
                   {quotation.adminNotes}
@@ -601,13 +602,15 @@ const QuotationDetailPage: React.FC = () => {
           >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
               <Typography variant='caption' color='text.secondary'>
-                Total Items ({quotation.items.reduce((acc, item) => acc + item.quantity, 0)})
+                {t('quotationDetail.totalItems', {
+                  count: String(quotation.items.reduce((acc, item) => acc + item.quantity, 0)),
+                })}
               </Typography>
               <Typography variant='caption' color='text.secondary'>
-                Total Taxes
+                {t('quotationDetail.totalTaxes')}
               </Typography>
               <Typography variant='body2' sx={{ fontWeight: 500, mt: 0.5, color: 'text.primary' }}>
-                Grand Total
+                {t('quotationDetail.grandTotal')}
               </Typography>
             </Box>
             <Box
@@ -635,26 +638,8 @@ const QuotationDetailPage: React.FC = () => {
             </Box>
           </Box>
           <Grid container spacing={1.5}>
-            <Grid item xs={isAdmin || canCreateOrder ? 4 : 12}>
-              <Button
-                fullWidth
-                variant='outlined'
-                sx={{
-                  py: 1.5,
-                  borderRadius: 2,
-                  fontWeight: 500,
-                  color: 'text.primary',
-                  borderColor: 'divider',
-                  bgcolor: 'background.paper',
-                  textTransform: 'none',
-                  '&:hover': { bgcolor: 'grey.50', borderColor: 'divider' },
-                }}
-              >
-                Export PDF
-              </Button>
-            </Grid>
             {isAdmin && (
-              <Grid item xs={8}>
+              <Grid item xs={12}>
                 <Button
                   fullWidth
                   variant='contained'
@@ -670,12 +655,12 @@ const QuotationDetailPage: React.FC = () => {
                     '&:hover': { boxShadow: 4 },
                   }}
                 >
-                  Edit Quotation
+                  {t('quotationDetail.editQuotation')}
                 </Button>
               </Grid>
             )}
             {canCreateOrder && (
-              <Grid item xs={8}>
+              <Grid item xs={12}>
                 <Button
                   fullWidth
                   variant='contained'
@@ -698,7 +683,9 @@ const QuotationDetailPage: React.FC = () => {
                     '&:hover': { boxShadow: 4 },
                   }}
                 >
-                  {creatingOrder ? 'Creating Order...' : 'Create Order'}
+                  {creatingOrder
+                    ? t('quotationDetail.creatingOrder')
+                    : t('quotationDetail.createOrder')}
                 </Button>
               </Grid>
             )}

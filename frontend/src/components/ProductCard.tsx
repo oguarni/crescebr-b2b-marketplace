@@ -237,9 +237,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   noWrap
                   sx={{ flex: 1, minWidth: 0 }}
                 >
-                  {product.supplierId
-                    ? t('home.supplierId', { id: product.supplierId })
-                    : t('home.fallbackSupplier')}
+                  {product.supplier?.companyName ||
+                    product.supplier?.corporateName ||
+                    (product.supplierId
+                      ? t('home.supplierId', { id: product.supplierId })
+                      : t('home.fallbackSupplier'))}
                 </Typography>
                 <ExpandMore
                   sx={{
@@ -292,6 +294,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   event.stopPropagation();
                   onAddToCart(product);
                 }}
+                aria-label={`${t('home.addToQuote')} — ${product.name}`}
                 color='primary'
                 sx={{
                   flexShrink: 0,
