@@ -52,7 +52,9 @@ describe('ProductCard', () => {
     const user = userEvent.setup();
     renderCard();
 
-    const trigger = screen.getByRole('button', { name: /Industrial Pump/i });
+    // The accessible name is "<product> — View details"; anchoring distinguishes
+    // the expand trigger from the "Add to quote — <product>" icon button.
+    const trigger = screen.getByRole('button', { name: /^Industrial Pump/i });
     await user.click(trigger);
 
     expect(await screen.findByText('High-performance industrial water pump')).toBeInTheDocument();

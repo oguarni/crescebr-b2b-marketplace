@@ -56,6 +56,10 @@ const fillRequiredFields = async (
   await user.type(screen.getByLabelText('Senha *'), 'secret123');
   await user.type(screen.getByLabelText('Confirmar Senha *'), confirmPassword);
   await user.type(screen.getByLabelText('CPF *'), '12345678901');
+  // CEP is a required control: jsdom blocks form submission while any required
+  // field is empty, so leaving it blank would silently skip handleSubmit.
+  // viaCepService.isValidCep is mocked to false, so no address lookup fires.
+  await user.type(screen.getByLabelText('CEP *'), '85501-000');
   await user.type(screen.getByLabelText('Endereço Completo *'), 'Rua das Indústrias, 100, Curitiba - PR');
   await user.type(screen.getByLabelText('Nome da Empresa *'), 'MetalPar');
   await user.type(screen.getByLabelText('Razão Social *'), 'MetalPar Indústria Ltda');

@@ -238,7 +238,8 @@ describe('QuotationDetailPage', () => {
       fireEvent.click(createButton);
 
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('Failed to create order');
+        // Renders without a LanguageProvider, so the default pt-BR dictionary applies.
+        expect(toast.error).toHaveBeenCalledWith('Erro ao criar pedido');
       });
     });
   });
