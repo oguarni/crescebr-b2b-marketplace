@@ -13,12 +13,14 @@
 
 ## Tech Stack
 
-- React 19.1.0 + TypeScript 5.8.3
-- Vite 7.0 (build and dev server)
-- Material-UI (MUI) 7.1.2 + Emotion
-- React Router DOM 6.8.0
-- Axios 1.10.0
-- Vitest 3.2.4 + React Testing Library
+- React 19 + TypeScript 5
+- Vite 7 (build and dev server)
+- Material-UI (MUI) 7 + Emotion
+- React Router DOM 7
+- Axios 1
+- Vitest 4 + React Testing Library
+
+Major versions only; `frontend/package.json` has the exact ranges.
 
 ## Target Folder Structure (After Refactoring)
 
