@@ -1,6 +1,9 @@
 import request from 'supertest';
 import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import { existsSync, mkdtempSync, rmSync, unlinkSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import {
   getAllProducts,
   getProductById,
@@ -79,8 +82,10 @@ app.put(
 );
 app.delete('/api/products/:id', authenticateJWT, deleteProduct);
 
-// CSV import route (would typically be in a separate controller)
-const upload = multer({ dest: 'uploads/' });
+// CSV import route (would typically be in a separate controller). Its uploads go
+// to a throwaway directory, so a test run leaves nothing in backend/uploads.
+const stubUploadDir = mkdtempSync(join(tmpdir(), 'crescebr-products-test-'));
+const upload = multer({ dest: stubUploadDir });
 app.post(
   '/api/products/import',
   authenticateJWT,
@@ -116,7 +121,18 @@ app.post(
 
 app.use(errorHandler);
 
+// Removes the file the real controller stored for this test's import, for the
+// tests that stop the controller from cleaning up after itself.
+const removeStoredUpload = (): void => {
+  const storedPath = MockCSVImporter.importProductsFromCSV.mock.calls[0]?.[0];
+  if (storedPath && existsSync(storedPath)) unlinkSync(storedPath);
+};
+
 describe('Products Controller', () => {
+  afterAll(() => {
+    rmSync(stubUploadDir, { recursive: true, force: true });
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -676,15 +692,25 @@ describe('Products Controller', () => {
   });
 
   describe('GET /api/products/import/sample (generateSampleCSV)', () => {
-    it('should return 500 when generateSampleCSV throws', async () => {
+    // Regression: the 500 body echoed the raw error, which for a file-system
+    // failure carries an absolute server path.
+    it('should return a generic 500 and log the cause when generateSampleCSV throws', async () => {
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation();
       MockCSVImporter.generateSampleCSV = jest.fn().mockImplementation(() => {
-        throw new Error('Failed to write file');
+        throw new Error("EACCES: permission denied, open '/srv/app/uploads/sample.csv'");
       });
 
-      const response = await request(app).get('/api/products/import/sample').expect(500);
+      try {
+        const response = await request(app).get('/api/products/import/sample').expect(500);
 
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to write file');
+        expect(response.body).toEqual({ success: false, error: 'Failed to generate sample CSV' });
+        expect(loggerSpy).toHaveBeenCalledWith(
+          'Failed to generate sample CSV',
+          expect.objectContaining({ error: expect.any(Error) })
+        );
+      } finally {
+        loggerSpy.mockRestore();
+      }
     });
 
     it('should log download error and skip cleanup when file does not exist (B16 true/B17 false)', async () => {
@@ -750,32 +776,55 @@ describe('Products Controller', () => {
       expect(MockCSVImporter.getImportStats).toHaveBeenCalledWith(undefined);
     });
 
-    it('should return 500 when getImportStats throws', async () => {
+    // Regression: the 500 body echoed the driver's message, handing any signed-in
+    // user SQL and schema details whenever the query failed.
+    it('should return a generic 500 and log the cause when getImportStats throws', async () => {
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation();
       MockCSVImporter.getImportStats = jest
         .fn()
-        .mockRejectedValue(new Error('Database query failed'));
+        .mockRejectedValue(new Error('relation "products" does not exist'));
 
-      const response = await request(app).get('/api/products/import/stats').expect(500);
+      try {
+        const response = await request(app).get('/api/products/import/stats').expect(500);
 
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Database query failed');
+        expect(response.body).toEqual({ success: false, error: 'Failed to get import statistics' });
+        expect(loggerSpy).toHaveBeenCalledWith(
+          'Failed to get import statistics',
+          expect.objectContaining({ error: expect.any(Error) })
+        );
+      } finally {
+        loggerSpy.mockRestore();
+      }
     });
   });
 
   describe('POST /api/products/import/csv - error handling', () => {
-    it('should return 500 when CSVImporter throws during import', async () => {
-      MockCSVImporter.importProductsFromCSV.mockRejectedValue(new Error('CSV processing error'));
+    // Regression: when the import threw, the uploaded CSV stayed in uploads/ for
+    // good and the 500 body echoed the raw error message.
+    it('should return a generic 500, log the cause and remove the upload when the import throws', async () => {
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation();
+      MockCSVImporter.importProductsFromCSV.mockRejectedValue(
+        new Error('relation "products" does not exist')
+      );
 
-      const response = await request(app)
-        .post('/api/products/import/csv')
-        .attach('csvFile', Buffer.from('name,description,price,category\nProd1,Desc1,10,Cat1'), {
-          filename: 'test.csv',
-          contentType: 'text/csv',
-        });
+      try {
+        const response = await request(app)
+          .post('/api/products/import/csv')
+          .attach('csvFile', Buffer.from('name,description,price,category\nProd1,Desc1,10,Cat1'), {
+            filename: 'test.csv',
+            contentType: 'text/csv',
+          })
+          .expect(500);
 
-      // The controller catches errors and returns 500
-      if (response.status === 500) {
-        expect(response.body.success).toBe(false);
+        expect(response.body).toEqual({ success: false, error: 'Import failed' });
+        expect(loggerSpy).toHaveBeenCalledWith(
+          'CSV import failed',
+          expect.objectContaining({ error: expect.any(Error) })
+        );
+        const storedPath = MockCSVImporter.importProductsFromCSV.mock.calls[0][0];
+        expect(existsSync(storedPath)).toBe(false);
+      } finally {
+        loggerSpy.mockRestore();
       }
     });
 
@@ -838,6 +887,41 @@ describe('Products Controller', () => {
       } finally {
         existsSyncSpy.mockRestore();
         unlinkSyncSpy.mockRestore();
+        removeStoredUpload();
+      }
+    });
+
+    it('should still answer and log when the upload cannot be removed afterwards', async () => {
+      MockCSVImporter.importProductsFromCSV.mockResolvedValue({
+        success: true,
+        imported: 1,
+        failed: 0,
+        errors: [],
+      });
+
+      const fs = require('fs');
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation();
+      const unlinkSyncSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {
+        throw new Error('EPERM: operation not permitted');
+      });
+
+      try {
+        await request(app)
+          .post('/api/products/import/csv')
+          .attach('csvFile', Buffer.from('name,description,price,category\nProd,Desc,10,Cat'), {
+            filename: 'test.csv',
+            contentType: 'text/csv',
+          })
+          .expect(200);
+
+        expect(loggerSpy).toHaveBeenCalledWith(
+          'Failed to remove uploaded CSV',
+          expect.objectContaining({ error: expect.any(Error) })
+        );
+      } finally {
+        unlinkSyncSpy.mockRestore();
+        loggerSpy.mockRestore();
+        removeStoredUpload();
       }
     });
   });
