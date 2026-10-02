@@ -169,6 +169,7 @@ filter-repo/
 .claude/.session_*
 .claude/cache/
 .claude/logs/
+.claude/worktrees/
 
 # ──────────────────────────────────────────────
 # Shared build output
