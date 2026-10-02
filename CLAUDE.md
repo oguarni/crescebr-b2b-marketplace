@@ -87,7 +87,7 @@ npm run setup
 npm run dev
 
 # With Docker
-docker-compose up -d
+docker compose up -d
 ```
 
 ## Workspace Commands
@@ -225,7 +225,7 @@ After completing any refactoring task:
 - Backend lint errors (`fail` in ratingsService, `_req` prefix, stale eslint-disable) — fixed (2026-04-04)
 - DRY violation: `authController.ts` `buildTokenPayload` extracted — fixed (2026-04-04)
 - Bundle size: `manualChunks` added to Vite config — fixed (2026-04-04)
-- Vulnerabilities: `sqlite3` upgraded to v6, root `overrides` added — 0 findings (2026-04-04)
+- Vulnerabilities: root `overrides` added (2026-04-04). The `sqlite3` v6 upgrade from the same day was reverted to 5.1.7 on 2026-04-07 (`3f888a4`) because the v6 prebuilt binaries need glibc 2.38. sqlite3 is a dev-only test dependency, and the node-gyp/tar chain it installs still shows in `npm audit`.
 - Docker security: `USER node` in backend Dockerfile; DB/Redis ports bound to `127.0.0.1` — fixed (2026-04-04)
 - ~~Test credentials visible in LoginPage UI — wrapped in `import.meta.env.DEV` (2026-04-04)~~ —
   **no longer true, and no longer a defect** (corrected 2026-08-29). `LoginPage.tsx` renders the demo
@@ -237,7 +237,7 @@ After completing any refactoring task:
 - Supplier RBAC: suppliers blocked from quotations (they hit the admin-only `GET /quotations/admin/all`, and the Supplier Dashboard failed with "Access denied"). Added supplier-scoped `GET /quotations/supplier` (server-side filtered to the supplier's products), made `PUT /quotations/supplier/:id` ownership-checked, scoped `getById` for suppliers, fixed the dashboard's broken detail/order navigation, and added the `supplier/quotations/:id` route — fixed (2026-05-29)
 
 ### Open
-1. **Architecture (intentional)**: Services use direct Sequelize model access — this is the accepted pattern (KISS/YAGNI). `quotation.service.ts` uses repositories as an example, not a mandate. `order.repository.ts` exists but no service uses it — document and leave as-is.
+1. **Architecture (intentional)**: Services use direct Sequelize model access — this is the accepted pattern (KISS/YAGNI). `quotation.service.ts` uses repositories as an example, not a mandate. The unused `order.repository.ts` was deleted on 2026-04-02 (`07f40e6`).
 
 ## Hosted demo runs without a backend (2026-08-20)
 

@@ -13,11 +13,13 @@
 
 ## Tech Stack
 
-- Node.js 16+ with Express 5.1.0
-- TypeScript 5.8.3
-- PostgreSQL 15 + Sequelize ORM 6.37.7
-- JWT (jsonwebtoken 9.0.2)
-- Jest 30.0.3 + Supertest
+- Node.js 20+ with Express 5
+- TypeScript 5
+- PostgreSQL 15 + Sequelize ORM 6
+- JWT (jsonwebtoken 9)
+- Jest 30 + Supertest
+
+Major versions only; `backend/package.json` has the exact ranges.
 
 ## Target Folder Structure (After Refactoring)
 
@@ -116,9 +118,9 @@ export const createQuotationValidation = [
 
 ### Phase 1: Create Repository Layer [STATUS: ✅ DONE — with intentional caveat]
 
-**Completed**: `src/repositories/` contains `quotation.repository.ts`, `product.repository.ts`, `order.repository.ts`, and `index.ts`. All at 100% test coverage (except barrel index).
+**Completed**: `src/repositories/` contains `quotation.repository.ts`, `product.repository.ts` and `index.ts`, all at 100% test coverage (except barrel index). `order.repository.ts`, which no service used, was deleted on 2026-04-02 (`07f40e6`).
 
-**Architecture decision (2026-04-03)**: Services use direct Sequelize model access as the standard pattern (KISS/YAGNI). `quotation.service.ts` uses repositories as an example; the other 8 services access models directly and this is intentional. `order.repository.ts` exists but no service uses it — this is acceptable dead code at this project scale. Do NOT wire repositories into all services.
+**Architecture decision (2026-04-03)**: Services use direct Sequelize model access as the standard pattern (KISS/YAGNI). `quotation.service.ts` uses repositories as an example; the other 8 services access models directly and this is intentional. Do NOT wire repositories into all services.
 
 **Task 1.1: Create `src/repositories/quotation.repository.ts`**
 
@@ -665,11 +667,11 @@ npm run lint         # Lint code
 - Rating PUT/DELETE lacked role restriction — fixed
 - Lint errors (`fail` in ratingsService, unused `req`, stale eslint-disable) — fixed (2026-04-04)
 - DRY: `buildTokenPayload` helper extracted in `authController.ts` — fixed (2026-04-04)
-- Vulnerabilities: `sqlite3` upgraded to v6 — 0 audit findings (2026-04-04)
+- Vulnerabilities: the `sqlite3` v6 upgrade of 2026-04-04 was reverted to 5.1.7 on 2026-04-07 (`3f888a4`) because the v6 prebuilt binaries need glibc 2.38. sqlite3 is a dev-only test dependency, and the node-gyp/tar chain it installs still shows in `npm audit`.
 - Docker: `USER node` in backend Dockerfile; DB/Redis ports bound to `127.0.0.1` — fixed (2026-04-04)
 
 ### Open
-1. **Architecture (intentional)**: Services use direct model access — see Phase 1 note above. `order.repository.ts` is intentionally unused.
+1. **Architecture (intentional)**: Services use direct model access — see Phase 1 note above.
 
 ### Closed since (2026-08-28)
 - **Tests OOM** — the `test` script in `backend/package.json` now sets

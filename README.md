@@ -65,16 +65,19 @@ The result is a transparent, auditable procurement platform where buyers find ve
 ### Docker (recommended)
 
 ```bash
-git clone https://github.com/oguarni/CresceBR.git crescebr-b2b-marketplace
+git clone https://github.com/oguarni/crescebr-b2b-marketplace.git
 cd crescebr-b2b-marketplace
 
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp .env.example .env
+# In .env, replace JWT_SECRET with the output of `openssl rand -base64 64`
+# and DB_PASSWORD with a password of your own.
 
-docker-compose up --build
+docker compose up --build
 ```
 
-Open `http://localhost:5173` for the frontend and `http://localhost:3001/api/v1` for the API.
+This starts PostgreSQL, Redis and the API at `http://localhost:3001/api/v1`. Compose takes its settings from the root `.env`, and the API rejects the `JWT_SECRET` placeholder from `.env.example`, so logging in fails until you replace it.
+
+The `frontend` service builds the nginx image meant for Cloud Run, and that image doesn't reach this local API. For the UI, run `npm run setup` and `npm run dev -w frontend`, then open `http://localhost:5173`. Vite forwards `/api` to port 3001.
 
 ### Local development
 
@@ -205,7 +208,6 @@ Design specs, operational history, and tooling references live in [`docs/`](docs
 | -------- | ------- |
 | [Security Operations](docs/SECURITY.md) | JWT incident record, remediation status, and deployment requirements |
 | [Maturity Improvements](docs/MATURITY_IMPROVEMENTS.md) | Security fixes, testing, and business logic enhancements |
-| [Prioritized Action Plan](docs/prioritized-action-plan.md) | Current backlog ranked by priority |
 | [Frontend Design Spec](docs/design-prompt.md) | Visual language and page layouts |
 
 ---
@@ -254,14 +256,17 @@ For commercial licensing inquiries, contact the author via [LinkedIn](https://ww
 ### Como começar
 
 ```bash
-git clone https://github.com/oguarni/CresceBR.git crescebr-b2b-marketplace
+git clone https://github.com/oguarni/crescebr-b2b-marketplace.git
 cd crescebr-b2b-marketplace
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-docker-compose up --build
+cp .env.example .env
+# No .env, troque JWT_SECRET pela saída de `openssl rand -base64 64`
+# e DB_PASSWORD por uma senha sua.
+docker compose up --build
 ```
 
-**Acesso:** `http://localhost:5173` (frontend) | `http://localhost:3001/api/v1` (API)
+Isso sobe o PostgreSQL, o Redis e a API em `http://localhost:3001/api/v1`. O Compose lê as configurações do `.env` da raiz, e a API recusa o `JWT_SECRET` de exemplo do `.env.example`, então o login falha até você trocá-lo.
+
+O serviço `frontend` gera a imagem nginx feita para o Cloud Run, e essa imagem não alcança a API local. Para a interface, rode `npm run setup` e `npm run dev -w frontend` e abra `http://localhost:5173`. O Vite encaminha `/api` para a porta 3001.
 
 Para instruções detalhadas de desenvolvimento, consulte as seções em inglês acima.
 
