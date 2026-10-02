@@ -14,15 +14,12 @@ updates:
     # Grouped so a week of updates is one reviewable PR, not twenty rubber stamps.
     # Security advisories are always opened separately by Dependabot.
     groups:
-      # The @vitest/* packages peer-depend on the exact vitest version, so a
-      # vitest major can only land as one change. Offered alone, as in #55,
-      # @vitest/coverage-v8 5 failed npm ci with ERESOLVE. This group takes
-      # every update type and comes first because a dependency joins the first
-      # group it matches.
+      # The @vitest/* packages peer-depend on the exact vitest version, so even
+      # a patch has to move them together. These two groups come first because
+      # a dependency joins the first group it matches.
       vitest:
         patterns: ['vitest', '@vitest/*']
-      # Same reason for MUI: @mui/icons-material 9 requires @mui/material ^9.4.0,
-      # and offered alone in #69 against Material 7 it broke 13 Navbar tests.
+      # @mui/icons-material and @mui/lab follow @mui/material's version line.
       mui:
         patterns: ['@mui/*']
       production:
@@ -45,6 +42,23 @@ updates:
       # 26 offered in #54, lets code type-check against APIs that production
       # does not have. Raise it together with the runtime upgrade.
       - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+      # The same holds for Vite, Vitest and MUI majors. Each one is a migration,
+      # and Dependabot offers them in pieces that cannot pass CI: vite 8 alone
+      # broke the build (#75, manualChunks is not a function) and needs
+      # plugin-react 6 above; the vitest group still split Vitest 5 into #74
+      # (vitest only, npm ci crashed) and #76 (coverage-v8 only, ERESOLVE); and
+      # @mui/icons-material 9 requires @mui/material ^9.4.0 (#69, 13 Navbar
+      # tests failed on Material 7). Left open, those PRs held four of the five
+      # open-PR slots and blocked the minor and patch groups. Drop each entry as
+      # part of its migration.
+      - dependency-name: 'vite'
+        update-types: [version-update:semver-major]
+      - dependency-name: 'vitest'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@vitest/*'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@mui/*'
         update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
