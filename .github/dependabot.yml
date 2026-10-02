@@ -21,6 +21,10 @@ updates:
       # group it matches.
       vitest:
         patterns: ['vitest', '@vitest/*']
+      # Same reason for MUI: @mui/icons-material 9 requires @mui/material ^9.4.0,
+      # and offered alone in #69 against Material 7 it broke 13 Navbar tests.
+      mui:
+        patterns: ['@mui/*']
       production:
         dependency-type: production
         update-types: [minor, patch]
