@@ -74,6 +74,16 @@ export const getAvailableSpecifications = asyncHandler(async (req: Request, res:
   res.status(200).json({ success: true, data: specs });
 });
 
+// Relative to the working directory. The backend image creates it, but a fresh
+// checkout run with `npm run dev` does not have it, and neither multer's
+// function-form destination nor fs.writeFileSync creates missing directories.
+const UPLOAD_DIR = 'uploads';
+
+const ensureUploadDir = (): void => {
+  const fs = require('fs');
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+};
+
 export const importProductsFromCSV = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const multer = require('multer');
@@ -85,7 +95,12 @@ export const importProductsFromCSV = asyncHandler(
         file: { fieldname: string; originalname: string; mimetype: string },
         cb: (error: Error | null, destination: string) => void
       ) => {
-        cb(null, 'uploads/');
+        try {
+          ensureUploadDir();
+          cb(null, UPLOAD_DIR);
+        } catch (error) {
+          cb(error as Error, UPLOAD_DIR);
+        }
       },
       filename: (
         req: Request,
@@ -186,9 +201,10 @@ const removeUploadedFile = (filePath: string): void => {
 
 export const generateSampleCSV = asyncHandler(async (req: Request, res: Response) => {
   const { CSVImporter } = require('../utils/csvImporter');
-  const sampleFilePath = path.join('uploads', `sample-products-${Date.now()}.csv`);
+  const sampleFilePath = path.join(UPLOAD_DIR, `sample-products-${Date.now()}.csv`);
 
   try {
+    ensureUploadDir();
     CSVImporter.generateSampleCSV(sampleFilePath);
     res.download(sampleFilePath, 'sample-products.csv', err => {
       if (err) logger.error('Failed to download file', { error: err });
