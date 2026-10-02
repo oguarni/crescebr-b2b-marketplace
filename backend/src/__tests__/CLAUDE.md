@@ -37,7 +37,6 @@ src/
 │   ├── Product.test.ts                    # Product model
 │   └── User.test.ts                       # User model
 ├── repositories/__tests__/
-│   ├── order.repository.test.ts           # Order repo
 │   ├── product.repository.test.ts         # Product repo
 │   └── quotation.repository.test.ts       # Quotation repo
 ├── services/__tests__/
