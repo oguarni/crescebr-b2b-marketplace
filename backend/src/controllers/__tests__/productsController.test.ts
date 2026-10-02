@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync } from 'fs';
+import { existsSync, mkdtempSync, rmSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import {
@@ -129,12 +129,6 @@ const removeStoredUpload = (): void => {
 };
 
 describe('Products Controller', () => {
-  // The real controller stores uploads in uploads/, which the backend image
-  // creates (backend/Dockerfile) and a fresh checkout does not have.
-  beforeAll(() => {
-    mkdirSync('uploads', { recursive: true });
-  });
-
   afterAll(() => {
     rmSync(stubUploadDir, { recursive: true, force: true });
   });
@@ -948,6 +942,76 @@ describe('Products Controller', () => {
       expect(MockCSVImporter.generateSampleCSV).toHaveBeenCalled();
       // Response should succeed (not 500) since the file was created
       expect(response.status).not.toBe(500);
+    });
+  });
+
+  // Regression: uploads/ is relative to the working directory, and only the
+  // backend image created it. On a fresh clone run with `npm run dev`, the
+  // import answered 400 (ENOENT from multer) and the sample download 500.
+  describe('fresh checkout without an uploads/ directory', () => {
+    let freshDir: string;
+    let originalCwd: string;
+
+    beforeEach(() => {
+      originalCwd = process.cwd();
+      freshDir = mkdtempSync(join(tmpdir(), 'crescebr-fresh-checkout-'));
+      process.chdir(freshDir);
+    });
+
+    afterEach(() => {
+      process.chdir(originalCwd);
+      rmSync(freshDir, { recursive: true, force: true });
+    });
+
+    it('should create uploads/ and import the CSV', async () => {
+      MockCSVImporter.importProductsFromCSV.mockResolvedValue({
+        success: true,
+        imported: 1,
+        failed: 0,
+        errors: [],
+      });
+
+      await request(app)
+        .post('/api/products/import/csv')
+        .attach('csvFile', Buffer.from('name,description,price,category\nProd,Desc,10,Cat'), {
+          filename: 'test.csv',
+          contentType: 'text/csv',
+        })
+        .expect(200);
+
+      expect(MockCSVImporter.importProductsFromCSV).toHaveBeenCalled();
+      expect(existsSync(join(freshDir, 'uploads'))).toBe(true);
+    });
+
+    it('should create uploads/ and serve the sample CSV', async () => {
+      const fs = require('fs');
+      MockCSVImporter.generateSampleCSV = jest.fn().mockImplementation((filePath: string) => {
+        fs.writeFileSync(filePath, 'name,description,price,category\n');
+      });
+
+      await request(app).get('/api/products/import/sample').expect(200);
+    });
+
+    it('should answer 400 when uploads/ cannot be created', async () => {
+      const fs = require('fs');
+      const mkdirSyncSpy = jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {
+        throw new Error('EACCES: permission denied');
+      });
+
+      try {
+        const response = await request(app)
+          .post('/api/products/import/csv')
+          .attach('csvFile', Buffer.from('name,description,price,category\nProd,Desc,10,Cat'), {
+            filename: 'test.csv',
+            contentType: 'text/csv',
+          })
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+        expect(MockCSVImporter.importProductsFromCSV).not.toHaveBeenCalled();
+      } finally {
+        mkdirSyncSpy.mockRestore();
+      }
     });
   });
 
