@@ -14,6 +14,13 @@ updates:
     # Grouped so a week of updates is one reviewable PR, not twenty rubber stamps.
     # Security advisories are always opened separately by Dependabot.
     groups:
+      # The @vitest/* packages peer-depend on the exact vitest version, so a
+      # vitest major can only land as one change. Offered alone, as in #55,
+      # @vitest/coverage-v8 5 failed npm ci with ERESOLVE. This group takes
+      # every update type and comes first because a dependency joins the first
+      # group it matches.
+      vitest:
+        patterns: ['vitest', '@vitest/*']
       production:
         dependency-type: production
         update-types: [minor, patch]
@@ -28,6 +35,12 @@ updates:
       # 5.2.0 already spans vite ^7 and ^8, so nothing is lost by waiting.
       # Drop this entry as part of the Vite 8 migration, not before.
       - dependency-name: '@vitejs/plugin-react'
+        update-types: [version-update:semver-major]
+      # @types/node majors follow the Node runtime, which is still node:20 in
+      # both images, and the types are already on 24. A newer major, like the
+      # 26 offered in #54, lets code type-check against APIs that production
+      # does not have. Raise it together with the runtime upgrade.
+      - dependency-name: '@types/node'
         update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions

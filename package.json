@@ -77,14 +77,14 @@
     "sqlite3": "^5.1.7",
     "axios": "^1.18.0",
     "form-data": "^4.0.6",
-    "postcss": "^8.5.10",
+    "postcss": "^8.5.23",
     "follow-redirects": "^1.15.12",
     "ip-address": "^11.0.0",
     "js-cookie": "^3.0.8",
-    "qs": "^6.15.2",
+    "qs": "^6.16.0",
     "react-router": "^7.18.2",
     "ws": "^8.21.0",
-    "shell-quote": "^1.8.4"
+    "shell-quote": "^1.9.0"
   },
   "lint-staged": {
     "**/*.{ts,tsx,js,jsx}": [
