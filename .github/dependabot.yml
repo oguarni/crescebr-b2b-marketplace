@@ -60,6 +60,21 @@ updates:
         update-types: [version-update:semver-major]
       - dependency-name: '@mui/*'
         update-types: [version-update:semver-major]
+      # These majors wait for the environment, not for a migration, and CI
+      # cannot catch either problem. concurrently 10 (#80) declares Node >=22
+      # and lint-staged 17 (#81) Node >=22.22.1, while the images, CI and local
+      # development are on Node 20. Both still start on Node 20, with only an
+      # EBADENGINE warning, but that is outside what they support and any later
+      # release may rely on Node 22. Like @types/node, they follow the runtime.
+      # sqlite3 6 (#79) ships a prebuilt binary that needs glibc 2.38, so on
+      # Ubuntu 22.04 (glibc 2.35) the backend tests cannot load it, while CI on
+      # ubuntu-latest stays green. Raise it with the development host.
+      - dependency-name: 'concurrently'
+        update-types: [version-update:semver-major]
+      - dependency-name: 'lint-staged'
+        update-types: [version-update:semver-major]
+      - dependency-name: 'sqlite3'
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
