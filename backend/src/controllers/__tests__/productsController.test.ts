@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { existsSync, mkdtempSync, rmSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import {
@@ -129,6 +129,12 @@ const removeStoredUpload = (): void => {
 };
 
 describe('Products Controller', () => {
+  // The real controller stores uploads in uploads/, which the backend image
+  // creates (backend/Dockerfile) and a fresh checkout does not have.
+  beforeAll(() => {
+    mkdirSync('uploads', { recursive: true });
+  });
+
   afterAll(() => {
     rmSync(stubUploadDir, { recursive: true, force: true });
   });
