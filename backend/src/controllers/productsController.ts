@@ -139,16 +139,15 @@ export const importProductsFromCSV = asyncHandler(
         return res.status(400).json({ success: false, error: 'No CSV file provided' });
       }
 
+      const uploadedFilePath = req.file.path;
+
       try {
         const { skipErrors = true, batchSize = 100 } = req.body;
-        const result = await CSVImporter.importProductsFromCSV(req.file.path, {
+        const result = await CSVImporter.importProductsFromCSV(uploadedFilePath, {
           batchSize: parseInt(batchSize) || 100,
           skipErrors: skipErrors !== 'false',
           supplierId: req.user!.id,
         });
-
-        const fs = require('fs');
-        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
 
         res.status(200).json({
           success: result.success,
@@ -161,14 +160,29 @@ export const importProductsFromCSV = asyncHandler(
           },
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Import failed',
-        });
+        // Same policy as errorHandler: the cause goes to the server log, and the
+        // caller gets a generic message instead of driver or file-system text.
+        logger.error('CSV import failed', { error });
+        res.status(500).json({ success: false, error: 'Import failed' });
+      } finally {
+        // The upload is only an input to this request, so it must not outlive
+        // it, whether the import succeeded or threw.
+        removeUploadedFile(uploadedFilePath);
       }
     });
   }
 );
+
+// Runs after the response has been sent and nothing awaits the multer
+// callback, so a failure here is logged rather than thrown.
+const removeUploadedFile = (filePath: string): void => {
+  try {
+    const fs = require('fs');
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (error) {
+    logger.error('Failed to remove uploaded CSV', { error });
+  }
+};
 
 export const generateSampleCSV = asyncHandler(async (req: Request, res: Response) => {
   const { CSVImporter } = require('../utils/csvImporter');
@@ -182,10 +196,8 @@ export const generateSampleCSV = asyncHandler(async (req: Request, res: Response
       if (fs.existsSync(sampleFilePath)) fs.unlinkSync(sampleFilePath);
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to generate sample CSV',
-    });
+    logger.error('Failed to generate sample CSV', { error });
+    res.status(500).json({ success: false, error: 'Failed to generate sample CSV' });
   }
 });
 
@@ -197,9 +209,7 @@ export const getImportStats = asyncHandler(async (req: AuthenticatedRequest, res
     const stats = await CSVImporter.getImportStats(scopeToSupplierId);
     res.status(200).json({ success: true, data: stats });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get import statistics',
-    });
+    logger.error('Failed to get import statistics', { error });
+    res.status(500).json({ success: false, error: 'Failed to get import statistics' });
   }
 });
