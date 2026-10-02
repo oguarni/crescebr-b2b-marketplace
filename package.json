@@ -70,7 +70,7 @@
     "concurrently": "^9.2.0",
     "eslint-config-prettier": "^10.1.5",
     "husky": "^9.1.7",
-    "lint-staged": "^16.1.2",
+    "lint-staged": "^17.6.0",
     "prettier": "^3.9.9"
   },
   "overrides": {
