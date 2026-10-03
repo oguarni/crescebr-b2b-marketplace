@@ -128,12 +128,23 @@ const actions = [
     role: 'customer',
     field: 'supplierId',
   },
+  ...(['invalid', 2147483648] as const).map(supplierId => ({
+    method: 'post' as const,
+    path: '/quotations/compare-suppliers',
+    body: { productId: 1, quantity: 5, supplierIds: [supplierId] },
+    id: 1,
+    role: 'customer',
+    field: 'supplierIds[0]',
+  })),
 ] as const;
 
 it.each(actions)('rejects malformed mutation identifiers: $method $path', async action => {
   const orderRead = jest.spyOn(models.Order, 'findByPk');
   const userRead = jest.spyOn(models.User, 'findByPk');
   const productRead = jest.spyOn(models.Product, 'findByPk');
+  const orderLookup = jest.spyOn(models.Order, 'findOne');
+  const userLookup = jest.spyOn(models.User, 'findOne');
+  const ratingLookup = jest.spyOn(models.Rating, 'findOne');
   const response = await request(app)
     [action.method](`/api/v1${action.path}`)
     .set(actor(action.id, action.role))
@@ -145,8 +156,18 @@ it.each(actions)('rejects malformed mutation identifiers: $method $path', async 
     details: expect.arrayContaining([expect.objectContaining({ path: action.field })]),
   });
   expect(orderRead).not.toHaveBeenCalled();
+  expect(orderLookup).not.toHaveBeenCalled();
+  expect(ratingLookup).not.toHaveBeenCalled();
   expect(productRead).not.toHaveBeenCalled();
   // Supplier approval legitimately checks the actor before validating product IDs.
-  if (action.role !== 'supplier') expect(userRead).not.toHaveBeenCalled();
+  if (action.role === 'supplier') {
+    expect(userRead).toHaveBeenCalledTimes(1);
+    expect(userRead).toHaveBeenCalledWith(action.id);
+    expect(userLookup).toHaveBeenCalledTimes(1);
+    expect(userLookup).toHaveBeenCalledWith(expect.objectContaining({ where: { id: action.id } }));
+  } else {
+    expect(userRead).not.toHaveBeenCalled();
+    expect(userLookup).not.toHaveBeenCalled();
+  }
   expect((await models.Product.findByPk(1))?.name).toBe('Contract product');
 });

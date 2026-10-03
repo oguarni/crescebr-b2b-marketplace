@@ -66,6 +66,9 @@ export const compareSupplierQuotesValidation = [
     .isLength({ max: 120 })
     .withMessage('Buyer location is too long'),
   body('supplierIds').optional().isArray().withMessage('Supplier IDs must be an array'),
+  body('supplierIds.*')
+    .isInt({ min: 1, max: 2147483647 })
+    .withMessage('Valid supplier ID is required'),
   body('shippingMethod')
     .optional()
     .isIn(['standard', 'express', 'economy'])
