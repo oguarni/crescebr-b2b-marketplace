@@ -23,7 +23,7 @@ describe('Rating Validators', () => {
     it('should pass with all fields including optional ones', async () => {
       const result = await runValidators(createRatingValidation, {
         supplierId: 1,
-        orderId: 'order-uuid-123',
+        orderId: '00000000-0000-4000-8000-000000000001',
         score: 4,
         comment: 'Great service',
       });

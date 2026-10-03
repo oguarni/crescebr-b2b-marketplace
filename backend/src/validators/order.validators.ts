@@ -1,7 +1,13 @@
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
+
+export const orderIdValidation = [
+  param('orderId').isUUID().withMessage('Valid order ID is required'),
+];
 
 export const createOrderValidation = [
-  body('quotationId').isInt({ min: 1 }).withMessage('Valid quotation ID is required'),
+  body('quotationId')
+    .isInt({ min: 1, max: 2147483647 })
+    .withMessage('Valid quotation ID is required'),
 ];
 
 /**

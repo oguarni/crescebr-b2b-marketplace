@@ -8,18 +8,25 @@ import { assertOrderAccess } from './orderAuthorization';
 
 function assertConvertible(quotation: Quotation | null): asserts quotation is Quotation {
   if (!quotation) {
-    throw new Error('Quotation not found or does not belong to the user');
+    throw Object.assign(new Error('Quotation not found or does not belong to the user'), {
+      statusCode: 404,
+    });
   }
 
   if (quotation.status !== 'processed') {
-    throw new Error('Only processed quotations can be converted to orders');
+    throw Object.assign(new Error('Only processed quotations can be converted to orders'), {
+      statusCode: 400,
+    });
   }
 
   if (quotation.validUntil) {
     const expirationDate = new Date(quotation.validUntil);
     if (new Date() > expirationDate) {
-      throw new Error(
-        `This quotation expired on ${expirationDate.toLocaleDateString()}. Please request a new quotation.`
+      throw Object.assign(
+        new Error(
+          `This quotation expired on ${expirationDate.toLocaleDateString()}. Please request a new quotation.`
+        ),
+        { statusCode: 400 }
       );
     }
   }

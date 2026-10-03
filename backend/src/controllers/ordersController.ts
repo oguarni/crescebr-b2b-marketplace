@@ -9,18 +9,12 @@ export const createOrderFromQuotation = asyncHandler(
     const { quotationId } = req.body;
     const companyId = req.user!.id;
 
-    try {
-      const order = await orderService.createFromQuotation(quotationId, companyId);
-      res.status(201).json({
-        success: true,
-        message: 'Order created successfully',
-        data: order,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create order';
-      const status = message.includes('not found') ? 404 : 400;
-      res.status(status).json({ success: false, error: message });
-    }
+    const order = await orderService.createFromQuotation(quotationId, companyId);
+    res.status(201).json({
+      success: true,
+      message: 'Order created successfully',
+      data: order,
+    });
   }
 );
 
@@ -30,35 +24,25 @@ export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, 
   const requesterId = req.user!.id;
   const requesterRole = req.user!.role;
 
-  try {
-    const updatedOrder = await OrderStatusService.updateOrderStatus(
-      orderId,
-      {
-        status,
-        trackingNumber,
-        estimatedDeliveryDate: estimatedDeliveryDate ? new Date(estimatedDeliveryDate) : undefined,
-        notes,
-        nfeAccessKey,
-        nfeUrl,
-      },
-      requesterId,
-      requesterRole
-    );
+  const updatedOrder = await OrderStatusService.updateOrderStatus(
+    orderId,
+    {
+      status,
+      trackingNumber,
+      estimatedDeliveryDate: estimatedDeliveryDate ? new Date(estimatedDeliveryDate) : undefined,
+      notes,
+      nfeAccessKey,
+      nfeUrl,
+    },
+    requesterId,
+    requesterRole
+  );
 
-    res.status(200).json({
-      success: true,
-      message: 'Order status updated successfully',
-      data: updatedOrder,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to update order status';
-    const status = message.includes('Access denied')
-      ? 403
-      : message.includes('not found')
-        ? 404
-        : 400;
-    res.status(status).json({ success: false, error: message });
-  }
+  res.status(200).json({
+    success: true,
+    message: 'Order status updated successfully',
+    data: updatedOrder,
+  });
 });
 
 export const getUserOrders = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -97,17 +81,11 @@ export const getOrderHistory = asyncHandler(async (req: AuthenticatedRequest, re
   const companyId = req.user!.id;
   const userRole = req.user!.role;
 
-  try {
-    const result = await orderService.getHistory(orderId, companyId, userRole);
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to get order history';
-    const status = message === 'Access denied' ? 403 : 400;
-    res.status(status).json({ success: false, error: message });
-  }
+  const result = await orderService.getHistory(orderId, companyId, userRole);
+  res.status(200).json({
+    success: true,
+    data: result,
+  });
 });
 
 export const getAllOrders = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -152,26 +130,16 @@ export const updateOrderNfe = asyncHandler(async (req: AuthenticatedRequest, res
   const requesterId = req.user!.id;
   const requesterRole = req.user!.role;
 
-  try {
-    const updatedOrder = await OrderStatusService.updateOrderNfe(
-      orderId,
-      { nfeAccessKey, nfeUrl },
-      requesterId,
-      requesterRole
-    );
+  const updatedOrder = await OrderStatusService.updateOrderNfe(
+    orderId,
+    { nfeAccessKey, nfeUrl },
+    requesterId,
+    requesterRole
+  );
 
-    res.status(200).json({
-      success: true,
-      message: 'NF-e data updated successfully',
-      data: updatedOrder,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to update NF-e data';
-    const status = message.includes('Access denied')
-      ? 403
-      : message.includes('not found')
-        ? 404
-        : 400;
-    res.status(status).json({ success: false, error: message });
-  }
+  res.status(200).json({
+    success: true,
+    message: 'NF-e data updated successfully',
+    data: updatedOrder,
+  });
 });

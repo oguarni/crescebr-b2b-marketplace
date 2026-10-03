@@ -1,8 +1,9 @@
 import csv from 'csv-parser';
 import * as fs from 'fs';
 import Product, { ProductCreationAttributes } from '../models/Product';
-import { Transaction, Op } from 'sequelize';
+import { Transaction, Op, ValidationError } from 'sequelize';
 import sequelize from '../config/database';
+import { logger } from './structuredLogger';
 
 interface ProductCSVRow {
   name: string;
@@ -206,11 +207,15 @@ export class CSVImporter {
               await this.processProductRow(row, transaction);
               result.imported++;
             } catch (error) {
+              logger.error('Failed to import CSV product', { error, rowNumber });
               result.failed++;
               result.errors.push({
                 row: rowNumber,
                 data: row,
-                error: error instanceof Error ? error.message : 'Unknown error',
+                error:
+                  error instanceof ValidationError
+                    ? error.errors.map(item => item.message).join(', ')
+                    : 'Failed to import product',
               });
 
               if (!skipErrors) {
@@ -221,6 +226,7 @@ export class CSVImporter {
 
           await transaction.commit();
         } catch (error) {
+          logger.error('Failed to process CSV batch', { error });
           await transaction.rollback();
 
           if (!skipErrors) {
@@ -231,10 +237,11 @@ export class CSVImporter {
 
       result.success = result.imported > 0;
     } catch (error) {
+      logger.error('Failed to process CSV file', { error });
       result.errors.push({
         row: 0,
         data: {} as ProductCSVRow,
-        error: error instanceof Error ? error.message : 'Failed to process CSV file',
+        error: 'Failed to process CSV file',
       });
     }
 

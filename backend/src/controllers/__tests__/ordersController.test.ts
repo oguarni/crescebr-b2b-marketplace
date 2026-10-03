@@ -162,17 +162,17 @@ describe('Orders Controller', () => {
       expect(response.body.error).toBe('Only processed quotations can be converted to orders');
     });
 
-    it('should return 400 when order creation fails', async () => {
+    it('should return 500 when order creation fails', async () => {
       const mockQuotation = createMockQuotation({ id: 1, companyId: 1, status: 'processed' });
       MockQuotation.findOne.mockResolvedValue(mockQuotation as any);
       MockQuoteService.getQuotationWithCalculations.mockRejectedValue(
         new Error('Calculation failed')
       );
 
-      const response = await request(app).post('/api/orders').send({ quotationId: 1 }).expect(400);
+      const response = await request(app).post('/api/orders').send({ quotationId: 1 }).expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Calculation failed');
+      expect(response.body.error).toBe('Server Error');
     });
   });
 
@@ -261,7 +261,7 @@ describe('Orders Controller', () => {
 
     it('should return 400 when service throws error', async () => {
       MockOrderStatusService.updateOrderStatus.mockRejectedValue(
-        new Error('Invalid status transition')
+        Object.assign(new Error('Invalid status transition'), { statusCode: 400 })
       );
 
       const response = await request(app)
@@ -581,12 +581,12 @@ describe('Orders Controller', () => {
   });
 
   describe('GET /api/orders/:orderId/history - error handling', () => {
-    it('should return 400 when getOrderHistory throws', async () => {
+    it('should return 500 when getOrderHistory throws', async () => {
       (MockOrderStatusService.getOrderHistory as jest.Mock).mockRejectedValue(
         new Error('Not found')
       );
 
-      const response = await request(app).get('/api/orders/order-123/history').expect(400);
+      const response = await request(app).get('/api/orders/order-123/history').expect(500);
 
       expect(response.body.success).toBe(false);
     });
@@ -652,7 +652,7 @@ describe('Orders Controller', () => {
 
     it('should return 403 when access denied', async () => {
       (MockOrderStatusService.updateOrderNfe as jest.Mock).mockRejectedValue(
-        new Error('Access denied')
+        Object.assign(new Error('Access denied'), { statusCode: 403 })
       );
 
       const response = await request(app)
@@ -666,7 +666,7 @@ describe('Orders Controller', () => {
 
     it('should return 404 when order not found', async () => {
       (MockOrderStatusService.updateOrderNfe as jest.Mock).mockRejectedValue(
-        new Error('Order not found')
+        Object.assign(new Error('Order not found'), { statusCode: 404 })
       );
 
       const response = await request(app)
@@ -678,7 +678,7 @@ describe('Orders Controller', () => {
       expect(response.body.error).toBe('Order not found');
     });
 
-    it('should return 400 for other errors', async () => {
+    it('should return 500 for other errors', async () => {
       (MockOrderStatusService.updateOrderNfe as jest.Mock).mockRejectedValue(
         new Error('Invalid data')
       );
@@ -686,20 +686,20 @@ describe('Orders Controller', () => {
       const response = await request(app)
         .put('/api/orders/order-123/nfe')
         .send({ nfeUrl: 'https://example.com' })
-        .expect(400);
+        .expect(500);
 
       expect(response.body.success).toBe(false);
     });
 
-    it('should return 400 for non-Error throws', async () => {
+    it('should return 500 for non-Error throws', async () => {
       (MockOrderStatusService.updateOrderNfe as jest.Mock).mockRejectedValue('unexpected');
 
       const response = await request(app)
         .put('/api/orders/order-123/nfe')
         .send({ nfeUrl: 'https://example.com' })
-        .expect(400);
+        .expect(500);
 
-      expect(response.body.error).toBe('Failed to update NF-e data');
+      expect(response.body.error).toBe('Server Error');
     });
 
     it('should return 400 when NF-e access key fails validation', async () => {
@@ -714,18 +714,18 @@ describe('Orders Controller', () => {
   });
 
   describe('Non-Error fallback branches', () => {
-    it('createOrderFromQuotation - uses fallback when non-Error is thrown', async () => {
+    it('createOrderFromQuotation - hides non-Error failures', async () => {
       const mockQuotation = createMockQuotation({ id: 1, companyId: 1, status: 'processed' });
       (MockQuotation.findOne as jest.Mock).mockResolvedValue(mockQuotation);
       MockQuoteService.getQuotationWithCalculations.mockRejectedValue('timeout');
 
-      const response = await request(app).post('/api/orders').send({ quotationId: 1 }).expect(400);
+      const response = await request(app).post('/api/orders').send({ quotationId: 1 }).expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to create order');
+      expect(response.body.error).toBe('Server Error');
     });
 
-    it('updateOrderStatus - uses fallback when non-Error is thrown', async () => {
+    it('updateOrderStatus - hides non-Error failures', async () => {
       (authenticateJWT as jest.Mock).mockImplementation((req, res, next) => {
         req.user = { id: 2, role: 'supplier', email: 'supplier@test.com' };
         next();
@@ -735,19 +735,19 @@ describe('Orders Controller', () => {
       const response = await request(app)
         .put('/api/orders/order-123/status')
         .send({ status: 'shipped', trackingNumber: 'T123' })
-        .expect(400);
+        .expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to update order status');
+      expect(response.body.error).toBe('Server Error');
     });
 
-    it('getOrderHistory - uses fallback when non-Error is thrown', async () => {
+    it('getOrderHistory - hides non-Error failures', async () => {
       MockOrderStatusService.getOrderHistory.mockRejectedValue('db error');
 
-      const response = await request(app).get('/api/orders/order-123/history').expect(400);
+      const response = await request(app).get('/api/orders/order-123/history').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to get order history');
+      expect(response.body.error).toBe('Server Error');
     });
 
     it('getAllOrders - uses fallback when non-Error is thrown', async () => {

@@ -1,4 +1,4 @@
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 
 const AVAILABILITY_VALUES = ['in_stock', 'out_of_stock', 'limited', 'custom_order'];
 
@@ -14,6 +14,10 @@ const MAX = {
   specValue: 500, // max length of a single specification value
   tiers: 50, // max number of pricing tiers
 } as const;
+
+export const productIdValidation = [
+  param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Valid product ID is required'),
+];
 
 export const productValidation = [
   // Names/descriptions are stored as plain text and escaped by React on render,

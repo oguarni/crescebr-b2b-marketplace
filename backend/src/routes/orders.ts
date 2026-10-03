@@ -10,6 +10,7 @@ import {
 } from '../controllers/ordersController';
 import {
   createOrderValidation,
+  orderIdValidation,
   updateOrderStatusValidation,
   updateOrderNfeValidation,
 } from '../validators/order.validators';
@@ -25,12 +26,13 @@ router.use(authenticateJWT, generalRateLimit);
 // Customer/General routes
 router.post('/', createOrderValidation, handleValidationErrors, createOrderFromQuotation);
 router.get('/', getUserOrders);
-router.get('/:orderId/history', getOrderHistory);
+router.get('/:orderId/history', orderIdValidation, handleValidationErrors, getOrderHistory);
 
 // Admin/Supplier routes
 router.put(
   '/:orderId/status',
   requireRole('admin', 'supplier'),
+  orderIdValidation,
   updateOrderStatusValidation,
   handleValidationErrors,
   updateOrderStatus
@@ -38,6 +40,7 @@ router.put(
 router.patch(
   '/:orderId/nfe',
   requireRole('admin', 'supplier'),
+  orderIdValidation,
   updateOrderNfeValidation,
   handleValidationErrors,
   updateOrderNfe

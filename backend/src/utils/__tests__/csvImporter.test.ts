@@ -471,7 +471,7 @@ describe('CSVImporter', () => {
       expect(result.success).toBe(false);
       expect(result.imported).toBe(0);
       expect(result.failed).toBe(1);
-      expect(result.errors[0].error).toBe('Database connection failed');
+      expect(result.errors[0].error).toBe('Failed to import product');
     });
 
     it('should process data in batches', async () => {
@@ -525,7 +525,7 @@ describe('CSVImporter', () => {
   describe('importProductsFromCSV - additional branches', () => {
     const testFilePath = '/test/path/products.csv';
 
-    it('should use "Unknown error" fallback for non-Error thrown by Product.create (B25)', async () => {
+    it('should hide non-Error failures from Product.create', async () => {
       const csvData = [
         {
           name: 'Product 1',
@@ -542,7 +542,7 @@ describe('CSVImporter', () => {
       const result = await CSVImporter.importProductsFromCSV(testFilePath, { skipErrors: true });
 
       expect(result.failed).toBe(1);
-      expect(result.errors[0].error).toBe('Unknown error');
+      expect(result.errors[0].error).toBe('Failed to import product');
     });
 
     it('should rollback and not rethrow when transaction.commit() fails with skipErrors=true (B27)', async () => {
