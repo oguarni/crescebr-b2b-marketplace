@@ -2,6 +2,9 @@ import { Op, Sequelize } from 'sequelize';
 import Rating from '../models/Rating';
 import Order from '../models/Order';
 import User from '../models/User';
+import Quotation from '../models/Quotation';
+import QuotationItem from '../models/QuotationItem';
+import Product from '../models/Product';
 
 const RATING_WITH_USERS = [
   { model: User, as: 'supplier', attributes: ['id', 'companyName', 'email'] },
@@ -18,10 +21,34 @@ export const ratingsService = {
       throw Object.assign(new Error('Supplier not found'), { statusCode: 404 });
     }
 
+    // I scope eligibility through the products sold in the delivered order's
+    // quotation; the order's companyId belongs to the buyer, not its supplier.
+    const supplierQuotation = {
+      model: Quotation,
+      as: 'quotation',
+      required: true,
+      include: [
+        {
+          model: QuotationItem,
+          as: 'items',
+          required: true,
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              where: { supplierId: data.supplierId },
+              required: true,
+            },
+          ],
+        },
+      ],
+    };
+
     if (data.orderId) {
       const order = await Order.findOne({
+        subQuery: false,
         where: { id: data.orderId, companyId: buyerId, status: 'delivered' },
-        include: [{ model: User, as: 'user', where: { id: buyerId } }],
+        include: [{ model: User, as: 'user', where: { id: buyerId } }, supplierQuotation],
       });
       if (!order) {
         throw Object.assign(new Error('You can only rate suppliers from completed orders'), {
@@ -34,8 +61,9 @@ export const ratingsService = {
       }
     } else {
       const completedOrder = await Order.findOne({
+        subQuery: false,
         where: { companyId: buyerId, status: 'delivered' },
-        include: [{ model: User, as: 'supplier', where: { id: data.supplierId } }],
+        include: [supplierQuotation],
       });
       if (!completedOrder) {
         throw Object.assign(new Error('You can only rate suppliers from completed orders'), {
