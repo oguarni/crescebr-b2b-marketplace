@@ -7,19 +7,13 @@ export const createRating = asyncHandler(async (req: AuthenticatedRequest, res: 
   const { supplierId, orderId, score, comment } = req.body;
   const buyerId = req.user!.id;
 
-  try {
-    const rating = await ratingsService.createRating(buyerId, {
-      supplierId,
-      orderId,
-      score,
-      comment,
-    });
-    res.status(201).json({ success: true, message: 'Rating created successfully', data: rating });
-  } catch (err: unknown) {
-    const error = err as Error & { statusCode?: number };
-    const status = error.statusCode || 400;
-    res.status(status).json({ success: false, error: error.message || 'Failed to create rating' });
-  }
+  const rating = await ratingsService.createRating(buyerId, {
+    supplierId,
+    orderId,
+    score,
+    comment,
+  });
+  res.status(201).json({ success: true, message: 'Rating created successfully', data: rating });
 });
 
 export const getSupplierRatings = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -35,14 +29,8 @@ export const updateRating = asyncHandler(async (req: AuthenticatedRequest, res: 
   const { score, comment } = req.body;
   const buyerId = req.user!.id;
 
-  try {
-    const rating = await ratingsService.updateRating(ratingId, buyerId, { score, comment });
-    res.status(200).json({ success: true, message: 'Rating updated successfully', data: rating });
-  } catch (err: unknown) {
-    const error = err as Error & { statusCode?: number };
-    const status = error.statusCode || 400;
-    res.status(status).json({ success: false, error: error.message || 'Failed to update rating' });
-  }
+  const rating = await ratingsService.updateRating(ratingId, buyerId, { score, comment });
+  res.status(200).json({ success: true, message: 'Rating updated successfully', data: rating });
 });
 
 export const deleteRating = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -50,14 +38,8 @@ export const deleteRating = asyncHandler(async (req: AuthenticatedRequest, res: 
   const buyerId = req.user!.id;
   const userRole = req.user!.role;
 
-  try {
-    await ratingsService.deleteRating(ratingId, buyerId, userRole);
-    res.status(200).json({ success: true, message: 'Rating deleted successfully' });
-  } catch (err: unknown) {
-    const error = err as Error & { statusCode?: number };
-    const status = error.statusCode || 400;
-    res.status(status).json({ success: false, error: error.message || 'Failed to delete rating' });
-  }
+  await ratingsService.deleteRating(ratingId, buyerId, userRole);
+  res.status(200).json({ success: true, message: 'Rating deleted successfully' });
 });
 
 export const getTopSuppliers = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {

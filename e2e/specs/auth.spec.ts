@@ -41,6 +41,8 @@ test.describe('authentication', () => {
     // and would make this a translation test rather than an authentication one.
     await expect(page).toHaveURL(/\/login/);
     await expect(page.locator('#password')).toBeVisible();
+    await expect(page.locator('#email')).toHaveValue(ACCOUNTS.buyer.email);
+    await expect(page.locator('#password')).toHaveValue('definitely-not-the-password');
   });
 
   test('a signed-out visitor cannot open a protected route', async ({ page }) => {

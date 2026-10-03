@@ -1,10 +1,15 @@
 export default {
-  preset: 'ts-jest',
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.test.json' }],
+  },
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
   testMatch: ['**/__tests__/**/*.test.ts'],
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   testTimeout: 30000,
+  // I recycle workers between files instead of retaining every suite in one heap.
+  maxWorkers: 2,
+  workerIdleMemoryLimit: '512MB',
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',

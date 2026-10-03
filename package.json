@@ -18,17 +18,20 @@
     "frontend:build": "cd frontend && npm run build",
     "backend:build": "cd backend && npm run build",
     "shared:build": "cd shared && npm run build",
-    "setup": "npm install && npm run install:all",
-    "install:all": "concurrently \"cd shared && npm install\" \"cd backend && npm install\" \"cd frontend && npm install\"",
+    "setup": "npm ci && npm run setup:native && npm run prepare",
+    "setup:native": "npm rebuild sqlite3 --foreground-scripts --ignore-scripts=false",
+    "install:all": "npm ci",
     "start": "npm run backend:start",
     "backend:start": "cd backend && npm start",
     "frontend:start": "cd frontend && npm run preview",
-    "test": "concurrently \"npm run backend:test\" \"npm run frontend:test\"",
+    "test": "npm run test:tooling && concurrently \"npm run backend:test\" \"npm run frontend:test\"",
+    "test:tooling": "node --test scripts/lint-staged.test.js",
     "backend:test": "cd backend && npm test",
     "frontend:test": "cd frontend && npm test",
     "lint": "concurrently \"npm run backend:lint\" \"npm run frontend:lint\"",
     "backend:lint": "cd backend && npm run lint",
     "frontend:lint": "cd frontend && npm run lint",
+    "typecheck": "npm run typecheck --workspaces",
     "security:headers": "node scripts/check-security-grade.js --config",
     "security:grade": "node scripts/check-security-grade.js --live",
     "security:test": "node --test scripts/check-security-grade.test.js",
@@ -39,7 +42,7 @@
     "postinstall": "echo '🚀 CresceBR B2B Marketplace setup complete! Run \"npm run dev\" to start development.'",
     "prepare": "husky",
     "e2e": "npm run e2e:services && playwright test",
-    "e2e:services": "docker compose up -d db redis && node e2e/wait-for-services.mjs",
+    "e2e:services": "docker compose up -d --wait --wait-timeout 90 db redis && node e2e/wait-for-services.mjs",
     "e2e:ui": "playwright test --ui",
     "e2e:report": "playwright show-report"
   },
@@ -87,9 +90,20 @@
     "shell-quote": "^1.9.0"
   },
   "lint-staged": {
-    "**/*.{ts,tsx,js,jsx}": [
+    "frontend/**/*.{ts,tsx,js,jsx,cjs}": [
+      "prettier --write",
+      "npm exec -w frontend -- eslint --fix"
+    ],
+    "backend/**/*.{ts,js,cjs}": [
+      "prettier --write",
+      "npm exec -w backend -- eslint --fix"
+    ],
+    "{*,scripts/**/*}.{js,mjs,cjs}": [
       "prettier --write",
       "eslint --fix"
+    ],
+    "{shared,e2e}/**/*.ts": [
+      "prettier --write"
     ],
     "**/*.{json,md,yml,yaml}": [
       "prettier --write"

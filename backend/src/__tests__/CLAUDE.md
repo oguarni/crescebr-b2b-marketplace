@@ -2,13 +2,20 @@
 
 ## Framework & Config
 
-- **Jest 30** with `ts-jest` preset
+- **Jest 30** with a `ts-jest` transform using `tsconfig.test.json`
 - Config: `backend/jest.config.js`
 - Setup: `backend/src/__tests__/setup.ts`
 - Test timeout: 30s
-- Run: `cd backend && npm test` — the script sets `NODE_ENV=test`, the coverage flags and
-  `NODE_OPTIONS=--max-old-space-size=4096`. Calling `npx jest` directly omits the heap setting and
-  can hit the OOM recorded under Known Test Issues.
+- Run: `npm test -w backend` — the script first type-checks application and test files, then sets
+  `NODE_ENV=test`, the coverage flags and `NODE_OPTIONS=--max-old-space-size=4096` for Jest.
+- `tsconfig.test.json` enables isolated file transpilation for Jest; the separate `tsc` step still
+  performs full type checking. The production build keeps `tsconfig.json` and excludes test files.
+  Calling `npx jest` directly omits the type-check step and heap setting.
+- Jest uses two workers and recycles them above 512 MB between files. For focused open-handle
+  debugging, use `npm run test:handles -w backend -- --runTestsByPath src/path/__tests__/file.test.ts`.
+  That diagnostic runs serially and does not recycle workers; use the normal command for full runs.
+- `test:watch` type-checks once before starting Jest. Run `npm run typecheck -w backend` again to
+  check subsequent edits, or run `npx tsc --noEmit -p tsconfig.test.json --watch` from `backend/`.
 
 ---
 
@@ -89,9 +96,11 @@ statements are isolated utility fallbacks; routes remain intentionally excluded 
 
 ### Known Test Issues
 
-1. ~~**OOM**: default heap size insufficient, needs an explicit `--max-old-space-size=4096`~~ →
-   Fixed: `backend/package.json`'s `test` script now sets `NODE_OPTIONS=--max-old-space-size=4096`,
-   so `npm test` from `backend/` is enough.
+1. **OOM**: the explicit 4 GB heap cap fixed an earlier failure, but a later full workspace run
+   exhausted it during a serial run with open-handle tracing. Jest now recycles worker processes
+   between files and transpiles each file separately;
+   `npm test` and `npm run typecheck` check the complete application/test program with `tsc` first.
+   The heap cap and coverage thresholds remain unchanged.
 2. ~~**Lint errors in tests**: `ratingsService.test.ts` uses `fail()` (8 occurrences)~~ → Fixed (2026-04-04)
 
 Check current status: `cd backend && npm test`

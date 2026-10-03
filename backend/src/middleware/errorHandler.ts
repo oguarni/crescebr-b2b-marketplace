@@ -88,4 +88,8 @@ export const errorHandler = (
 export const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextFunction) =>
   Promise.resolve()
     .then(() => fn(req, res, next))
-    .catch(next);
+    // Express treats falsy values and 'route'/'router' as control flow, so every
+    // rejection must become an Error before it reaches the error middleware.
+    .catch((error: unknown) =>
+      next(error instanceof Error ? error : new Error('Unhandled request failure'))
+    );

@@ -38,9 +38,6 @@ CresceBR/
 │                         SERVICES                             │
 │         ALL business logic and orchestration                 │
 ├─────────────────────────────────────────────────────────────┤
-│                       REPOSITORIES                           │
-│         Data access patterns and queries                     │
-├─────────────────────────────────────────────────────────────┤
 │                    MODELS (Sequelize ORM)                    │
 │         Schema definitions and associations                  │
 └─────────────────────────────────────────────────────────────┘
@@ -65,14 +62,14 @@ CresceBR/
 ### DRY (Don't Repeat Yourself)
 
 - Extract repeated code into shared utilities
-- Use repositories for repeated query patterns
+- Reuse query helpers where they provide immediate value; direct model access remains standard
 - Centralize validation rules
 
 ### Separation of Concerns
 
 - Controllers: HTTP handling ONLY (no business logic)
 - Services: Business logic and orchestration
-- Repositories: Data access patterns
+- Repositories: Existing query helpers used by `quotation.service.ts`, not a required layer
 - Middleware: Cross-cutting concerns (auth, validation, logging)
 
 ---
@@ -97,6 +94,7 @@ npm run dev          # Start frontend (5173) and backend (3001)
 npm run build        # Production build
 npm run test         # Run tests in all subprojects
 npm run lint         # Lint all subprojects
+npm run typecheck    # Type-check all workspaces and the Vite config
 npm run clean        # Remove node_modules and dist
 ```
 
@@ -105,16 +103,20 @@ npm run clean        # Remove node_modules and dist
 | Service    | Port | URL                       |
 | ---------- | ---- | ------------------------- |
 | Frontend   | 5173 | http://localhost:5173     |
-| Backend    | 3001 | http://localhost:3001/api |
+| Backend    | 3001 | http://localhost:3001/api/v1 |
 | PostgreSQL | 5432 | localhost:5432            |
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and configure:
+Compose reads the root `.env`; host-side backend commands read `backend/.env`.
+Use the corresponding `.env.example` as the starting point and configure:
 
-- `DATABASE_URL` - PostgreSQL connection string
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` - PostgreSQL connection settings
+- `TEST_DB_NAME` - Optional isolated test database name (default: `crescebr_test`, never `DB_NAME`)
 - `JWT_SECRET` - Secret key for tokens
-- `VITE_API_URL` - API URL for frontend
+
+`DB_PASSWORD` is required by both the runtime and the migration CLI. Neither reads `DATABASE_URL`.
+The frontend uses the relative `/api/v1` path; Vite proxies it to port 3001 during development.
 
 ## Test Accounts
 
@@ -281,6 +283,7 @@ services; jest tests the Express API against mocked boundaries. Neither can see 
 frontend does not expect. That seam is the whole scope. It is not a second unit-test runner.
 
 ```bash
+npx playwright install chromium # one-time browser setup; repeat after Playwright updates
 npm run e2e            # services + full suite
 npm run e2e:services   # postgres + redis up and waited on; idempotent
 npm run e2e:ui         # Playwright UI mode

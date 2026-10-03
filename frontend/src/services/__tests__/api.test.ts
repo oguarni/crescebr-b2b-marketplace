@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 const { mockAxiosInstance, mockToastError } = vi.hoisted(() => {
   const mockAxiosInstance = {
@@ -35,6 +35,10 @@ const responseSuccessFn = mockAxiosInstance.interceptors.response.use.mock.calls
 const responseErrorFn = mockAxiosInstance.interceptors.response.use.mock.calls[0]?.[1];
 
 describe('api module', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
     // Only clear the HTTP method mocks and toast, not interceptor setup
     mockAxiosInstance.get.mockReset();
@@ -97,6 +101,8 @@ describe('api module', () => {
 
     it('should remove token and redirect on 401 error', async () => {
       localStorage.setItem('crescebr_token', 'expired-token');
+      const location = { href: '/my-orders' };
+      vi.stubGlobal('window', { location });
 
       const error = {
         response: { status: 401, data: { error: 'Unauthorized' } },
@@ -105,6 +111,20 @@ describe('api module', () => {
 
       await expect(responseErrorFn(error)).rejects.toBe(error);
       expect(localStorage.getItem('crescebr_token')).toBeNull();
+      expect(location.href).toBe('/login');
+    });
+
+    it('should keep an anonymous rejected login on the current page', async () => {
+      const location = { href: '/login?attempt=1' };
+      vi.stubGlobal('window', { location });
+      const error = {
+        response: { status: 401, data: { error: 'Invalid email or password' } },
+      };
+
+      await expect(responseErrorFn(error)).rejects.toBe(error);
+
+      expect(location.href).toBe('/login?attempt=1');
+      expect(mockToastError).toHaveBeenCalledWith('Invalid email or password');
     });
 
     it('should show toast error for non-404 errors', async () => {

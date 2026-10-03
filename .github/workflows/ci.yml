@@ -71,7 +71,7 @@ jobs:
       # in-memory SQLite database via Sequelize, so rebuild just that one native
       # module with scripts enabled.
       - name: Build sqlite3 native binding
-        run: npm rebuild sqlite3 --foreground-scripts --ignore-scripts=false
+        run: npm run setup:native
 
       - name: Build shared types
         run: npm run shared:build
@@ -118,6 +118,12 @@ jobs:
       - name: Lint frontend
         working-directory: frontend
         run: npm run lint
+
+      - name: Type-check frontend and Vite config
+        run: npm run typecheck -w frontend
+
+      - name: Test workspace tooling
+        run: npm run test:tooling
 
       - name: Build frontend
         working-directory: frontend

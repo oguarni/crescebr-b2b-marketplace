@@ -1,4 +1,8 @@
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
+
+export const quotationIdValidation = [
+  param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Valid quotation ID is required'),
+];
 
 export const createQuotationValidation = [
   body('items').isArray({ min: 1 }).withMessage('At least one item is required'),

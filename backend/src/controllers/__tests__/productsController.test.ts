@@ -713,28 +713,53 @@ describe('Products Controller', () => {
       }
     });
 
-    it('should log download error and skip cleanup when file does not exist (B16 true/B17 false)', async () => {
+    it('should finish the request with a generic 500 when the sample file is missing', async () => {
       const loggerSpy = jest.spyOn(logger, 'error').mockImplementation();
       MockCSVImporter.generateSampleCSV = jest.fn(); // no-op: file never created
 
+      try {
+        const response = await request(app)
+          .get('/api/products/import/sample')
+          .timeout({ response: 2000 })
+          .expect(500);
+
+        expect(response.body).toEqual({ success: false, error: 'Failed to download sample CSV' });
+        expect(loggerSpy).toHaveBeenCalledWith(
+          'Failed to download file',
+          expect.objectContaining({ error: expect.any(Error) })
+        );
+      } finally {
+        loggerSpy.mockRestore();
+      }
+    });
+
+    it('should terminate a failed download after response headers have been sent', async () => {
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation();
+      MockCSVImporter.generateSampleCSV = jest.fn();
+
       const mockRes = {
-        download: jest.fn((_filePath: string, _name: string, cb: Function) => {
-          cb(new Error('ENOENT: no such file or directory'));
-        }),
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
+        headersSent: true,
+        download: jest.fn(
+          (
+            _filePath: string,
+            _name: string,
+            _options: { root: string },
+            cb: (err: Error) => void
+          ) => {
+            cb(new Error('Download stream interrupted'));
+          }
+        ),
+        destroy: jest.fn(),
+        status: jest.fn(),
       };
-      const mockReq = {};
-      const next = jest.fn();
 
-      await generateSampleCSV(mockReq as any, mockRes as any, next);
-
-      expect(loggerSpy).toHaveBeenCalledWith(
-        'Failed to download file',
-        expect.objectContaining({ error: expect.any(Error) })
-      );
-      expect(mockRes.status).not.toHaveBeenCalled();
-      loggerSpy.mockRestore();
+      try {
+        await generateSampleCSV({} as Request, mockRes as unknown as Response, jest.fn());
+        expect(mockRes.destroy).toHaveBeenCalledTimes(1);
+        expect(mockRes.status).not.toHaveBeenCalled();
+      } finally {
+        loggerSpy.mockRestore();
+      }
     });
   });
 
@@ -937,11 +962,14 @@ describe('Products Controller', () => {
         fs.writeFileSync(filePath, 'name,description,price,category\n');
       });
 
-      const response = await request(app).get('/api/products/import/sample');
+      const response = await request(app)
+        .get('/api/products/import/sample')
+        .timeout({ response: 2000 })
+        .expect(200);
 
       expect(MockCSVImporter.generateSampleCSV).toHaveBeenCalled();
-      // Response should succeed (not 500) since the file was created
-      expect(response.status).not.toBe(500);
+      expect(response.headers['content-disposition']).toContain('filename="sample-products.csv"');
+      expect(response.text).toBe('name,description,price,category\n');
     });
   });
 
@@ -990,6 +1018,23 @@ describe('Products Controller', () => {
       });
 
       await request(app).get('/api/products/import/sample').expect(200);
+    });
+
+    it('should serve the sample CSV from a checkout inside a hidden directory', async () => {
+      const fs = require('fs');
+      const hiddenCheckout = join(freshDir, '.worktree');
+      fs.mkdirSync(hiddenCheckout);
+      process.chdir(hiddenCheckout);
+      MockCSVImporter.generateSampleCSV = jest.fn().mockImplementation((filePath: string) => {
+        fs.writeFileSync(filePath, 'name,description,price,category\n');
+      });
+
+      const response = await request(app)
+        .get('/api/products/import/sample')
+        .timeout({ response: 2000 })
+        .expect(200);
+
+      expect(response.text).toBe('name,description,price,category\n');
     });
 
     it('should answer 400 when uploads/ cannot be created', async () => {

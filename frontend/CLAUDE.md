@@ -630,11 +630,15 @@ npm run build        # Production build
 npm run preview      # Preview build
 npm run test         # Run tests
 npm run lint         # Lint code
+npm run typecheck    # Type-check application, tests, shared types, and Vite config
 ```
 
 ## Environment Variables
 
-- VITE_API_URL: Base API URL (default: http://localhost:3001/api)
+- VITE_DEMO_MODE: Browser demo API flag; defaults to `true` for builds in `vite.config.ts`
+
+`services/api.ts` uses the relative `/api/v1` path. Vite proxies requests to port 3001 in
+development; it does not read `VITE_API_URL`.
 
 ---
 
@@ -655,7 +659,10 @@ neither figure survived contact with the current suite.
 
 ### Coverage Status
 
-**Overall**: 97.44% statements/lines | 90.10% branches | 87.82% functions.
+**Historical Vitest 3 snapshot (2026-08-30)**: 97.44% statements/lines | 90.10% branches |
+87.82% functions. Vitest 4 uses AST-aware remapping and reports different percentages for the
+same tests; `vite.config.ts` documents the rebaseline and current thresholds. Use a fresh
+`npm test` summary for current percentages.
 
 The registration state hook and its pure validation/formatting helpers have dedicated tests and
 100% statement/line coverage. Pages, services, hooks, components and contexts are covered; quote

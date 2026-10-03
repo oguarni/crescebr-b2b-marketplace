@@ -27,7 +27,8 @@ api.interceptors.response.use(
       error.message ||
       'An unexpected error occurred';
 
-    if (error.response?.status === 401) {
+    // A rejected anonymous login is a form error, not an expired session.
+    if (error.response?.status === 401 && authService.getToken()) {
       authService.logout();
       window.location.href = '/login';
     } else if (error.response?.status !== 404) {

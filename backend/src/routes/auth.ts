@@ -48,7 +48,7 @@ router.post(
 );
 
 // GET /auth/me
-router.get('/me', authenticateJWT, getProfile);
+router.get('/me', authenticateJWT, generalRateLimit, getProfile);
 
 // POST /auth/refresh
 router.post(
@@ -66,6 +66,6 @@ router.post('/logout', authenticateJWT, authRateLimit, logout);
 router.post('/logout-all', authenticateJWT, generalRateLimit, logoutAllDevices);
 
 // GET /auth/sessions
-router.get('/sessions', authenticateJWT, getActiveSessions);
+router.get('/sessions', authenticateJWT, generalRateLimit, getActiveSessions);
 
 export default router;

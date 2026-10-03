@@ -344,6 +344,17 @@ describe('Error Handler Middleware', () => {
   });
 
   describe('asyncHandler', () => {
+    it.each([null, undefined, false, 0, '', 'route', 'router'])(
+      'should normalize a non-Error rejection (%s) instead of skipping error middleware',
+      async failure => {
+        const wrappedFunction = asyncHandler(jest.fn().mockRejectedValue(failure));
+
+        await wrappedFunction(mockRequest as Request, mockResponse as Response, mockNext);
+
+        expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
+      }
+    );
+
     it('should handle successful async function execution', async () => {
       // Arrange
       const successfulAsyncFunction = jest.fn().mockResolvedValue('success');
