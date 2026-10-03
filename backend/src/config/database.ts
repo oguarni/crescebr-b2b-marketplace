@@ -4,26 +4,34 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const env = process.env.NODE_ENV || 'development';
+const password = process.env.DB_PASSWORD;
+if (!password) {
+  throw new Error('DB_PASSWORD is not set. Configure it in backend/.env or the environment.');
+}
+const port = Number(process.env.DB_PORT) || 5432;
 
 const config = {
   development: {
     username: process.env.DB_USER!,
-    password: process.env.DB_PASSWORD!,
+    password,
+    port,
     database: process.env.DB_NAME!,
     host: process.env.DB_HOST!,
     dialect: 'postgres' as const,
   },
   test: {
     username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: 'crescebr_test',
-    host: process.env.DB_HOST || 'postgres',
+    password,
+    port,
+    database: process.env.TEST_DB_NAME || 'crescebr_test',
+    host: process.env.DB_HOST || 'localhost',
     dialect: 'postgres' as const,
     logging: false,
   },
   production: {
     username: process.env.DB_USER!,
-    password: process.env.DB_PASSWORD!,
+    password,
+    port,
     database: process.env.DB_NAME!,
     host: process.env.DB_HOST!,
     dialect: 'postgres' as const,
