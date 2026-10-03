@@ -159,45 +159,34 @@ describe('demo API — products', () => {
     expect(body.data?.pagination.total).toBe(20);
   });
 
-  it('filters by category, search term, price, MOQ, lead time and availability', () => {
-    const byCategory = call<{ products: Array<{ category: string }> }>(
-      'GET',
-      '/products?category=Machinery&limit=50'
-    ).body.data;
-    expect(byCategory?.products.length).toBeGreaterThan(0);
-    expect(byCategory?.products.every(p => p.category === 'Machinery')).toBe(true);
+  it.each([
+    { filter: 'category=Machinery', ids: [2, 6, 7, 8] },
+    { filter: 'search=hydraulic', ids: [2] },
+    { filter: 'minPrice=1000&maxPrice=5000', ids: [3, 4, 7, 9, 11, 14] },
+    { filter: 'minMoq=10&maxMoq=25', ids: [1, 5, 12, 16, 19] },
+    { filter: 'maxLeadTime=5', ids: [1, 5, 12, 13, 17, 19] },
+    { filter: 'availability=limited', ids: [7, 16] },
+  ])('returns the seeded matches for $filter', ({ filter, ids }) => {
+    const { status, body } = call<{
+      products: Array<{ id: number }>;
+      pagination: { total: number };
+    }>('GET', `/products?${filter}&limit=50`);
 
-    const bySearch = call<{ products: Array<{ name: string }> }>(
-      'GET',
-      '/products?search=hydraulic&limit=50'
-    ).body.data;
-    expect(bySearch?.products.every(p => /hydraulic/i.test(p.name))).toBe(true);
+    expect(status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data?.products.map(product => product.id)).toEqual(ids);
+    expect(body.data?.pagination.total).toBe(ids.length);
+  });
 
-    const byPrice = call<{ products: Array<{ unitPrice: number }> }>(
-      'GET',
-      '/products?minPrice=1000&maxPrice=5000&limit=50'
-    ).body.data;
-    expect(byPrice?.products.every(p => p.unitPrice >= 1000 && p.unitPrice <= 5000)).toBe(true);
+  it('returns an empty page when a search has no matches', () => {
+    const { status, body } = call<{
+      products: unknown[];
+      pagination: { total: number };
+    }>('GET', '/products?search=catalogue-no-match-fixture&limit=50');
 
-    const byMoq = call<{ products: Array<{ minimumOrderQuantity: number }> }>(
-      'GET',
-      '/products?minMoq=10&maxMoq=25&limit=50'
-    ).body.data;
-    expect(
-      byMoq?.products.every(p => p.minimumOrderQuantity >= 10 && p.minimumOrderQuantity <= 25)
-    ).toBe(true);
-
-    const byLeadTime = call<{ products: Array<{ leadTime: number }> }>(
-      'GET',
-      '/products?maxLeadTime=5&limit=50'
-    ).body.data;
-    expect(byLeadTime?.products.every(p => p.leadTime <= 5)).toBe(true);
-
-    const byAvailability = call<{ products: Array<{ availability: string }> }>(
-      'GET',
-      '/products?availability=limited&limit=50'
-    ).body.data;
-    expect(byAvailability?.products.every(p => p.availability === 'limited')).toBe(true);
+    expect(status).toBe(200);
+    expect(body.data?.products).toEqual([]);
+    expect(body.data?.pagination.total).toBe(0);
   });
 
   it('filters by specification and tolerates malformed specification JSON', () => {
