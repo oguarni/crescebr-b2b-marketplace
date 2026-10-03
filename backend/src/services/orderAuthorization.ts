@@ -3,12 +3,14 @@ import QuotationItem from '../models/QuotationItem';
 
 /**
  * Thrown when the authenticated principal is not allowed to read or mutate a
- * specific order. The message is matched verbatim by the order controllers to
- * map the failure onto HTTP 403.
+ * specific order. I preserve the public message and carry HTTP 403 explicitly
+ * so internal failures cannot be mistaken for ownership denials.
  */
 export const ORDER_ACCESS_DENIED_MESSAGE = 'Access denied';
 
 export class OrderAccessDeniedError extends Error {
+  readonly statusCode = 403;
+
   constructor(message: string = ORDER_ACCESS_DENIED_MESSAGE) {
     super(message);
     this.name = 'OrderAccessDeniedError';
