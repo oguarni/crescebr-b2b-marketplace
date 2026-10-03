@@ -32,24 +32,8 @@ jobs:
     name: Backend
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: crescebr
-          POSTGRES_PASSWORD: crescebr
-          POSTGRES_DB: crescebr_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     env:
       NODE_ENV: test
-      DATABASE_URL: postgres://crescebr:crescebr@localhost:5432/crescebr_test
       JWT_SECRET: ci-test-secret
       NODE_OPTIONS: '--max-old-space-size=4096'
 
