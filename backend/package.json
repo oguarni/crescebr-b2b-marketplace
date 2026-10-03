@@ -2,9 +2,9 @@
   "name": "@crescebr/backend",
   "version": "1.0.0",
   "description": "CresceBR B2B Marketplace Backend API",
-  "main": "dist/server.js",
+  "main": "dist/backend/src/server.js",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "node dist/backend/src/server.js",
     "build": "tsc",
     "dev": "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && nodemon src/server.ts",
     "test": "cross-env NODE_ENV=test NODE_OPTIONS=--max-old-space-size=4096 jest --runInBand --detectOpenHandles --forceExit --coverage",
