@@ -79,6 +79,16 @@ export const getAvailableSpecifications = asyncHandler(async (req: Request, res:
 // function-form destination nor fs.writeFileSync creates missing directories.
 const UPLOAD_DIR = 'uploads';
 
+// I recognize only Busboy's fixed parser failures; other plain errors can be
+// filesystem failures and must keep the generic server-error boundary.
+const MULTIPART_INPUT_ERRORS = new Set([
+  'Multipart: Boundary not found',
+  'Malformed part header',
+  'Unexpected end of form',
+  'Unexpected end of file',
+  'Malformed content type',
+]);
+
 const ensureUploadDir = (): void => {
   const fs = require('fs');
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -149,6 +159,8 @@ export const importProductsFromCSV = asyncHandler(
       if (err) {
         if (typeof multer.MulterError === 'function' && err instanceof multer.MulterError) {
           next(Object.assign(err, { statusCode: 400 }));
+        } else if (err instanceof Error && MULTIPART_INPUT_ERRORS.has(err.message)) {
+          next(Object.assign(new Error('Invalid multipart request'), { statusCode: 400 }));
         } else {
           next(err instanceof Error ? err : new Error('File upload failed'));
         }

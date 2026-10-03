@@ -112,4 +112,52 @@ describe('product mutation and import error contracts', () => {
     expect(response.body.data.errors[0].error).toBe('Failed to process CSV file');
     expect(JSON.stringify(response.body)).not.toContain(internalMessage);
   });
+
+  it.each([
+    ['multipart/form-data', 'invalid'],
+    [
+      'multipart/form-data; boundary=contract',
+      '--contract\r\ninvalid header\r\n\r\nvalue\r\n--contract--',
+    ],
+    [
+      'multipart/form-data; boundary=contract',
+      '--contract\r\nContent-Disposition: form-data; name="batchSize"\r\n\r\n100',
+    ],
+  ])('treats malformed multipart input as a client failure (%s)', async (contentType, body) => {
+    const response = await request(app)
+      .post('/api/v1/products/import/csv')
+      .set(actor(2, 'supplier'))
+      .set('Content-Type', contentType)
+      .send(body)
+      .expect(400);
+    expect(response.body).toEqual({ success: false, error: 'Invalid multipart request' });
+    expect(await models.Product.count()).toBe(1);
+  });
+
+  it.each([
+    ['name', 'n'.repeat(256), 'Validation len on name failed'],
+    ['category', 'c'.repeat(101), 'Validation len on category failed'],
+    ['imageUrl', 'ftp://example.com/image.png', 'Image URL must be a valid URL'],
+  ])('keeps model validation useful inside CSV row results (%s)', async (field, value, message) => {
+    const row: Record<string, string> = {
+      name: 'Imported product',
+      description: 'Synthetic',
+      price: '10',
+      imageUrl: 'https://example.com/image.png',
+      category: 'test',
+      [field]: value,
+    };
+    const response = await request(app)
+      .post('/api/v1/products/import/csv')
+      .set(actor(2, 'supplier'))
+      .attach(
+        'csvFile',
+        Buffer.from(`${Object.keys(row).join(',')}\n${Object.values(row).join(',')}\n`),
+        { filename: 'test.csv', contentType: 'text/csv' }
+      )
+      .expect(200);
+    expect(response.body.data).toMatchObject({ imported: 0, failed: 1, totalErrors: 1 });
+    expect(response.body.data.errors[0].error).toContain(message);
+    expect(await models.Product.count()).toBe(1);
+  });
 });
