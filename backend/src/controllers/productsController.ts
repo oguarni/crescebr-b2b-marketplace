@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { productsService, ProductFilters } from '../services/productsService';
@@ -85,8 +85,8 @@ const ensureUploadDir = (): void => {
 };
 
 export const importProductsFromCSV = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const multer = require('multer');
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const multer: typeof import('multer') = require('multer');
     const { CSVImporter } = require('../utils/csvImporter');
 
     const storage = multer.diskStorage({
@@ -120,7 +120,7 @@ export const importProductsFromCSV = asyncHandler(
       fileFilter: (
         req: Request,
         file: { fieldname: string; originalname: string; mimetype: string },
-        cb: (error: Error | null, acceptFile: boolean) => void
+        cb: import('multer').FileFilterCallback
       ) => {
         // Both signals must agree. Either one alone is client-supplied and
         // trivially spoofed; the file's own content is still re-validated
@@ -131,7 +131,7 @@ export const importProductsFromCSV = asyncHandler(
         if (hasCsvExtension && hasCsvMimeType) {
           cb(null, true);
         } else {
-          cb(new Error('Only CSV files are allowed'), false);
+          cb(Object.assign(new Error('Only CSV files are allowed'), { statusCode: 400 }));
         }
       },
       // Bound not just file size but also the number of files/fields and the
@@ -145,9 +145,14 @@ export const importProductsFromCSV = asyncHandler(
       },
     }).single('csvFile');
 
-    upload(req, res, async (err: Error) => {
+    upload(req, res, async (err: unknown) => {
       if (err) {
-        return res.status(400).json({ success: false, error: err.message || 'File upload failed' });
+        if (typeof multer.MulterError === 'function' && err instanceof multer.MulterError) {
+          next(Object.assign(err, { statusCode: 400 }));
+        } else {
+          next(err instanceof Error ? err : new Error('File upload failed'));
+        }
+        return;
       }
 
       if (!req.file) {
