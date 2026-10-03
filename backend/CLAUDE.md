@@ -431,8 +431,9 @@ if (userRole !== 'admin') {
 
 **Why**: Controllers should not contain `Model.findByPk()` or `Model.create()` calls. This violates separation of concerns.
 
-**Done**: `quotationsController.ts` now delegates to `quotation.service.ts`.
-**Remaining**: `authController.ts` has ~10 direct `User.findOne/create` calls. `ordersController.ts` has direct `Quotation.findOne`, `Order.create` calls.
+**Done**: `quotationsController.ts` delegates to `quotation.service.ts`, `authController.ts` to
+`authService.ts`, and `ordersController.ts` to `orderService.ts` / `orderStatusService.ts`. The
+previously listed direct `User`, `Quotation`, and `Order` queries are in the services.
 
 **Task 4.1: Create `src/services/quotation.service.ts`**
 
@@ -633,15 +634,19 @@ npm run build        # Compile TypeScript
 npm run start        # Production
 npm run test         # Run Jest tests
 npm run lint         # Lint code
+npm run typecheck    # Type-check without emitting files
 ```
 
 ## Environment Variables
 
-- DATABASE_URL: PostgreSQL connection string
+- DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME: PostgreSQL connection settings (`DB_PASSWORD` is required)
+- TEST_DB_NAME: Test database name (default: `crescebr_test`; test mode does not inherit `DB_NAME`)
 - JWT_SECRET: Secret key for tokens
 - JWT_EXPIRES_IN: Token expiration (e.g., 24h)
 - NODE_ENV: development | production | test
 - PORT: Server port (default: 3001)
+
+The runtime and migration CLI read these individual DB settings, not `DATABASE_URL`.
 
 ## System Roles
 

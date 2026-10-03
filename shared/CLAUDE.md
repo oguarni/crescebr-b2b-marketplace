@@ -21,7 +21,7 @@ shared/
 | Domain    | Types                                              |
 | --------- | -------------------------------------------------- |
 | Auth      | `AuthTokenPayload`, `LoginRequest`, `AuthResponse` |
-| Company   | `Company` (extends User with CNPJ, certifications) |
+| Company   | `Company` (CNPJ, certifications); `User` extends `Company` for compatibility |
 | Products  | `Product` (with tier pricing, specifications)      |
 | Quotation | `Quotation`, `QuotationItem`                       |
 | Orders    | `Order`, `OrderItem`, `OrderStatusHistory`         |
