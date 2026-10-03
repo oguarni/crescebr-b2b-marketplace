@@ -647,9 +647,7 @@ describe('Admin Controller', () => {
 
     it('should return 404 when supplier not found', async () => {
       MockAdminService.getSupplierMetrics.mockRejectedValue(
-        Object.assign(Object.assign(new Error('Supplier not found'), { statusCode: 404 }), {
-          statusCode: 404,
-        })
+        Object.assign(new Error('Supplier not found'), { statusCode: 404 })
       );
 
       const response = await request(app).get('/api/admin/suppliers/999/metrics').expect(404);

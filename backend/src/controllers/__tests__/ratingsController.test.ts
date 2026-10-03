@@ -67,7 +67,7 @@ describe('Ratings Controller', () => {
     it('should create rating successfully with completed order', async () => {
       const mockSupplier = createMockUser({ id: 2, role: 'supplier' });
       const mockOrder = createMockOrder({
-        id: 'order-123',
+        id: '00000000-0000-4000-8000-000000000001',
         companyId: 1,
         status: 'delivered',
       });
@@ -75,7 +75,7 @@ describe('Ratings Controller', () => {
         id: 1,
         supplierId: 2,
         buyerId: 1,
-        orderId: 'order-123',
+        orderId: '00000000-0000-4000-8000-000000000001',
         score: 5,
         comment: 'Great service!',
         createdAt: new Date(),
@@ -95,7 +95,7 @@ describe('Ratings Controller', () => {
         .post('/api/ratings')
         .send({
           supplierId: 2,
-          orderId: 'order-123',
+          orderId: '00000000-0000-4000-8000-000000000001',
           score: 5,
           comment: 'Great service!',
         })
@@ -108,7 +108,7 @@ describe('Ratings Controller', () => {
         {
           supplierId: 2,
           buyerId: 1,
-          orderId: 'order-123',
+          orderId: '00000000-0000-4000-8000-000000000001',
           score: 5,
           comment: 'Great service!',
         },
@@ -119,7 +119,7 @@ describe('Ratings Controller', () => {
     it('should create rating without specific order ID', async () => {
       const mockSupplier = createMockUser({ id: 2, role: 'supplier' });
       const mockOrder = createMockOrder({
-        id: 'order-123',
+        id: '00000000-0000-4000-8000-000000000001',
         companyId: 1,
         status: 'delivered',
       });
@@ -143,7 +143,7 @@ describe('Ratings Controller', () => {
         {
           supplierId: 2,
           buyerId: 1,
-          orderId: 'order-123',
+          orderId: '00000000-0000-4000-8000-000000000001',
           score: 4,
           comment: 'Good service',
         },
@@ -175,7 +175,7 @@ describe('Ratings Controller', () => {
         .post('/api/ratings')
         .send({
           supplierId: 2,
-          orderId: 'order-123',
+          orderId: '00000000-0000-4000-8000-000000000001',
           score: 5,
         })
         .expect(403);
@@ -187,11 +187,11 @@ describe('Ratings Controller', () => {
     it('should return 400 when trying to rate same order twice', async () => {
       const mockSupplier = createMockUser({ id: 2, role: 'supplier' });
       const mockOrder = createMockOrder({
-        id: 'order-123',
+        id: '00000000-0000-4000-8000-000000000001',
         companyId: 1,
         status: 'delivered',
       });
-      const existingRating = { id: 1, orderId: 'order-123', buyerId: 1 };
+      const existingRating = { id: 1, orderId: '00000000-0000-4000-8000-000000000001', buyerId: 1 };
 
       MockUser.findOne.mockResolvedValue(mockSupplier as any);
       MockOrder.findOne.mockResolvedValue(mockOrder as any);
@@ -201,7 +201,7 @@ describe('Ratings Controller', () => {
         .post('/api/ratings')
         .send({
           supplierId: 2,
-          orderId: 'order-123',
+          orderId: '00000000-0000-4000-8000-000000000001',
           score: 5,
         })
         .expect(400);
@@ -556,7 +556,11 @@ describe('Ratings Controller', () => {
   describe('POST /api/ratings - unexpected errors', () => {
     it('should hide internal errors during creation and return 500', async () => {
       const mockSupplier = createMockUser({ id: 2, role: 'supplier' });
-      const mockOrder = createMockOrder({ id: 'order-x', companyId: 1, status: 'delivered' });
+      const mockOrder = createMockOrder({
+        id: '00000000-0000-4000-8000-000000000011',
+        companyId: 1,
+        status: 'delivered',
+      });
       MockUser.findOne.mockResolvedValue(mockSupplier as any);
       MockOrder.findOne.mockResolvedValue(mockOrder as any);
       MockRating.findOne.mockResolvedValue(null);
@@ -564,7 +568,7 @@ describe('Ratings Controller', () => {
 
       const response = await request(app)
         .post('/api/ratings')
-        .send({ supplierId: 2, orderId: 'order-x', score: 5 })
+        .send({ supplierId: 2, orderId: '00000000-0000-4000-8000-000000000011', score: 5 })
         .expect(500);
 
       expect(response.body.success).toBe(false);
@@ -574,7 +578,11 @@ describe('Ratings Controller', () => {
 
     it('should return a generic server error when the error has no message', async () => {
       const mockSupplier = createMockUser({ id: 2, role: 'supplier' });
-      const mockOrder = createMockOrder({ id: 'order-y', companyId: 1, status: 'delivered' });
+      const mockOrder = createMockOrder({
+        id: '00000000-0000-4000-8000-000000000012',
+        companyId: 1,
+        status: 'delivered',
+      });
       const noMsgError = Object.assign(new Error(''), {});
       noMsgError.message = '';
       MockUser.findOne.mockResolvedValue(mockSupplier as any);
@@ -584,7 +592,7 @@ describe('Ratings Controller', () => {
 
       const response = await request(app)
         .post('/api/ratings')
-        .send({ supplierId: 2, orderId: 'order-y', score: 5 })
+        .send({ supplierId: 2, orderId: '00000000-0000-4000-8000-000000000012', score: 5 })
         .expect(500);
 
       expect(response.body.success).toBe(false);

@@ -1,8 +1,12 @@
 import { body, param } from 'express-validator';
 
+export const companyIdValidation = [
+  param('userId').isInt({ min: 1, max: 2147483647 }).withMessage('Valid user ID is required'),
+];
+
 /** PUT /admin/companies/:userId/verify */
 export const verifyCompanyValidation = [
-  param('userId').notEmpty().withMessage('User ID is required'),
+  ...companyIdValidation,
   body('status')
     .isIn(['approved', 'rejected'])
     .withMessage('Status must be "approved" or "rejected"'),
@@ -19,7 +23,7 @@ export const verifyCompanyValidation = [
 
 /** PUT /admin/companies/:userId/status */
 export const updateCompanyStatusValidation = [
-  param('userId').notEmpty().withMessage('User ID is required'),
+  ...companyIdValidation,
   body('status')
     .isIn(['approved', 'rejected'])
     .withMessage('Status must be "approved" or "rejected"'),
@@ -35,7 +39,7 @@ export const updateCompanyStatusValidation = [
 
 /** PUT /admin/products/:productId/moderate */
 export const moderateProductValidation = [
-  param('productId').notEmpty().withMessage('Product ID is required'),
+  param('productId').isInt({ min: 1, max: 2147483647 }).withMessage('Valid product ID is required'),
   body('action')
     .isIn(['approve', 'reject', 'remove'])
     .withMessage('Action must be "approve", "reject", or "remove"'),

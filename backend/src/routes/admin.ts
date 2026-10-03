@@ -5,6 +5,7 @@ import { adminRateLimit } from '../middleware/rateLimiting';
 import { handleValidationErrors } from '../middleware/handleValidationErrors';
 import {
   verifyCompanyValidation,
+  companyIdValidation,
   updateCompanyStatusValidation,
   moderateProductValidation,
 } from '../validators/admin.validators';
@@ -42,15 +43,25 @@ router.put(
   handleValidationErrors,
   verifyCompany
 );
-router.get('/companies/:userId', getCompanyDetails);
+router.get('/companies/:userId', companyIdValidation, handleValidationErrors, getCompanyDetails);
 router.put(
   '/companies/:userId/status',
   updateCompanyStatusValidation,
   handleValidationErrors,
   updateCompanyStatus
 );
-router.post('/companies/:userId/validate-cnpj', validateSupplierCNPJ);
-router.get('/companies/:userId/metrics', getSupplierMetrics);
+router.post(
+  '/companies/:userId/validate-cnpj',
+  companyIdValidation,
+  handleValidationErrors,
+  validateSupplierCNPJ
+);
+router.get(
+  '/companies/:userId/metrics',
+  companyIdValidation,
+  handleValidationErrors,
+  getSupplierMetrics
+);
 
 // Product management
 router.get('/products', getAllProducts);
