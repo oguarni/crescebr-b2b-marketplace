@@ -15,6 +15,7 @@ import { errorHandler } from '../../middleware/errorHandler';
 import Rating from '../../models/Rating';
 import Order from '../../models/Order';
 import User from '../../models/User';
+import { logger } from '../../utils/structuredLogger';
 
 // Mock the models
 jest.mock('../../models/Rating');
@@ -23,9 +24,8 @@ jest.mock('../../models/User');
 jest.mock('../../middleware/auth', () => ({
   authenticateJWT: jest.fn((req: Request, res: Response, next: NextFunction) => next()),
 }));
-jest.mock('../../middleware/errorHandler', () => ({
-  errorHandler: jest.fn(),
-  asyncHandler: jest.requireActual('../../middleware/errorHandler').asyncHandler,
+jest.mock('../../utils/structuredLogger', () => ({
+  logger: { error: jest.fn() },
 }));
 
 const MockRating = Rating as jest.Mocked<typeof Rating>;
@@ -475,8 +475,8 @@ describe('Ratings Controller', () => {
     });
   });
 
-  describe('PUT /api/ratings/:ratingId - error fallbacks', () => {
-    it('should use status 400 when error has no statusCode', async () => {
+  describe('PUT /api/ratings/:ratingId - unexpected errors', () => {
+    it('should hide internal errors and return 500', async () => {
       const recentDate = new Date(Date.now() - 1000 * 60 * 60);
       const mockRating = {
         id: 1,
@@ -486,13 +486,14 @@ describe('Ratings Controller', () => {
       };
       MockRating.findOne.mockResolvedValue(mockRating as any);
 
-      const response = await request(app).put('/api/ratings/1').send({ score: 5 }).expect(400);
+      const response = await request(app).put('/api/ratings/1').send({ score: 5 }).expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('DB error');
+      expect(response.body.error).toBe('Server Error');
+      expect(logger.error).toHaveBeenCalled();
     });
 
-    it('should use fallback message when error has no message', async () => {
+    it('should return a generic server error when the error has no message', async () => {
       const recentDate = new Date(Date.now() - 1000 * 60 * 60);
       const noMsgError = Object.assign(new Error(''), {});
       noMsgError.message = '';
@@ -504,15 +505,16 @@ describe('Ratings Controller', () => {
       };
       MockRating.findOne.mockResolvedValue(mockRating as any);
 
-      const response = await request(app).put('/api/ratings/1').send({ score: 5 }).expect(400);
+      const response = await request(app).put('/api/ratings/1').send({ score: 5 }).expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to update rating');
+      expect(response.body.error).toBe('Server Error');
+      expect(logger.error).toHaveBeenCalled();
     });
   });
 
-  describe('DELETE /api/ratings/:ratingId - error fallbacks', () => {
-    it('should use status 400 when error has no statusCode', async () => {
+  describe('DELETE /api/ratings/:ratingId - unexpected errors', () => {
+    it('should hide internal errors and return 500', async () => {
       const mockRating = {
         id: 1,
         buyerId: 1,
@@ -520,13 +522,14 @@ describe('Ratings Controller', () => {
       };
       MockRating.findOne.mockResolvedValue(mockRating as any);
 
-      const response = await request(app).delete('/api/ratings/1').expect(400);
+      const response = await request(app).delete('/api/ratings/1').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('DB error');
+      expect(response.body.error).toBe('Server Error');
+      expect(logger.error).toHaveBeenCalled();
     });
 
-    it('should use fallback message when error has no message', async () => {
+    it('should return a generic server error when the error has no message', async () => {
       const noMsgError = Object.assign(new Error(''), {});
       noMsgError.message = '';
       const mockRating = {
@@ -536,15 +539,16 @@ describe('Ratings Controller', () => {
       };
       MockRating.findOne.mockResolvedValue(mockRating as any);
 
-      const response = await request(app).delete('/api/ratings/1').expect(400);
+      const response = await request(app).delete('/api/ratings/1').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to delete rating');
+      expect(response.body.error).toBe('Server Error');
+      expect(logger.error).toHaveBeenCalled();
     });
   });
 
-  describe('POST /api/ratings - error fallbacks', () => {
-    it('should use status 400 when Rating.create throws without statusCode', async () => {
+  describe('POST /api/ratings - unexpected errors', () => {
+    it('should hide internal errors during creation and return 500', async () => {
       const mockSupplier = createMockUser({ id: 2, role: 'supplier' });
       const mockOrder = createMockOrder({ id: 'order-x', companyId: 1, status: 'delivered' });
       MockUser.findOne.mockResolvedValue(mockSupplier as any);
@@ -555,13 +559,14 @@ describe('Ratings Controller', () => {
       const response = await request(app)
         .post('/api/ratings')
         .send({ supplierId: 2, orderId: 'order-x', score: 5 })
-        .expect(400);
+        .expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('DB failure');
+      expect(response.body.error).toBe('Server Error');
+      expect(logger.error).toHaveBeenCalled();
     });
 
-    it('should use fallback message when error thrown has no message', async () => {
+    it('should return a generic server error when the error has no message', async () => {
       const mockSupplier = createMockUser({ id: 2, role: 'supplier' });
       const mockOrder = createMockOrder({ id: 'order-y', companyId: 1, status: 'delivered' });
       const noMsgError = Object.assign(new Error(''), {});
@@ -574,10 +579,11 @@ describe('Ratings Controller', () => {
       const response = await request(app)
         .post('/api/ratings')
         .send({ supplierId: 2, orderId: 'order-y', score: 5 })
-        .expect(400);
+        .expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to create rating');
+      expect(response.body.error).toBe('Server Error');
+      expect(logger.error).toHaveBeenCalled();
     });
   });
 
@@ -650,5 +656,20 @@ describe('Ratings Controller', () => {
         expect.objectContaining({ limit: 10, offset: 0 })
       );
     });
+  });
+  describe('unexpected lookup failures', () => {
+    it.each([null, 'database unavailable'])(
+      'should handle a non-Error rejection (%s)',
+      async failure => {
+        MockUser.findOne.mockRejectedValueOnce(failure);
+
+        const response = await request(app)
+          .post('/api/ratings')
+          .send({ supplierId: 2, score: 5 })
+          .expect(500);
+
+        expect(response.body).toEqual({ success: false, error: 'Server Error' });
+      }
+    );
   });
 });
