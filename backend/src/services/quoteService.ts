@@ -439,6 +439,14 @@ export class QuoteService {
             quote,
           };
         } catch (error) {
+          if (
+            !(error instanceof Error) ||
+            !('statusCode' in error) ||
+            (error.statusCode !== 400 && error.statusCode !== 404)
+          ) {
+            throw error;
+          }
+
           return {
             supplier: {
               id: supplier.id,
@@ -446,7 +454,7 @@ export class QuoteService {
               corporateName: supplier.corporateName,
             },
             quote: null,
-            error: error instanceof Error ? error.message : 'Failed to calculate quote',
+            error: error.message,
           };
         }
       })

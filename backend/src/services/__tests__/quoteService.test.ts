@@ -1078,17 +1078,9 @@ describe('QuoteService', () => {
 
       MockProduct.findByPk.mockRejectedValueOnce('string error');
 
-      const result = await QuoteService.getMultipleSupplierQuotes(
-        1,
-        10,
-        'Curitiba',
-        [10],
-        'standard'
-      );
-
-      expect(result).toHaveLength(1);
-      expect(result[0].quote).toBeNull();
-      expect(result[0].error).toBe('Failed to calculate quote');
+      await expect(
+        QuoteService.getMultipleSupplierQuotes(1, 10, 'Curitiba', [10], 'standard')
+      ).rejects.toBe('string error');
     });
 
     it('should return 0 when both quotes are null (sort stability)', async () => {
