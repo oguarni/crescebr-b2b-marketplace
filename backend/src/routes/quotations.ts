@@ -12,6 +12,7 @@ import {
   getMultipleSupplierQuotes,
 } from '../controllers/quotationsController';
 import {
+  quotationIdValidation,
   createQuotationValidation,
   updateQuotationValidation,
   calculateQuoteValidation,
@@ -43,8 +44,13 @@ router.get('/supplier', requireRole('supplier', 'admin'), getSupplierQuotations)
 
 // Shared routes - customers can view their own, suppliers their related ones,
 // admins can view all (ownership scoping enforced in the service layer)
-router.get('/:id', getQuotationById);
-router.get('/:id/calculations', getQuotationCalculations);
+router.get('/:id', quotationIdValidation, handleValidationErrors, getQuotationById);
+router.get(
+  '/:id/calculations',
+  quotationIdValidation,
+  handleValidationErrors,
+  getQuotationCalculations
+);
 
 // Quote calculation routes - available to all authenticated users
 router.post(
@@ -66,6 +72,7 @@ router.post(
 router.put(
   '/supplier/:id',
   requireRole('supplier'),
+  quotationIdValidation,
   updateQuotationValidation,
   handleValidationErrors,
   updateQuotation
@@ -76,10 +83,17 @@ router.get('/admin/all', requireRole('admin'), getAllQuotations);
 router.put(
   '/admin/:id',
   requireRole('admin'),
+  quotationIdValidation,
   updateQuotationValidation,
   handleValidationErrors,
   updateQuotation
 );
-router.post('/admin/:id/process', requireRole('admin'), processQuotationWithCalculations);
+router.post(
+  '/admin/:id/process',
+  requireRole('admin'),
+  quotationIdValidation,
+  handleValidationErrors,
+  processQuotationWithCalculations
+);
 
 export default router;
