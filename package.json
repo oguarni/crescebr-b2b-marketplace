@@ -41,7 +41,7 @@
     "postinstall": "echo '🚀 CresceBR B2B Marketplace setup complete! Run \"npm run dev\" to start development.'",
     "prepare": "husky",
     "e2e": "npm run e2e:services && playwright test",
-    "e2e:services": "docker compose up -d db redis && node e2e/wait-for-services.mjs",
+    "e2e:services": "docker compose up -d --wait --wait-timeout 90 db redis && node e2e/wait-for-services.mjs",
     "e2e:ui": "playwright test --ui",
     "e2e:report": "playwright show-report"
   },
