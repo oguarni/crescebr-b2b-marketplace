@@ -201,15 +201,23 @@ const removeUploadedFile = (filePath: string): void => {
 
 export const generateSampleCSV = asyncHandler(async (req: Request, res: Response) => {
   const { CSVImporter } = require('../utils/csvImporter');
-  const sampleFilePath = path.join(UPLOAD_DIR, `sample-products-${Date.now()}.csv`);
+  const uploadRoot = path.resolve(UPLOAD_DIR);
+  const sampleFileName = `sample-products-${Date.now()}.csv`;
+  const sampleFilePath = path.join(uploadRoot, sampleFileName);
 
   try {
     ensureUploadDir();
     CSVImporter.generateSampleCSV(sampleFilePath);
-    res.download(sampleFilePath, 'sample-products.csv', err => {
-      if (err) logger.error('Failed to download file', { error: err });
-      const fs = require('fs');
-      if (fs.existsSync(sampleFilePath)) fs.unlinkSync(sampleFilePath);
+    res.download(sampleFileName, 'sample-products.csv', { root: uploadRoot }, err => {
+      removeUploadedFile(sampleFilePath);
+      if (err) {
+        logger.error('Failed to download file', { error: err });
+        if (res.headersSent) {
+          res.destroy();
+        } else {
+          res.status(500).json({ success: false, error: 'Failed to download sample CSV' });
+        }
+      }
     });
   } catch (error) {
     logger.error('Failed to generate sample CSV', { error });
