@@ -94,7 +94,7 @@
       "prettier --write",
       "npm exec -w frontend -- eslint --fix"
     ],
-    "backend/**/*.{ts,js,cjs}": [
+    "backend/**/*.{ts,js,mjs,cjs}": [
       "prettier --write",
       "npm exec -w backend -- eslint --fix"
     ],

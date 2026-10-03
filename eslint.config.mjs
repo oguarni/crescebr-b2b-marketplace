@@ -26,6 +26,6 @@ export default [
   },
   prettier,
   {
-    ignores: ['dist', 'node_modules', 'frontend', 'backend', '*.config.js'],
+    ignores: ['dist', 'node_modules', 'frontend', 'backend', '*.config.{js,mjs}'],
   },
 ];

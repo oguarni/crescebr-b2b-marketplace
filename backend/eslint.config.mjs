@@ -124,6 +124,6 @@ export default [
   },
   prettier,
   {
-    ignores: ['dist', 'node_modules', 'migrations', 'seeders', '*.config.js'],
+    ignores: ['dist', 'node_modules', 'migrations', 'seeders', '*.config.{js,mjs}'],
   },
 ];
