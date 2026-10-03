@@ -71,7 +71,7 @@ jobs:
       # in-memory SQLite database via Sequelize, so rebuild just that one native
       # module with scripts enabled.
       - name: Build sqlite3 native binding
-        run: npm rebuild sqlite3 --foreground-scripts --ignore-scripts=false
+        run: npm run setup:native
 
       - name: Build shared types
         run: npm run shared:build
