@@ -119,6 +119,12 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
+      - name: Type-check frontend and Vite config
+        run: npm run typecheck -w frontend
+
+      - name: Test workspace tooling
+        run: npm run test:tooling
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build

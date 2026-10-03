@@ -31,6 +31,7 @@
     "lint": "concurrently \"npm run backend:lint\" \"npm run frontend:lint\"",
     "backend:lint": "cd backend && npm run lint",
     "frontend:lint": "cd frontend && npm run lint",
+    "typecheck": "npm run typecheck --workspaces",
     "security:headers": "node scripts/check-security-grade.js --config",
     "security:grade": "node scripts/check-security-grade.js --live",
     "security:test": "node --test scripts/check-security-grade.test.js",
