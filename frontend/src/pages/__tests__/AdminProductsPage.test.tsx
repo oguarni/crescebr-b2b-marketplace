@@ -112,34 +112,30 @@ describe('AdminProductsPage', () => {
     });
 
     it('should display loading state initially', async () => {
-      // Use a slower mock to catch the loading state
-      vi.mocked(productsService.getAllProducts).mockImplementation(
-        () =>
-          new Promise(resolve =>
-            setTimeout(
-              () =>
-                resolve({
-                  products: mockProducts,
-                  pagination: {
-                    total: 2,
-                    page: 1,
-                    limit: 100,
-                    totalPages: 1,
-                  },
-                }),
-              100
-            )
-          )
-      );
+      // I keep the request pending until I have asserted the loading state.
+      type ProductsResult = Awaited<ReturnType<typeof productsService.getAllProducts>>;
+      let resolveProducts!: (result: ProductsResult) => void;
+      const pendingProducts = new Promise<ProductsResult>(resolve => {
+        resolveProducts = resolve;
+      });
+      vi.mocked(productsService.getAllProducts).mockReturnValue(pendingProducts);
 
       await renderAdminProductsPage();
 
       expect(screen.getByRole('progressbar')).toBeInTheDocument();
 
-      // Wait for loading to complete
+      await act(async () => {
+        resolveProducts({
+          products: mockProducts,
+          pagination: { total: 2, page: 1, limit: 100, totalPages: 1 },
+        });
+        await pendingProducts;
+      });
+
       await waitFor(() => {
         expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
       });
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     });
 
     it('should render product list correctly', async () => {
