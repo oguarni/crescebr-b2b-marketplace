@@ -1,4 +1,4 @@
-import { Op } from 'sequelize';
+import { Op, Transaction } from 'sequelize';
 import Quotation from '../models/Quotation';
 import QuotationItem from '../models/QuotationItem';
 import Product from '../models/Product';
@@ -29,8 +29,8 @@ const QUOTATION_INCLUDES = {
 export const quotationRepository = {
   findById: (id: number) => Quotation.findByPk(id),
 
-  findByIdWithItems: (id: number) =>
-    Quotation.findByPk(id, { include: QUOTATION_INCLUDES.withItems }),
+  findByIdWithItems: (id: number, options?: { transaction?: Transaction }) =>
+    Quotation.findByPk(id, { include: QUOTATION_INCLUDES.withItems, ...options }),
 
   findByIdWithItemsAndUser: (id: number) =>
     Quotation.findByPk(id, { include: QUOTATION_INCLUDES.withItemsAndUser }),
@@ -79,9 +79,20 @@ export const quotationRepository = {
     });
   },
 
-  create: (data: { companyId: number; status: 'pending' | 'processed' | 'completed' | 'rejected'; adminNotes: string | null }) =>
-    Quotation.create(data),
+  create: (
+    data: {
+      companyId: number;
+      status: 'pending' | 'processed' | 'completed' | 'rejected';
+      adminNotes: string | null;
+    },
+    options?: { transaction?: Transaction }
+  ) => (options ? Quotation.create(data, options) : Quotation.create(data)),
 
-  update: (quotation: Quotation, data: Partial<{ status: 'pending' | 'processed' | 'completed' | 'rejected'; adminNotes: string | null }>) =>
-    quotation.update(data),
+  update: (
+    quotation: Quotation,
+    data: Partial<{
+      status: 'pending' | 'processed' | 'completed' | 'rejected';
+      adminNotes: string | null;
+    }>
+  ) => quotation.update(data),
 };

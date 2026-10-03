@@ -1,5 +1,6 @@
 import { quotationRepository, productRepository } from '../repositories';
 import QuotationItem from '../models/QuotationItem';
+import sequelize from '../config/database';
 
 interface CreateQuotationInput {
   items: { productId: number; quantity: number }[];
@@ -28,26 +29,30 @@ class QuotationService {
       }
     }
 
-    // Create quotation
-    const quotation = await quotationRepository.create({
-      companyId: input.companyId,
-      status: 'pending',
-      adminNotes: null,
+    return sequelize.transaction(async transaction => {
+      const quotation = await quotationRepository.create(
+        {
+          companyId: input.companyId,
+          status: 'pending',
+          adminNotes: null,
+        },
+        { transaction }
+      );
+
+      // I settle each insert before rollback can begin on a failed item.
+      for (const item of input.items) {
+        await QuotationItem.create(
+          {
+            quotationId: quotation.id,
+            productId: item.productId,
+            quantity: item.quantity,
+          },
+          { transaction }
+        );
+      }
+
+      return quotationRepository.findByIdWithItems(quotation.id, { transaction });
     });
-
-    // Create quotation items
-    await Promise.all(
-      input.items.map(item =>
-        QuotationItem.create({
-          quotationId: quotation.id,
-          productId: item.productId,
-          quantity: item.quantity,
-        })
-      )
-    );
-
-    // Return full quotation with items
-    return quotationRepository.findByIdWithItems(quotation.id);
   }
 
   async getForCustomer(companyId: number) {
