@@ -1,3 +1,4 @@
+import { Transaction } from 'sequelize';
 import { orderService } from '../orderService';
 import Order from '../../models/Order';
 import Quotation from '../../models/Quotation';
@@ -54,14 +55,58 @@ describe('orderService', () => {
       expect(MockQuotation.findOne).toHaveBeenCalledWith({
         where: { id: quotationId, companyId },
       });
-      expect(MockOrder.create).toHaveBeenCalledWith({
-        companyId,
-        quotationId,
-        totalAmount: 500.0,
-        status: 'pending',
+      const transaction = MockQuotation.findOne.mock.calls[1][0]?.transaction;
+      expect(transaction).toBeInstanceOf(Transaction);
+      expect(MockQuotation.findOne).toHaveBeenCalledWith({
+        where: { id: quotationId, companyId },
+        transaction,
+        lock: Transaction.LOCK.UPDATE,
       });
-      expect(mockQuotation.update).toHaveBeenCalledWith({ status: 'completed' });
+      expect(MockOrder.create).toHaveBeenCalledWith(
+        {
+          companyId,
+          quotationId,
+          totalAmount: 500.0,
+          status: 'pending',
+        },
+        { transaction }
+      );
+      expect(mockQuotation.update).toHaveBeenCalledWith({ status: 'completed' }, { transaction });
+      expect(MockOrder.findByPk.mock.calls[0][1]?.transaction).toBe(transaction);
       expect(result).toBeDefined();
+    });
+
+    it('rejects a quotation completed while its pricing was calculated', async () => {
+      const quote = { id: quotationId, companyId, status: 'processed', validUntil: null };
+      (MockQuotation.findOne as jest.Mock)
+        .mockResolvedValueOnce(quote)
+        .mockResolvedValueOnce({ ...quote, status: 'completed' });
+      (MockQuoteService.getQuotationWithCalculations as jest.Mock).mockResolvedValue({
+        calculations: { grandTotal: 100 },
+      });
+      await expect(orderService.createFromQuotation(quotationId, companyId)).rejects.toThrow(
+        'Only processed quotations can be converted to orders'
+      );
+      expect(MockOrder.create).not.toHaveBeenCalled();
+    });
+
+    it('rechecks expiry using the locked quotation', async () => {
+      const quote = {
+        id: quotationId,
+        companyId,
+        status: 'processed',
+        validUntil: new Date(Date.now() + 86400000),
+      };
+      (MockQuotation.findOne as jest.Mock)
+        .mockResolvedValueOnce(quote)
+        .mockResolvedValueOnce({ ...quote, validUntil: new Date('2020-01-01') });
+      (MockQuoteService.getQuotationWithCalculations as jest.Mock).mockResolvedValue({
+        calculations: { grandTotal: 100 },
+      });
+      await expect(orderService.createFromQuotation(quotationId, companyId)).rejects.toThrow(
+        /This quotation expired on/
+      );
+      expect(MockOrder.create).not.toHaveBeenCalled();
     });
 
     it('should throw when quotation is not found', async () => {
@@ -135,7 +180,10 @@ describe('orderService', () => {
 
       const result = await orderService.createFromQuotation(quotationId, companyId);
       expect(result).toBeDefined();
-      expect(mockQuotation.update).toHaveBeenCalledWith({ status: 'completed' });
+      expect(mockQuotation.update).toHaveBeenCalledWith(
+        { status: 'completed' },
+        { transaction: expect.any(Transaction) }
+      );
     });
   });
 

@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { Transaction } from 'sequelize';
 import express from 'express';
 import {
   createOrderFromQuotation,
@@ -123,12 +124,10 @@ describe('Orders Controller', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Order created successfully');
       expect(response.body.data.id).toBe('order-123');
-      expect(MockOrder.create).toHaveBeenCalledWith({
-        companyId: 1,
-        quotationId: 1,
-        totalAmount: 1280,
-        status: 'pending',
-      });
+      expect(MockOrder.create).toHaveBeenCalledWith(
+        { companyId: 1, quotationId: 1, totalAmount: 1280, status: 'pending' },
+        { transaction: expect.any(Transaction) }
+      );
     });
 
     it('should return 400 for invalid quotation ID', async () => {
