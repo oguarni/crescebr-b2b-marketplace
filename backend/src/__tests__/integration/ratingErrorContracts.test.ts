@@ -25,7 +25,7 @@ describe('rating eligibility and error contracts through real services', () => {
         .send({ supplierId: 2, score: 4, ...(explicit ? { orderId } : {}) })
         .expect(201);
       expect(response.body.message).toBe('Rating created successfully');
-      expect(response.body.data).toMatchObject({ supplierId: 2, buyerId: 1, score: 4 });
+      expect(response.body.data).toMatchObject({ supplierId: 2, buyerId: 1, score: 4, orderId });
       expect(await models.Rating.count()).toBe(1);
     }
   );
@@ -72,6 +72,37 @@ describe('rating eligibility and error contracts through real services', () => {
       .post('/api/v1/ratings')
       .set(actor())
       .send({ supplierId: 2, score: 4, orderId })
+      .expect(500);
+    expect(response.body).toEqual({ success: false, error: 'Server Error' });
+    expect(await models.Rating.count()).toBe(0);
+  });
+
+  it.each([true, false])(
+    'prevents duplicate ratings across both request forms (%s)',
+    async explicit => {
+      await request(app)
+        .post('/api/v1/ratings')
+        .set(actor())
+        .send({ supplierId: 2, score: 4, ...(explicit ? { orderId } : {}) })
+        .expect(201);
+      for (const repeatExplicit of [true, false]) {
+        const response = await request(app)
+          .post('/api/v1/ratings')
+          .set(actor())
+          .send({ supplierId: 2, score: 5, ...(repeatExplicit ? { orderId } : {}) })
+          .expect(400);
+        expect(response.body.error).toBe('You have already rated this order');
+      }
+      expect(await models.Rating.count()).toBe(1);
+    }
+  );
+
+  it('rolls back the rating when its final relation read fails', async () => {
+    jest.spyOn(models.Rating, 'findByPk').mockRejectedValueOnce(new Error(internalMessage));
+    const response = await request(app)
+      .post('/api/v1/ratings')
+      .set(actor())
+      .send({ supplierId: 2, score: 4 })
       .expect(500);
     expect(response.body).toEqual({ success: false, error: 'Server Error' });
     expect(await models.Rating.count()).toBe(0);

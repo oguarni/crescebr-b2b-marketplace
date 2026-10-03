@@ -104,13 +104,16 @@ describe('Ratings Controller', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Rating created successfully');
       expect(response.body.data.score).toBe(5);
-      expect(MockRating.create).toHaveBeenCalledWith({
-        supplierId: 2,
-        buyerId: 1,
-        orderId: 'order-123',
-        score: 5,
-        comment: 'Great service!',
-      });
+      expect(MockRating.create).toHaveBeenCalledWith(
+        {
+          supplierId: 2,
+          buyerId: 1,
+          orderId: 'order-123',
+          score: 5,
+          comment: 'Great service!',
+        },
+        expect.objectContaining({ transaction: expect.anything() })
+      );
     });
 
     it('should create rating without specific order ID', async () => {
@@ -136,13 +139,16 @@ describe('Ratings Controller', () => {
         .expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(MockRating.create).toHaveBeenCalledWith({
-        supplierId: 2,
-        buyerId: 1,
-        orderId: undefined,
-        score: 4,
-        comment: 'Good service',
-      });
+      expect(MockRating.create).toHaveBeenCalledWith(
+        {
+          supplierId: 2,
+          buyerId: 1,
+          orderId: 'order-123',
+          score: 4,
+          comment: 'Good service',
+        },
+        expect.objectContaining({ transaction: expect.anything() })
+      );
     });
 
     it('should return 404 when supplier not found', async () => {
