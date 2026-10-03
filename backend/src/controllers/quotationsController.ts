@@ -93,7 +93,7 @@ export const calculateQuote = asyncHandler(async (req: AuthenticatedRequest, res
     buyerLocation,
     supplierLocation,
     shippingMethod,
-  });
+  }).catch(rejectInvalidCalculationInput);
 
   const formattedResponse = QuoteService.formatQuoteResponse(calculations);
 
@@ -164,7 +164,7 @@ export const getMultipleSupplierQuotes = asyncHandler(
       buyerLocation,
       supplierIds,
       shippingMethod
-    );
+    ).catch(rejectInvalidCalculationInput);
 
     res.status(200).json({
       success: true,
@@ -178,3 +178,12 @@ export const getMultipleSupplierQuotes = asyncHandler(
     });
   }
 );
+
+// I keep missing products in calculation payloads as invalid request input.
+// Resource lookups elsewhere retain 404; unexpected failures retain their status.
+function rejectInvalidCalculationInput(error: unknown): never {
+  if (error instanceof Error && 'statusCode' in error && error.statusCode === 404) {
+    throw Object.assign(error, { statusCode: 400 });
+  }
+  throw error;
+}

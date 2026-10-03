@@ -79,12 +79,12 @@ describe('quotation errors through real services and HTTP middleware', () => {
     }
   );
 
-  it('returns 404 for a missing calculated product and retains MOQ validation', async () => {
+  it('retains invalid calculation-input and MOQ responses at 400', async () => {
     const missing = await request(app)
       .post('/api/v1/quotations/calculate')
       .set(actor())
       .send({ items: [{ productId: 99, quantity: 5 }] })
-      .expect(404);
+      .expect(400);
     expect(missing.body.error).toBe('Product not found');
     const moq = await request(app)
       .post('/api/v1/quotations/calculate')
@@ -92,6 +92,15 @@ describe('quotation errors through real services and HTTP middleware', () => {
       .send({ items: [{ productId: 1, quantity: 1 }] })
       .expect(400);
     expect(moq.body.error).toBe('Minimum order quantity is 5 units');
+  });
+
+  it('retains a missing comparison product as invalid request input', async () => {
+    const response = await request(app)
+      .post('/api/v1/quotations/compare-suppliers')
+      .set(actor())
+      .send({ productId: 99, quantity: 5 })
+      .expect(400);
+    expect(response.body).toEqual({ success: false, error: 'Product not found' });
   });
 
   it('retains per-supplier domain failures within the comparison result', async () => {
@@ -116,6 +125,18 @@ describe('quotation errors through real services and HTTP middleware', () => {
       .set(actor())
       .send({ productId: 1, quantity: 5, supplierIds: [2] })
       .expect(500);
+    expect(response.body).toEqual({ success: false, error: 'Server Error' });
+  });
+
+  it('does not embed a status-bearing infrastructure fault in supplier quotes', async () => {
+    jest
+      .spyOn(models.Product, 'findByPk')
+      .mockRejectedValueOnce(Object.assign(new Error(internalMessage), { statusCode: 503 }));
+    const response = await request(app)
+      .post('/api/v1/quotations/compare-suppliers')
+      .set(actor())
+      .send({ productId: 1, quantity: 5, supplierIds: [2] })
+      .expect(503);
     expect(response.body).toEqual({ success: false, error: 'Server Error' });
   });
 

@@ -1086,7 +1086,7 @@ describe('Quotations Controller', () => {
       const response = await request(app)
         .post('/api/quotations/calculate')
         .send(validCalculateData)
-        .expect(404);
+        .expect(400);
 
       // Assert
       expect(response.body.success).toBe(false);
@@ -1575,7 +1575,7 @@ describe('Quotations Controller', () => {
       const response = await request(app)
         .post('/api/quotations/compare')
         .send(validCompareData)
-        .expect(404);
+        .expect(400);
 
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBe('Product not found');
