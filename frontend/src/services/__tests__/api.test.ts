@@ -137,6 +137,19 @@ describe('api module', () => {
       expect(mockToastError).toHaveBeenCalledWith('Internal server error');
     });
 
+    it('should surface a provider outage without ending an authenticated session', async () => {
+      localStorage.setItem('crescebr_token', 'test-token');
+      const location = { href: '/admin/companies/queue' };
+      vi.stubGlobal('window', { location });
+      const error = { response: { status: 503, data: { success: false, error: 'Server Error' } } };
+
+      await expect(responseErrorFn(error)).rejects.toBe(error);
+
+      expect(mockToastError).toHaveBeenCalledWith('Server Error');
+      expect(localStorage.getItem('crescebr_token')).toBe('test-token');
+      expect(location.href).toBe('/admin/companies/queue');
+    });
+
     it('should use response.data.message when error field is absent', async () => {
       const error = {
         response: { status: 500, data: { message: 'Something went wrong' } },

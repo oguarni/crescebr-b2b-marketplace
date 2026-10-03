@@ -1,9 +1,9 @@
 import User from '../models/User';
 import { CNPJService } from './cnpjService';
 
-function businessError(message: string): Error {
+function businessError(message: string, statusCode: 400 | 503 = 400): Error {
   const err = new Error(message);
-  (err as Error & { statusCode: number }).statusCode = 400;
+  (err as Error & { statusCode: number }).statusCode = statusCode;
   return err;
 }
 
@@ -53,7 +53,10 @@ export const authService = {
 
     const cnpjValidation = await CNPJService.validateCNPJWithAPI(input.cnpj);
     if (!cnpjValidation.valid) {
-      throw businessError(cnpjValidation.error || 'Invalid CNPJ provided');
+      throw businessError(
+        cnpjValidation.error || 'Invalid CNPJ provided',
+        cnpjValidation.unavailable ? 503 : 400
+      );
     }
 
     return User.create({
@@ -85,7 +88,10 @@ export const authService = {
 
     const cnpjValidation = await CNPJService.validateCNPJWithAPI(input.cnpj);
     if (!cnpjValidation.valid) {
-      throw businessError(cnpjValidation.error || 'Invalid CNPJ provided');
+      throw businessError(
+        cnpjValidation.error || 'Invalid CNPJ provided',
+        cnpjValidation.unavailable ? 503 : 400
+      );
     }
 
     const user = await User.create({

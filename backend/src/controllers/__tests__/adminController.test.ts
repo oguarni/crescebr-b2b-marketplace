@@ -202,7 +202,9 @@ describe('Admin Controller', () => {
     });
 
     it('should return 404 when userId does not exist', async () => {
-      MockAdminService.verifyCompany.mockRejectedValue(new Error('Supplier not found'));
+      MockAdminService.verifyCompany.mockRejectedValue(
+        Object.assign(new Error('Supplier not found'), { statusCode: 404 })
+      );
 
       const response = await request(app)
         .put('/api/admin/companies/999/verify')
@@ -250,7 +252,9 @@ describe('Admin Controller', () => {
     });
 
     it('should return 400 when CNPJ validation fails', async () => {
-      MockAdminService.verifyCompany.mockRejectedValue(new Error('CNPJ validation failed'));
+      MockAdminService.verifyCompany.mockRejectedValue(
+        Object.assign(new Error('CNPJ validation failed'), { statusCode: 400 })
+      );
 
       const response = await request(app)
         .put('/api/admin/companies/1/verify')
@@ -270,10 +274,10 @@ describe('Admin Controller', () => {
         .expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('CNPJ service unavailable');
+      expect(response.body.error).toBe('Server Error');
     });
 
-    it('should use fallback message when non-Error is thrown', async () => {
+    it('should hide non-Error failures', async () => {
       MockAdminService.verifyCompany.mockRejectedValue('service timeout');
 
       const response = await request(app)
@@ -282,7 +286,7 @@ describe('Admin Controller', () => {
         .expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to verify company');
+      expect(response.body.error).toBe('Server Error');
     });
   });
 
@@ -343,7 +347,9 @@ describe('Admin Controller', () => {
     });
 
     it('should return 404 when product not found', async () => {
-      MockAdminService.moderateProduct.mockRejectedValue(new Error('Product not found'));
+      MockAdminService.moderateProduct.mockRejectedValue(
+        Object.assign(new Error('Product not found'), { statusCode: 404 })
+      );
 
       const response = await request(app)
         .put('/api/admin/products/999/moderate')
@@ -374,16 +380,16 @@ describe('Admin Controller', () => {
       expect(response.body.error).toBe('Invalid action provided');
     });
 
-    it('should use fallback message when non-Error is thrown', async () => {
+    it('should hide non-Error failures', async () => {
       MockAdminService.moderateProduct.mockRejectedValue('db timeout');
 
       const response = await request(app)
         .put('/api/admin/products/1/moderate')
         .send({ action: 'approve' })
-        .expect(400);
+        .expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to moderate product');
+      expect(response.body.error).toBe('Server Error');
     });
   });
 
@@ -464,7 +470,9 @@ describe('Admin Controller', () => {
     });
 
     it('should return 404 when company not found', async () => {
-      MockAdminService.getCompanyDetails.mockRejectedValue(new Error('Company not found'));
+      MockAdminService.getCompanyDetails.mockRejectedValue(
+        Object.assign(new Error('Company not found'), { statusCode: 404 })
+      );
 
       const response = await request(app).get('/api/admin/companies/999').expect(404);
 
@@ -472,13 +480,13 @@ describe('Admin Controller', () => {
       expect(response.body.error).toBe('Company not found');
     });
 
-    it('should use fallback message when non-Error is thrown', async () => {
+    it('should hide non-Error failures', async () => {
       MockAdminService.getCompanyDetails.mockRejectedValue('db error');
 
-      const response = await request(app).get('/api/admin/companies/1').expect(400);
+      const response = await request(app).get('/api/admin/companies/1').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to get company details');
+      expect(response.body.error).toBe('Server Error');
     });
   });
 
@@ -509,7 +517,9 @@ describe('Admin Controller', () => {
     });
 
     it('should return 404 when company not found', async () => {
-      MockAdminService.updateCompanyStatus.mockRejectedValue(new Error('Company not found'));
+      MockAdminService.updateCompanyStatus.mockRejectedValue(
+        Object.assign(new Error('Company not found'), { statusCode: 404 })
+      );
 
       const response = await request(app)
         .put('/api/admin/companies/999/status')
@@ -533,16 +543,16 @@ describe('Admin Controller', () => {
       expect(response.body.message).toBe('Company status updated to approved');
     });
 
-    it('should use fallback message when non-Error is thrown', async () => {
+    it('should hide non-Error failures', async () => {
       MockAdminService.updateCompanyStatus.mockRejectedValue('db error');
 
       const response = await request(app)
         .put('/api/admin/companies/1/status')
         .send({ status: 'approved' })
-        .expect(400);
+        .expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to update company status');
+      expect(response.body.error).toBe('Server Error');
     });
   });
 
@@ -566,7 +576,9 @@ describe('Admin Controller', () => {
     });
 
     it('should return 404 when supplier not found', async () => {
-      MockAdminService.validateSupplierCNPJ.mockRejectedValue(new Error('Supplier not found'));
+      MockAdminService.validateSupplierCNPJ.mockRejectedValue(
+        Object.assign(new Error('Supplier not found'), { statusCode: 404 })
+      );
 
       const response = await request(app)
         .post('/api/admin/companies/999/validate-cnpj')
@@ -578,7 +590,7 @@ describe('Admin Controller', () => {
 
     it('should return 400 when supplier has no CNPJ', async () => {
       MockAdminService.validateSupplierCNPJ.mockRejectedValue(
-        new Error('Supplier has no CNPJ to validate')
+        Object.assign(new Error('Supplier has no CNPJ to validate'), { statusCode: 400 })
       );
 
       const response = await request(app).post('/api/admin/companies/1/validate-cnpj').expect(400);
@@ -593,16 +605,16 @@ describe('Admin Controller', () => {
       const response = await request(app).post('/api/admin/companies/1/validate-cnpj').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('External service down');
+      expect(response.body.error).toBe('Server Error');
     });
 
-    it('should use fallback message when non-Error is thrown', async () => {
+    it('should hide non-Error failures', async () => {
       MockAdminService.validateSupplierCNPJ.mockRejectedValue({ code: 'ECONNREFUSED' });
 
       const response = await request(app).post('/api/admin/companies/1/validate-cnpj').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to validate CNPJ');
+      expect(response.body.error).toBe('Server Error');
     });
   });
 
@@ -635,7 +647,9 @@ describe('Admin Controller', () => {
 
     it('should return 404 when supplier not found', async () => {
       MockAdminService.getSupplierMetrics.mockRejectedValue(
-        Object.assign(new Error('Supplier not found'), { statusCode: 404 })
+        Object.assign(Object.assign(new Error('Supplier not found'), { statusCode: 404 }), {
+          statusCode: 404,
+        })
       );
 
       const response = await request(app).get('/api/admin/suppliers/999/metrics').expect(404);

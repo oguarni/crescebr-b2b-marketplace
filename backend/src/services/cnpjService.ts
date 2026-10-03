@@ -3,6 +3,7 @@ import { logger } from '../utils/structuredLogger';
 
 interface CNPJValidationResult {
   valid: boolean;
+  unavailable?: true;
   companyName?: string;
   fantasyName?: string;
   address?: string;
@@ -155,10 +156,10 @@ export class CNPJService {
 
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNABORTED') {
-          return { valid: false, error: 'Timeout validating CNPJ' };
+          return { valid: false, unavailable: true, error: 'Timeout validating CNPJ' };
         }
         if (error.response?.status === 429) {
-          return { valid: false, error: 'Rate limit exceeded, try again later' };
+          return { valid: false, unavailable: true, error: 'Rate limit exceeded, try again later' };
         }
         if (error.response?.status === 404) {
           const result = { valid: false, error: 'CNPJ not found' };

@@ -5,6 +5,7 @@ import quotationsRouter from '../../routes/quotations';
 import adminRouter from '../../routes/admin';
 import productsRouter from '../../routes/products';
 import ratingsRouter from '../../routes/ratings';
+import authRouter from '../../routes/auth';
 import { errorHandler } from '../../middleware/errorHandler';
 import { extractTokenFromHeader, verifyToken } from '../../utils/jwt';
 import { CNPJService } from '../../services/cnpjService';
@@ -17,6 +18,7 @@ app.use('/api/v1/quotations', quotationsRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/products', productsRouter);
 app.use('/api/v1/ratings', ratingsRouter);
+app.use('/api/v1/auth', authRouter);
 app.use(errorHandler);
 
 export const actor = (id = 1, role = 'customer') => ({ Authorization: `Bearer ${id}:${role}` });

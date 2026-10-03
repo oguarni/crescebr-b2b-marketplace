@@ -202,12 +202,14 @@ export const adminService = {
     validateCNPJ = true
   ): Promise<User> {
     const user = await User.findOne({ where: { id: userId, role: 'supplier' } });
-    if (!user) throw new Error('Supplier not found');
+    if (!user) throw Object.assign(new Error('Supplier not found'), { statusCode: 404 });
 
     if (status === 'approved' && validateCNPJ && user.cnpj) {
       const cnpjValidation = await CNPJService.validateAndUpdateCompany(user.cnpj, user.id);
       if (!cnpjValidation.valid) {
-        throw new Error(cnpjValidation.error || 'CNPJ validation failed');
+        throw Object.assign(new Error(cnpjValidation.error || 'CNPJ validation failed'), {
+          statusCode: cnpjValidation.unavailable ? 503 : 400,
+        });
       }
       await user.reload();
     }
@@ -226,7 +228,7 @@ export const adminService = {
     action: 'approve' | 'reject' | 'remove'
   ): Promise<Product | null> {
     const product = await Product.findByPk(productId);
-    if (!product) throw new Error('Product not found');
+    if (!product) throw Object.assign(new Error('Product not found'), { statusCode: 404 });
 
     if (action === 'remove') {
       await product.destroy();
@@ -281,7 +283,7 @@ export const adminService = {
       where: { id: userId, role: 'supplier' },
       attributes: { exclude: ['password'] },
     });
-    if (!company) throw new Error('Company not found');
+    if (!company) throw Object.assign(new Error('Company not found'), { statusCode: 404 });
     return company;
   },
 
@@ -290,7 +292,7 @@ export const adminService = {
     status: 'pending' | 'approved' | 'rejected'
   ): Promise<User> {
     const company = await User.findOne({ where: { id: userId, role: 'supplier' } });
-    if (!company) throw new Error('Company not found');
+    if (!company) throw Object.assign(new Error('Company not found'), { statusCode: 404 });
 
     company.status = status;
     await company.save();
@@ -310,10 +312,12 @@ export const adminService = {
     };
   }> {
     const user = await User.findOne({ where: { id: userId, role: 'supplier' } });
-    if (!user) throw new Error('Supplier not found');
-    if (!user.cnpj) throw new Error('Supplier has no CNPJ to validate');
+    if (!user) throw Object.assign(new Error('Supplier not found'), { statusCode: 404 });
+    if (!user.cnpj)
+      throw Object.assign(new Error('Supplier has no CNPJ to validate'), { statusCode: 400 });
 
-    const cnpjValidation = await CNPJService.validateAndUpdateCompany(user.cnpj, user.id);
+    const { unavailable: _unavailable, ...cnpjValidation } =
+      await CNPJService.validateAndUpdateCompany(user.cnpj, user.id);
     await user.reload();
     return { user, cnpjValidation };
   },
