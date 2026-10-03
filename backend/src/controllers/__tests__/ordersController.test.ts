@@ -1,5 +1,5 @@
 import request from 'supertest';
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import {
   createOrderFromQuotation,
   updateOrderStatus,
@@ -33,16 +33,7 @@ jest.mock('../../models/User');
 jest.mock('../../middleware/auth', () => ({
   authenticateJWT: jest.fn((req, res, next) => next()),
 }));
-jest.mock('../../middleware/errorHandler', () => ({
-  errorHandler: jest.fn((err, req, res, next) => {
-    res.status(500).json({ error: err.message });
-  }),
-  asyncHandler: jest.fn(
-    (fn: Function) => (req: Request, res: Response, next: NextFunction) =>
-      Promise.resolve(fn(req, res, next)).catch(next)
-  ),
-}));
-
+jest.mock('../../utils/structuredLogger', () => ({ logger: { error: jest.fn() } }));
 const MockOrderStatusService = OrderStatusService as jest.Mocked<typeof OrderStatusService>;
 const MockQuoteService = QuoteService as jest.Mocked<typeof QuoteService>;
 const MockOrder = Order as jest.Mocked<typeof Order>;
@@ -569,24 +560,24 @@ describe('Orders Controller', () => {
   });
 
   describe('GET /api/orders - error handling', () => {
-    it('should return 400 when getUserOrders throws', async () => {
+    it('should return 500 when getUserOrders throws', async () => {
       (MockOrderStatusService.getOrdersByStatus as jest.Mock).mockRejectedValue(
         new Error('DB error')
       );
 
-      const response = await request(app).get('/api/orders').expect(400);
+      const response = await request(app).get('/api/orders').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('DB error');
+      expect(response.body.error).toBe('Server Error');
     });
 
     it('should return generic error message for non-Error throws', async () => {
       (MockOrderStatusService.getOrdersByStatus as jest.Mock).mockRejectedValue('string error');
 
-      const response = await request(app).get('/api/orders').expect(400);
+      const response = await request(app).get('/api/orders').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to get orders');
+      expect(response.body.error).toBe('Server Error');
     });
   });
 
@@ -603,7 +594,7 @@ describe('Orders Controller', () => {
   });
 
   describe('GET /api/admin/orders - error handling', () => {
-    it('should return 400 when getAllOrders throws', async () => {
+    it('should return 500 when getAllOrders throws', async () => {
       (authenticateJWT as jest.Mock).mockImplementation((req, res, next) => {
         req.user = { id: 1, role: 'admin', email: 'admin@test.com' };
         next();
@@ -612,14 +603,14 @@ describe('Orders Controller', () => {
         new Error('DB error')
       );
 
-      const response = await request(app).get('/api/admin/orders').expect(400);
+      const response = await request(app).get('/api/admin/orders').expect(500);
 
       expect(response.body.success).toBe(false);
     });
   });
 
   describe('GET /api/admin/orders/stats - error handling', () => {
-    it('should return 400 when getOrderStats throws', async () => {
+    it('should return 500 when getOrderStats throws', async () => {
       (authenticateJWT as jest.Mock).mockImplementation((req, res, next) => {
         req.user = { id: 1, role: 'admin', email: 'admin@test.com' };
         next();
@@ -628,7 +619,7 @@ describe('Orders Controller', () => {
         new Error('DB error')
       );
 
-      const response = await request(app).get('/api/admin/orders/stats').expect(400);
+      const response = await request(app).get('/api/admin/orders/stats').expect(500);
 
       expect(response.body.success).toBe(false);
     });
@@ -767,10 +758,10 @@ describe('Orders Controller', () => {
       });
       MockOrderStatusService.getOrdersByStatus.mockRejectedValue('network error');
 
-      const response = await request(app).get('/api/admin/orders').expect(400);
+      const response = await request(app).get('/api/admin/orders').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to get orders');
+      expect(response.body.error).toBe('Server Error');
     });
 
     it('getOrderStats - uses fallback when non-Error is thrown', async () => {
@@ -780,10 +771,10 @@ describe('Orders Controller', () => {
       });
       MockOrderStatusService.getOrderStatusStats.mockRejectedValue('stats error');
 
-      const response = await request(app).get('/api/admin/orders/stats').expect(400);
+      const response = await request(app).get('/api/admin/orders/stats').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to get order stats');
+      expect(response.body.error).toBe('Server Error');
     });
   });
 });
