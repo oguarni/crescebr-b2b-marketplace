@@ -1,5 +1,7 @@
 import request from 'supertest';
 import express, { Request, Response, NextFunction } from 'express';
+import { Transaction } from 'sequelize';
+import sequelize from '../../config/database';
 import {
   createQuotation,
   getCustomerQuotations,
@@ -1418,7 +1420,7 @@ describe('Quotations Controller', () => {
       expect(response.body.success).toBe(true);
     });
 
-    it('should handle simultaneous quotation creation', async () => {
+    it('returns created responses for concurrent requests with mocked writes', async () => {
       // Arrange
       const quotationData = {
         items: [{ productId: 1, quantity: 1 }],
@@ -1439,17 +1441,27 @@ describe('Quotations Controller', () => {
       MockQuotationItem.create.mockResolvedValue({ id: 1 } as any);
       MockQuotation.findByPk.mockResolvedValue({ id: 1, items: [] } as any);
 
-      // Act
-      const promises = Array(5)
-        .fill(null)
-        .map(() => request(app).post('/api/quotations').send(quotationData));
+      // I mock the managed transaction alongside the writes; one SQLite connection
+      // cannot run parallel transactions. Real database behavior has separate coverage.
+      const managedTransactions: {
+        transaction<T>(callback: (transaction: Transaction) => PromiseLike<T>): Promise<T>;
+      } = sequelize;
+      const transactionSpy = jest
+        .spyOn(managedTransactions, 'transaction')
+        .mockImplementation(async callback => callback(new Transaction(sequelize, {})));
 
-      const responses = await Promise.all(promises);
-
-      // Assert
-      responses.forEach(response => {
-        expect([201, 400, 500]).toContain(response.status);
-      });
+      try {
+        const responses = await Promise.all(
+          Array.from({ length: 5 }, () => request(app).post('/api/quotations').send(quotationData))
+        );
+        responses.forEach(response => {
+          expect(response.status).toBe(201);
+          expect(response.body).toMatchObject({ success: true, data: { id: 1 } });
+        });
+        expect(transactionSpy).toHaveBeenCalledTimes(5);
+      } finally {
+        transactionSpy.mockRestore();
+      }
     });
   });
 

@@ -1,3 +1,4 @@
+import { Transaction } from 'sequelize';
 import { quotationService } from '../quotation.service';
 
 // Mock repositories
@@ -61,11 +62,20 @@ describe('QuotationService', () => {
       const result = await quotationService.validateAndCreate(input);
 
       expect(mockProductRepo.findByIds).toHaveBeenCalledWith([1, 2]);
-      expect(mockQuotationRepo.create).toHaveBeenCalledWith({
-        companyId: 1,
-        status: 'pending',
-        adminNotes: null,
-      });
+      const transaction = mockQuotationRepo.create.mock.calls[0][1]?.transaction;
+      expect(transaction).toBeInstanceOf(Transaction);
+      expect(mockQuotationRepo.create).toHaveBeenCalledWith(
+        {
+          companyId: 1,
+          status: 'pending',
+          adminNotes: null,
+        },
+        { transaction }
+      );
+      for (const [, options] of mockQuotationItem.create.mock.calls) {
+        expect(options?.transaction).toBe(transaction);
+      }
+      expect(mockQuotationRepo.findByIdWithItems).toHaveBeenCalledWith(1, { transaction });
       expect(mockQuotationItem.create).toHaveBeenCalledTimes(2);
       expect(result).toBeDefined();
     });

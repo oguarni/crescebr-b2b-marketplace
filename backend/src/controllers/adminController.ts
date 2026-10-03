@@ -129,14 +129,8 @@ export const validateSupplierCNPJ = asyncHandler(
 );
 
 export const getSupplierMetrics = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const data = await adminService.getSupplierMetrics(req.params.userId as string);
-    res.status(200).json({ success: true, data });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to get supplier metrics';
-    const httpStatus = message === 'Supplier not found' ? 404 : 500;
-    res.status(httpStatus).json({ success: false, error: message });
-  }
+  const data = await adminService.getSupplierMetrics(req.params.userId as string);
+  res.status(200).json({ success: true, data });
 });
 
 export const getVerificationQueue = asyncHandler(

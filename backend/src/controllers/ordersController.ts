@@ -68,35 +68,28 @@ export const getUserOrders = asyncHandler(async (req: AuthenticatedRequest, res:
   const scope =
     req.user!.role === 'supplier' ? { supplierId: req.user!.id } : { companyId: req.user!.id };
 
-  try {
-    const result = await OrderStatusService.getOrdersByStatus(
-      (status as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | undefined) ||
-        undefined,
-      {
-        ...scope,
-        limit: parseInt(limit as string),
-        offset: (parseInt(page as string) - 1) * parseInt(limit as string),
-      }
-    );
+  const result = await OrderStatusService.getOrdersByStatus(
+    (status as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | undefined) ||
+      undefined,
+    {
+      ...scope,
+      limit: parseInt(limit as string),
+      offset: (parseInt(page as string) - 1) * parseInt(limit as string),
+    }
+  );
 
-    res.status(200).json({
-      success: true,
-      data: {
-        orders: result.orders,
-        pagination: {
-          total: result.total,
-          page: parseInt(page as string),
-          limit: parseInt(limit as string),
-          totalPages: Math.ceil(result.total / parseInt(limit as string)),
-        },
+  res.status(200).json({
+    success: true,
+    data: {
+      orders: result.orders,
+      pagination: {
+        total: result.total,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        totalPages: Math.ceil(result.total / parseInt(limit as string)),
       },
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get orders',
-    });
-  }
+    },
+  });
 });
 
 export const getOrderHistory = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -120,51 +113,37 @@ export const getOrderHistory = asyncHandler(async (req: AuthenticatedRequest, re
 export const getAllOrders = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { status, startDate, endDate, page = 1, limit = 50 } = req.query;
 
-  try {
-    const result = await OrderStatusService.getOrdersByStatus(
-      (status as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | undefined) ||
-        undefined,
-      {
-        startDate: startDate ? new Date(startDate as string) : undefined,
-        endDate: endDate ? new Date(endDate as string) : undefined,
-        limit: parseInt(limit as string),
-        offset: (parseInt(page as string) - 1) * parseInt(limit as string),
-      }
-    );
+  const result = await OrderStatusService.getOrdersByStatus(
+    (status as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | undefined) ||
+      undefined,
+    {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+      limit: parseInt(limit as string),
+      offset: (parseInt(page as string) - 1) * parseInt(limit as string),
+    }
+  );
 
-    res.status(200).json({
-      success: true,
-      data: {
-        orders: result.orders,
-        pagination: {
-          total: result.total,
-          page: parseInt(page as string),
-          limit: parseInt(limit as string),
-          totalPages: Math.ceil(result.total / parseInt(limit as string)),
-        },
+  res.status(200).json({
+    success: true,
+    data: {
+      orders: result.orders,
+      pagination: {
+        total: result.total,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        totalPages: Math.ceil(result.total / parseInt(limit as string)),
       },
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get orders',
-    });
-  }
+    },
+  });
 });
 
 export const getOrderStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const stats = await OrderStatusService.getOrderStatusStats();
-    res.status(200).json({
-      success: true,
-      data: stats,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get order stats',
-    });
-  }
+  const stats = await OrderStatusService.getOrderStatusStats();
+  res.status(200).json({
+    success: true,
+    data: stats,
+  });
 });
 
 export const updateOrderNfe = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {

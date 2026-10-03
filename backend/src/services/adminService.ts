@@ -352,7 +352,7 @@ export const adminService = {
     });
 
     if (!user) {
-      throw new Error('Supplier not found');
+      throw Object.assign(new Error('Supplier not found'), { statusCode: 404 });
     }
 
     const QuotationItem = (await import('../models/QuotationItem')).default;

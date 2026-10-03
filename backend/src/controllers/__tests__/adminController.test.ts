@@ -35,16 +35,7 @@ jest.mock('../../middleware/rbac', () => {
   };
   return { requireRole: requireRoleMock };
 });
-jest.mock('../../middleware/errorHandler', () => ({
-  errorHandler: jest.fn((err: Error, req: Request, res: Response, _next: NextFunction) => {
-    res.status(500).json({ error: err.message });
-  }),
-  asyncHandler: jest.fn(
-    (fn: Function) => (req: Request, res: Response, next: NextFunction) =>
-      Promise.resolve(fn(req, res, next)).catch(next)
-  ),
-}));
-
+jest.mock('../../utils/structuredLogger', () => ({ logger: { error: jest.fn() } }));
 const MockAdminService = adminService as jest.Mocked<typeof adminService>;
 
 // Helper factories
@@ -643,7 +634,9 @@ describe('Admin Controller', () => {
     });
 
     it('should return 404 when supplier not found', async () => {
-      MockAdminService.getSupplierMetrics.mockRejectedValue(new Error('Supplier not found'));
+      MockAdminService.getSupplierMetrics.mockRejectedValue(
+        Object.assign(new Error('Supplier not found'), { statusCode: 404 })
+      );
 
       const response = await request(app).get('/api/admin/suppliers/999/metrics').expect(404);
 
@@ -659,7 +652,7 @@ describe('Admin Controller', () => {
       const response = await request(app).get('/api/admin/suppliers/1/metrics').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Database connection failed');
+      expect(response.body.error).toBe('Server Error');
     });
 
     it('should use "Failed to get supplier metrics" fallback when non-Error is thrown', async () => {
@@ -668,7 +661,7 @@ describe('Admin Controller', () => {
       const response = await request(app).get('/api/admin/suppliers/1/metrics').expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Failed to get supplier metrics');
+      expect(response.body.error).toBe('Server Error');
     });
   });
 
