@@ -24,7 +24,8 @@
     "start": "npm run backend:start",
     "backend:start": "cd backend && npm start",
     "frontend:start": "cd frontend && npm run preview",
-    "test": "concurrently \"npm run backend:test\" \"npm run frontend:test\"",
+    "test": "npm run test:tooling && concurrently \"npm run backend:test\" \"npm run frontend:test\"",
+    "test:tooling": "node --test scripts/lint-staged.test.js",
     "backend:test": "cd backend && npm test",
     "frontend:test": "cd frontend && npm test",
     "lint": "concurrently \"npm run backend:lint\" \"npm run frontend:lint\"",
@@ -88,9 +89,20 @@
     "shell-quote": "^1.9.0"
   },
   "lint-staged": {
-    "**/*.{ts,tsx,js,jsx}": [
+    "frontend/**/*.{ts,tsx,js,jsx,cjs}": [
+      "prettier --write",
+      "npm exec -w frontend -- eslint --fix"
+    ],
+    "backend/**/*.{ts,js,cjs}": [
+      "prettier --write",
+      "npm exec -w backend -- eslint --fix"
+    ],
+    "{*,scripts/**/*}.{js,mjs,cjs}": [
       "prettier --write",
       "eslint --fix"
+    ],
+    "{shared,e2e}/**/*.ts": [
+      "prettier --write"
     ],
     "**/*.{json,md,yml,yaml}": [
       "prettier --write"
