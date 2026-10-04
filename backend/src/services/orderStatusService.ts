@@ -120,7 +120,7 @@ export class OrderStatusService {
     });
 
     if (!order) {
-      throw new Error('Order not found');
+      throw Object.assign(new Error('Order not found'), { statusCode: 404 });
     }
 
     // The requester used to be ignored entirely (`_companyId`), so the route's
@@ -132,8 +132,11 @@ export class OrderStatusService {
     const newStatus = updateData.status;
 
     if (!this.isValidTransition(currentStatus, newStatus)) {
-      throw new Error(
-        `Invalid status transition from ${currentStatus} to ${newStatus}. Valid transitions: ${this.getValidNextStatuses(currentStatus).join(', ')}`
+      throw Object.assign(
+        new Error(
+          `Invalid status transition from ${currentStatus} to ${newStatus}. Valid transitions: ${this.getValidNextStatuses(currentStatus).join(', ')}`
+        ),
+        { statusCode: 400 }
       );
     }
 
@@ -144,7 +147,9 @@ export class OrderStatusService {
     if (requiredTransition?.requiredFields) {
       for (const field of requiredTransition.requiredFields) {
         if (!updateData[field as keyof OrderStatusUpdate]) {
-          throw new Error(`${field} is required for this status transition`);
+          throw Object.assign(new Error(`${field} is required for this status transition`), {
+            statusCode: 400,
+          });
         }
       }
     }
@@ -218,7 +223,7 @@ export class OrderStatusService {
     });
 
     if (!order) {
-      throw new Error('Order not found');
+      throw Object.assign(new Error('Order not found'), { statusCode: 404 });
     }
 
     const timeline = [
@@ -422,7 +427,7 @@ export class OrderStatusService {
     });
 
     if (!order) {
-      throw new Error('Order not found');
+      throw Object.assign(new Error('Order not found'), { statusCode: 404 });
     }
 
     // Only an admin or a supplier that actually supplies this order may correct
@@ -434,13 +439,18 @@ export class OrderStatusService {
     // NF-e corrections only make sense after the order has been shipped
     const allowedStatuses: string[] = ['shipped', 'delivered'];
     if (!allowedStatuses.includes(order.status)) {
-      throw new Error(
-        `NF-e data can only be updated on orders with status 'shipped' or 'delivered'. Current status: ${order.status}`
+      throw Object.assign(
+        new Error(
+          `NF-e data can only be updated on orders with status 'shipped' or 'delivered'. Current status: ${order.status}`
+        ),
+        { statusCode: 400 }
       );
     }
 
     if (!data.nfeAccessKey && !data.nfeUrl) {
-      throw new Error('At least one of nfeAccessKey or nfeUrl must be provided');
+      throw Object.assign(new Error('At least one of nfeAccessKey or nfeUrl must be provided'), {
+        statusCode: 400,
+      });
     }
 
     const patch: Partial<NfeUpdateData> = {};

@@ -322,7 +322,7 @@ describe('Quotations Controller', () => {
       const response = await request(app)
         .post('/api/quotations')
         .send(validQuotationData)
-        .expect(400);
+        .expect(500);
 
       // Assert
       expect(response.body.success).toBe(false);
@@ -1078,7 +1078,9 @@ describe('Quotations Controller', () => {
         };
         next();
       });
-      mockQuoteService.calculateQuoteComparison.mockRejectedValue(new Error('Product not found'));
+      mockQuoteService.calculateQuoteComparison.mockRejectedValue(
+        Object.assign(new Error('Product not found'), { statusCode: 404 })
+      );
 
       // Act
       const response = await request(app)
@@ -1355,11 +1357,11 @@ describe('Quotations Controller', () => {
       );
 
       // Act
-      const response = await request(app).post('/api/admin/quotations/1/process').expect(400);
+      const response = await request(app).post('/api/admin/quotations/1/process').expect(500);
 
       // Assert
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Processing failed');
+      expect(response.body.error).toBe('Server Error');
     });
   });
 
@@ -1566,7 +1568,9 @@ describe('Quotations Controller', () => {
         };
         next();
       });
-      mockQuoteService.getMultipleSupplierQuotes.mockRejectedValue(new Error('Product not found'));
+      mockQuoteService.getMultipleSupplierQuotes.mockRejectedValue(
+        Object.assign(new Error('Product not found'), { statusCode: 404 })
+      );
 
       const response = await request(app)
         .post('/api/quotations/compare')
@@ -1636,34 +1640,34 @@ describe('Quotations Controller', () => {
       });
     });
 
-    it('createQuotation - uses fallback message when non-Error is thrown', async () => {
+    it('createQuotation - hides non-Error failures', async () => {
       MockProduct.findAll.mockRejectedValue('db timeout');
 
       const response = await request(app)
         .post('/api/quotations')
         .send({ items: [{ productId: 1, quantity: 5 }] })
-        .expect(400);
+        .expect(500);
 
-      expect(response.body.error).toBe('Failed to create quotation');
+      expect(response.body.error).toBe('Server Error');
     });
 
-    it('getQuotationById - uses fallback message when non-Error is thrown', async () => {
+    it('getQuotationById - hides non-Error failures', async () => {
       MockQuotation.findByPk.mockRejectedValue('network error');
 
-      const response = await request(app).get('/api/quotations/1').expect(400);
+      const response = await request(app).get('/api/quotations/1').expect(500);
 
-      expect(response.body.error).toBe('Failed to get quotation');
+      expect(response.body.error).toBe('Server Error');
     });
 
-    it('getQuotationById - returns 400 for unrecognized error message', async () => {
+    it('getQuotationById - hides an unexpected error', async () => {
       MockQuotation.findByPk.mockRejectedValue(new Error('Connection reset'));
 
-      const response = await request(app).get('/api/quotations/1').expect(400);
+      const response = await request(app).get('/api/quotations/1').expect(500);
 
-      expect(response.body.error).toBe('Connection reset');
+      expect(response.body.error).toBe('Server Error');
     });
 
-    it('updateQuotation - uses fallback message when non-Error is thrown', async () => {
+    it('updateQuotation - hides non-Error failures', async () => {
       mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
         req.user = {
           id: 1,
@@ -1679,31 +1683,31 @@ describe('Quotations Controller', () => {
       const response = await request(app)
         .put('/api/admin/quotations/1')
         .send({ status: 'processed' })
-        .expect(400);
+        .expect(500);
 
-      expect(response.body.error).toBe('Failed to update quotation');
+      expect(response.body.error).toBe('Server Error');
     });
 
-    it('calculateQuote - uses fallback message when non-Error is thrown', async () => {
+    it('calculateQuote - hides non-Error failures', async () => {
       mockQuoteService.calculateQuoteComparison.mockRejectedValue('calculation error');
 
       const response = await request(app)
         .post('/api/quotations/calculate')
         .send({ items: [{ productId: 1, quantity: 5 }] })
-        .expect(400);
+        .expect(500);
 
-      expect(response.body.error).toBe('Quote calculation failed');
+      expect(response.body.error).toBe('Server Error');
     });
 
-    it('getQuotationCalculations - uses fallback message when non-Error is thrown', async () => {
+    it('getQuotationCalculations - hides non-Error failures', async () => {
       mockQuoteService.getQuotationWithCalculations.mockRejectedValue('service error');
 
-      const response = await request(app).get('/api/quotations/1/calculations').expect(400);
+      const response = await request(app).get('/api/quotations/1/calculations').expect(500);
 
-      expect(response.body.error).toBe('Failed to get quotation calculations');
+      expect(response.body.error).toBe('Server Error');
     });
 
-    it('processQuotationWithCalculations - uses fallback message when non-Error is thrown', async () => {
+    it('processQuotationWithCalculations - hides non-Error failures', async () => {
       mockAuthenticateJWT.mockImplementation((req: Request, res: Response, next: NextFunction) => {
         req.user = {
           id: 1,
@@ -1716,12 +1720,12 @@ describe('Quotations Controller', () => {
       });
       mockQuoteService.getQuotationWithCalculations.mockRejectedValue('timeout');
 
-      const response = await request(app).post('/api/admin/quotations/1/process').expect(400);
+      const response = await request(app).post('/api/admin/quotations/1/process').expect(500);
 
-      expect(response.body.error).toBe('Failed to process quotation');
+      expect(response.body.error).toBe('Server Error');
     });
 
-    it('getMultipleSupplierQuotes - uses fallback message when non-Error is thrown', async () => {
+    it('getMultipleSupplierQuotes - hides non-Error failures', async () => {
       mockQuoteService.getMultipleSupplierQuotes.mockRejectedValue('network error');
 
       const response = await request(app)
@@ -1733,9 +1737,9 @@ describe('Quotations Controller', () => {
           supplierIds: [1],
           shippingMethod: 'standard',
         })
-        .expect(400);
+        .expect(500);
 
-      expect(response.body.error).toBe('Failed to get supplier quotes');
+      expect(response.body.error).toBe('Server Error');
     });
   });
 });

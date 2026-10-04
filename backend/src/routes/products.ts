@@ -11,7 +11,7 @@ import {
   generateSampleCSV,
   getImportStats,
 } from '../controllers/productsController';
-import { productValidation } from '../validators/product.validators';
+import { productValidation, productIdValidation } from '../validators/product.validators';
 import { handleValidationErrors } from '../middleware/handleValidationErrors';
 import { authenticateJWT, canModifyProduct, isApprovedSupplier } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
@@ -59,6 +59,8 @@ router.put(
   authenticateJWT,
   requireRole('supplier'),
   isApprovedSupplier,
+  productIdValidation,
+  handleValidationErrors,
   canModifyProduct,
   generalRateLimit,
   productValidation,
@@ -75,6 +77,14 @@ router.post(
 );
 
 // Admin-only routes (protected)
-router.delete('/:id', authenticateJWT, requireRole('admin'), generalRateLimit, deleteProduct);
+router.delete(
+  '/:id',
+  authenticateJWT,
+  requireRole('admin'),
+  generalRateLimit,
+  productIdValidation,
+  handleValidationErrors,
+  deleteProduct
+);
 
 export default router;

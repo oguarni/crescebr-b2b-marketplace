@@ -135,12 +135,15 @@ export class QuoteService {
   ): Promise<QuoteCalculationResult> {
     const product = await Product.findByPk(input.productId);
     if (!product) {
-      throw new Error('Product not found');
+      throw Object.assign(new Error('Product not found'), { statusCode: 404 });
     }
 
     // Check minimum order quantity if specified
     if (product.minimumOrderQuantity && input.quantity < product.minimumOrderQuantity) {
-      throw new Error(`Minimum order quantity is ${product.minimumOrderQuantity} units`);
+      throw Object.assign(
+        new Error(`Minimum order quantity is ${product.minimumOrderQuantity} units`),
+        { statusCode: 400 }
+      );
     }
 
     // Use unitPrice if available, otherwise fall back to regular price
@@ -238,7 +241,7 @@ export class QuoteService {
   ): Promise<void> {
     const quotation = await Quotation.findByPk(quotationId);
     if (!quotation) {
-      throw new Error('Quotation not found');
+      throw Object.assign(new Error('Quotation not found'), { statusCode: 404 });
     }
 
     await quotation.update({
@@ -275,7 +278,7 @@ export class QuoteService {
     });
 
     if (!quotation) {
-      throw new Error('Quotation not found');
+      throw Object.assign(new Error('Quotation not found'), { statusCode: 404 });
     }
 
     const items =
@@ -390,7 +393,7 @@ export class QuoteService {
       // Find suppliers who have this product
       const product = await Product.findByPk(productId);
       if (!product) {
-        throw new Error('Product not found');
+        throw Object.assign(new Error('Product not found'), { statusCode: 404 });
       }
 
       if (product.supplierId) {
@@ -436,6 +439,14 @@ export class QuoteService {
             quote,
           };
         } catch (error) {
+          if (
+            !(error instanceof Error) ||
+            !('statusCode' in error) ||
+            (error.statusCode !== 400 && error.statusCode !== 404)
+          ) {
+            throw error;
+          }
+
           return {
             supplier: {
               id: supplier.id,
@@ -443,7 +454,7 @@ export class QuoteService {
               corporateName: supplier.corporateName,
             },
             quote: null,
-            error: error instanceof Error ? error.message : 'Failed to calculate quote',
+            error: error.message,
           };
         }
       })
@@ -475,7 +486,7 @@ export class QuoteService {
   }> {
     const product = await Product.findByPk(productId);
     if (!product) {
-      throw new Error('Product not found');
+      throw Object.assign(new Error('Product not found'), { statusCode: 404 });
     }
 
     if (product.minimumOrderQuantity && quantity < product.minimumOrderQuantity) {

@@ -41,10 +41,6 @@ jest.mock('../../middleware/rbac', () => {
   };
   return { requireRole: requireRoleMock };
 });
-jest.mock('../../middleware/errorHandler', () => ({
-  errorHandler: jest.fn(),
-  asyncHandler: jest.requireActual('../../middleware/errorHandler').asyncHandler,
-}));
 
 const MockProduct = Product as jest.Mocked<typeof Product>;
 const MockCSVImporter = CSVImporter as jest.Mocked<typeof CSVImporter>;
@@ -853,7 +849,7 @@ describe('Products Controller', () => {
       }
     });
 
-    it('should use "File upload failed" fallback when multer error has no message (B9 false)', async () => {
+    it('should forward a normalized failure when multer rejects with a non-Error', async () => {
       // Temporarily replace multer in require cache to inject a no-message error
       const multerPath = require.resolve('multer');
       const cachedMod = (require as any).cache[multerPath];
@@ -877,11 +873,10 @@ describe('Products Controller', () => {
       try {
         await importProductsFromCSV({ user: { id: 1 }, body: {} } as any, mockRes as any, next);
 
-        expect(mockRes.status).toHaveBeenCalledWith(400);
-        expect(mockRes.json).toHaveBeenCalledWith({
-          success: false,
-          error: 'File upload failed',
-        });
+        expect(next).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'File upload failed' })
+        );
+        expect(mockRes.json).not.toHaveBeenCalled();
       } finally {
         if (cachedMod) cachedMod.exports = originalExports;
       }
@@ -1037,7 +1032,7 @@ describe('Products Controller', () => {
       expect(response.text).toBe('name,description,price,category\n');
     });
 
-    it('should answer 400 when uploads/ cannot be created', async () => {
+    it('should answer a generic 500 when uploads/ cannot be created', async () => {
       const fs = require('fs');
       const mkdirSyncSpy = jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {
         throw new Error('EACCES: permission denied');
@@ -1050,9 +1045,9 @@ describe('Products Controller', () => {
             filename: 'test.csv',
             contentType: 'text/csv',
           })
-          .expect(400);
+          .expect(500);
 
-        expect(response.body.success).toBe(false);
+        expect(response.body).toEqual({ success: false, error: 'Server Error' });
         expect(MockCSVImporter.importProductsFromCSV).not.toHaveBeenCalled();
       } finally {
         mkdirSyncSpy.mockRestore();

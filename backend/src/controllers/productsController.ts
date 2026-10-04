@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { productsService, ProductFilters } from '../services/productsService';
@@ -79,14 +79,24 @@ export const getAvailableSpecifications = asyncHandler(async (req: Request, res:
 // function-form destination nor fs.writeFileSync creates missing directories.
 const UPLOAD_DIR = 'uploads';
 
+// I recognize only Busboy's fixed parser failures; other plain errors can be
+// filesystem failures and must keep the generic server-error boundary.
+const MULTIPART_INPUT_ERRORS = new Set([
+  'Multipart: Boundary not found',
+  'Malformed part header',
+  'Unexpected end of form',
+  'Unexpected end of file',
+  'Malformed content type',
+]);
+
 const ensureUploadDir = (): void => {
   const fs = require('fs');
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 };
 
 export const importProductsFromCSV = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const multer = require('multer');
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const multer: typeof import('multer') = require('multer');
     const { CSVImporter } = require('../utils/csvImporter');
 
     const storage = multer.diskStorage({
@@ -120,7 +130,7 @@ export const importProductsFromCSV = asyncHandler(
       fileFilter: (
         req: Request,
         file: { fieldname: string; originalname: string; mimetype: string },
-        cb: (error: Error | null, acceptFile: boolean) => void
+        cb: import('multer').FileFilterCallback
       ) => {
         // Both signals must agree. Either one alone is client-supplied and
         // trivially spoofed; the file's own content is still re-validated
@@ -131,7 +141,7 @@ export const importProductsFromCSV = asyncHandler(
         if (hasCsvExtension && hasCsvMimeType) {
           cb(null, true);
         } else {
-          cb(new Error('Only CSV files are allowed'), false);
+          cb(Object.assign(new Error('Only CSV files are allowed'), { statusCode: 400 }));
         }
       },
       // Bound not just file size but also the number of files/fields and the
@@ -145,9 +155,16 @@ export const importProductsFromCSV = asyncHandler(
       },
     }).single('csvFile');
 
-    upload(req, res, async (err: Error) => {
+    upload(req, res, async (err: unknown) => {
       if (err) {
-        return res.status(400).json({ success: false, error: err.message || 'File upload failed' });
+        if (typeof multer.MulterError === 'function' && err instanceof multer.MulterError) {
+          next(Object.assign(err, { statusCode: 400 }));
+        } else if (err instanceof Error && MULTIPART_INPUT_ERRORS.has(err.message)) {
+          next(Object.assign(new Error('Invalid multipart request'), { statusCode: 400 }));
+        } else {
+          next(err instanceof Error ? err : new Error('File upload failed'));
+        }
+        return;
       }
 
       if (!req.file) {

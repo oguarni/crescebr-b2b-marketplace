@@ -16,15 +16,20 @@ class QuotationService {
     if (products.length !== productIds.length) {
       const foundIds = products.map(p => p.id);
       const missingIds = productIds.filter(id => !foundIds.includes(id));
-      throw new Error(`Products not found: ${missingIds.join(', ')}`);
+      throw Object.assign(new Error(`Products not found: ${missingIds.join(', ')}`), {
+        statusCode: 400,
+      });
     }
 
     // Validate minimum order quantities
     for (const item of input.items) {
       const product = products.find(p => p.id === item.productId);
       if (product && product.minimumOrderQuantity && item.quantity < product.minimumOrderQuantity) {
-        throw new Error(
-          `Quantity for product "${product.name}" must be at least ${product.minimumOrderQuantity} units. Current: ${item.quantity}`
+        throw Object.assign(
+          new Error(
+            `Quantity for product "${product.name}" must be at least ${product.minimumOrderQuantity} units. Current: ${item.quantity}`
+          ),
+          { statusCode: 400 }
         );
       }
     }
@@ -67,17 +72,17 @@ class QuotationService {
     const quotation = await quotationRepository.findByIdWithItemsAndUser(id);
 
     if (!quotation) {
-      throw new Error('Quotation not found');
+      throw Object.assign(new Error('Quotation not found'), { statusCode: 404 });
     }
 
     // Access control
     if (userRole === 'customer' && quotation.companyId !== userId) {
-      throw new Error('Access denied');
+      throw Object.assign(new Error('Access denied'), { statusCode: 403 });
     }
 
     // Suppliers may only access quotations that include at least one of their products
     if (userRole === 'supplier' && !this.containsSupplierProduct(quotation, userId)) {
-      throw new Error('Access denied');
+      throw Object.assign(new Error('Access denied'), { statusCode: 403 });
     }
 
     return quotation;
@@ -97,7 +102,7 @@ class QuotationService {
     const quotation = await quotationRepository.findById(id);
 
     if (!quotation) {
-      throw new Error('Quotation not found');
+      throw Object.assign(new Error('Quotation not found'), { statusCode: 404 });
     }
 
     await quotationRepository.update(quotation, {
@@ -119,12 +124,12 @@ class QuotationService {
     const quotation = await quotationRepository.findByIdWithItems(id);
 
     if (!quotation) {
-      throw new Error('Quotation not found');
+      throw Object.assign(new Error('Quotation not found'), { statusCode: 404 });
     }
 
     // A supplier may only update quotations that include at least one of their products
     if (!this.containsSupplierProduct(quotation, supplierId)) {
-      throw new Error('Access denied');
+      throw Object.assign(new Error('Access denied'), { statusCode: 403 });
     }
 
     await quotationRepository.update(quotation, {
@@ -147,7 +152,7 @@ class QuotationService {
     const quotation = await quotationRepository.findById(id);
 
     if (!quotation) {
-      throw new Error('Quotation not found');
+      throw Object.assign(new Error('Quotation not found'), { statusCode: 404 });
     }
 
     // Update quotation with calculation data

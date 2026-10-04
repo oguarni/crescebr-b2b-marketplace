@@ -7,7 +7,11 @@ import {
   getTopSuppliers,
   getBuyerRatings,
 } from '../controllers/ratingsController';
-import { createRatingValidation, updateRatingValidation } from '../validators/rating.validators';
+import {
+  createRatingValidation,
+  updateRatingValidation,
+  ratingIdValidation,
+} from '../validators/rating.validators';
 import { handleValidationErrors } from '../middleware/handleValidationErrors';
 import { authenticateJWT } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
@@ -34,6 +38,7 @@ router.put(
   authenticateJWT,
   requireRole('customer'),
   generalRateLimit,
+  ratingIdValidation,
   updateRatingValidation,
   handleValidationErrors,
   updateRating
@@ -43,6 +48,8 @@ router.delete(
   authenticateJWT,
   requireRole('customer', 'admin'),
   generalRateLimit,
+  ratingIdValidation,
+  handleValidationErrors,
   deleteRating
 );
 

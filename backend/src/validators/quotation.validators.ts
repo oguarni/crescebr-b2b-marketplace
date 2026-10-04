@@ -6,7 +6,9 @@ export const quotationIdValidation = [
 
 export const createQuotationValidation = [
   body('items').isArray({ min: 1 }).withMessage('At least one item is required'),
-  body('items.*.productId').isInt({ min: 1 }).withMessage('Valid product ID is required'),
+  body('items.*.productId')
+    .isInt({ min: 1, max: 2147483647 })
+    .withMessage('Valid product ID is required'),
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
 ];
 
@@ -26,7 +28,9 @@ export const updateQuotationValidation = [
 
 export const calculateQuoteValidation = [
   body('items').isArray({ min: 1 }).withMessage('At least one item is required'),
-  body('items.*.productId').isInt({ min: 1 }).withMessage('Valid product ID is required'),
+  body('items.*.productId')
+    .isInt({ min: 1, max: 2147483647 })
+    .withMessage('Valid product ID is required'),
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
   body('buyerLocation')
     .optional()
@@ -51,7 +55,7 @@ export const calculateQuoteValidation = [
 ];
 
 export const compareSupplierQuotesValidation = [
-  body('productId').isInt({ min: 1 }).withMessage('Valid product ID is required'),
+  body('productId').isInt({ min: 1, max: 2147483647 }).withMessage('Valid product ID is required'),
   body('quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
   body('buyerLocation')
     .optional()
@@ -62,6 +66,9 @@ export const compareSupplierQuotesValidation = [
     .isLength({ max: 120 })
     .withMessage('Buyer location is too long'),
   body('supplierIds').optional().isArray().withMessage('Supplier IDs must be an array'),
+  body('supplierIds.*')
+    .isInt({ min: 1, max: 2147483647 })
+    .withMessage('Valid supplier ID is required'),
   body('shippingMethod')
     .optional()
     .isIn(['standard', 'express', 'economy'])

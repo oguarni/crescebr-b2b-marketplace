@@ -2,6 +2,10 @@ import { Op, Sequelize } from 'sequelize';
 import Rating from '../models/Rating';
 import Order from '../models/Order';
 import User from '../models/User';
+import Quotation from '../models/Quotation';
+import QuotationItem from '../models/QuotationItem';
+import Product from '../models/Product';
+import sequelize from '../config/database';
 
 const RATING_WITH_USERS = [
   { model: User, as: 'supplier', attributes: ['id', 'companyName', 'email'] },
@@ -18,41 +22,74 @@ export const ratingsService = {
       throw Object.assign(new Error('Supplier not found'), { statusCode: 404 });
     }
 
-    if (data.orderId) {
+    // I scope eligibility through the products sold in the delivered order's
+    // quotation; the order's companyId belongs to the buyer, not its supplier.
+    const supplierQuotation = {
+      model: Quotation,
+      as: 'quotation',
+      required: true,
+      include: [
+        {
+          model: QuotationItem,
+          as: 'items',
+          required: true,
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              where: { supplierId: data.supplierId },
+              required: true,
+            },
+          ],
+        },
+      ],
+    };
+
+    return sequelize.transaction(async transaction => {
+      // I serialize both request forms for this buyer before checking duplicates.
+      await User.findByPk(buyerId, { transaction, lock: transaction.LOCK.UPDATE });
       const order = await Order.findOne({
-        where: { id: data.orderId, companyId: buyerId, status: 'delivered' },
-        include: [{ model: User, as: 'user', where: { id: buyerId } }],
+        transaction,
+        subQuery: false,
+        where: {
+          companyId: buyerId,
+          status: 'delivered',
+          ...(data.orderId ? { id: data.orderId } : {}),
+        },
+        include: [supplierQuotation],
+        order: [
+          ['createdAt', 'DESC'],
+          ['id', 'DESC'],
+        ],
       });
       if (!order) {
         throw Object.assign(new Error('You can only rate suppliers from completed orders'), {
           statusCode: 403,
         });
       }
-      const existing = await Rating.findOne({ where: { orderId: data.orderId, buyerId } });
+      const existing = await Rating.findOne({
+        where: { orderId: order.id, buyerId },
+        transaction,
+      });
       if (existing) {
         throw Object.assign(new Error('You have already rated this order'), { statusCode: 400 });
       }
-    } else {
-      const completedOrder = await Order.findOne({
-        where: { companyId: buyerId, status: 'delivered' },
-        include: [{ model: User, as: 'supplier', where: { id: data.supplierId } }],
-      });
-      if (!completedOrder) {
-        throw Object.assign(new Error('You can only rate suppliers from completed orders'), {
-          statusCode: 403,
-        });
-      }
-    }
 
-    const rating = await Rating.create({
-      supplierId: data.supplierId,
-      buyerId,
-      orderId: data.orderId || undefined,
-      score: data.score,
-      comment: data.comment || undefined,
+      // I link omitted-order requests to the latest eligible delivery so they
+      // obey the same one-rating-per-order rule as explicit-order requests.
+      const rating = await Rating.create(
+        {
+          supplierId: data.supplierId,
+          buyerId,
+          orderId: order.id,
+          score: data.score,
+          comment: data.comment || undefined,
+        },
+        { transaction }
+      );
+
+      return Rating.findByPk(rating.id, { include: RATING_WITH_USERS, transaction });
     });
-
-    return Rating.findByPk(rating.id, { include: RATING_WITH_USERS });
   },
 
   async getSupplierRatings(supplierId: number | string, page: number, limit: number) {

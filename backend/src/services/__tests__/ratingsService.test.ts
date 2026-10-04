@@ -58,7 +58,8 @@ describe('ratingsService', () => {
           orderId: 'order-abc',
           score: 5,
           comment: 'Great service',
-        })
+        }),
+        expect.objectContaining({ transaction: expect.anything() })
       );
       expect(result).toBeDefined();
       expect((result as any).id).toBe(10);
@@ -74,6 +75,7 @@ describe('ratingsService', () => {
         companyId: 1,
         status: 'delivered',
       } as any);
+      MockRating.findOne.mockResolvedValue(null);
       MockRating.create.mockResolvedValue({ id: 11 } as any);
       MockRating.findByPk.mockResolvedValue({ id: 11, score: 4 } as any);
 
@@ -88,10 +90,11 @@ describe('ratingsService', () => {
         expect.objectContaining({
           supplierId: 2,
           buyerId: 1,
-          orderId: undefined,
+          orderId: 'order-xyz',
           score: 4,
           comment: undefined,
-        })
+        }),
+        expect.objectContaining({ transaction: expect.anything() })
       );
       expect(result).toBeDefined();
     });
