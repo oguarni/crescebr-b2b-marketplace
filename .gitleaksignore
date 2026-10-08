@@ -1,0 +1,12 @@
+# Historical gitleaks findings I reviewed and accepted on 2026-10-08: truncated
+# doc examples and a retired dev JWT secret that backend/src/utils/jwt.ts
+# rejects. I keep the history as it is. Real secrets in new commits are still caught.
+efac347071e592e411e51803868287bee8f3cbaa:docker-compose.yml:generic-api-key:67
+34f85420cf016c2ff471dec54301f9c8114b42ca:README.md:generic-api-key:596
+34f85420cf016c2ff471dec54301f9c8114b42ca:ENVIRONMENT_SECURITY_IMPLEMENTATION.md:generic-api-key:113
+34f85420cf016c2ff471dec54301f9c8114b42ca:ENVIRONMENT_SECURITY_IMPLEMENTATION.md:generic-api-key:204
+efac347071e592e411e51803868287bee8f3cbaa:DOCUMENTATION.md:generic-api-key:394
+efac347071e592e411e51803868287bee8f3cbaa:DOCUMENTATION.md:generic-api-key:395
+efac347071e592e411e51803868287bee8f3cbaa:DOCUMENTATION.md:curl-auth-header:891
+94fe42dc784b928ed614f9d1c6aa8bffb236fad1:README.md:curl-auth-header:396
+94fe42dc784b928ed614f9d1c6aa8bffb236fad1:README.md:curl-auth-header:405
