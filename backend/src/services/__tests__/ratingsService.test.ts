@@ -503,6 +503,26 @@ describe('ratingsService', () => {
 
       expect(result[0].averageRating).toBe(4.67);
     });
+
+    it('should not select or return supplier emails on the public ranking', async () => {
+      MockUser.findAll.mockResolvedValue([
+        {
+          id: 1,
+          companyName: 'Supplier',
+          email: 'sup@example.com',
+          averageRating: 4.5,
+          totalRatings: 3,
+        },
+      ] as any);
+
+      const result = await ratingsService.getTopSuppliers(5);
+
+      expect(result).toStrictEqual([
+        { id: 1, companyName: 'Supplier', averageRating: 4.5, totalRatings: 3 },
+      ]);
+      const options = MockUser.findAll.mock.calls[0][0];
+      expect(options?.attributes).not.toContain('email');
+    });
   });
 
   describe('getBuyerRatings', () => {

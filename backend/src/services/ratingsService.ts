@@ -163,13 +163,13 @@ export const ratingsService = {
     await rating.destroy();
   },
 
+  // Served on a public route: select and return only fields meant for anonymous visitors.
   async getTopSuppliers(limit: number) {
     const topSuppliers = await User.findAll({
       where: { role: 'supplier', status: 'approved' },
       attributes: [
         'id',
         'companyName',
-        'email',
         [Sequelize.fn('AVG', Sequelize.col('supplierRatings.score')), 'averageRating'],
         [Sequelize.fn('COUNT', Sequelize.col('supplierRatings.id')), 'totalRatings'],
       ],
@@ -194,7 +194,6 @@ export const ratingsService = {
       return {
         id: s.id,
         companyName: s.companyName,
-        email: s.email,
         averageRating: parseFloat(Number(raw.averageRating).toFixed(2)),
         totalRatings: raw.totalRatings ? Number(raw.totalRatings) : 0,
       };
