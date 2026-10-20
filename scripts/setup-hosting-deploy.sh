@@ -58,7 +58,9 @@ fi
 # firebasehosting.sites.update (firebase-tools 15.34.0, lib/deploy/index.js),
 # and Firebase Hosting Admin holds both. Firebase's own GitHub integration also
 # grants API Keys Viewer, Firebase Auth Admin and Cloud Run Viewer; this deploy
-# uses none of them.
+# uses none of them. Firebase's docs ask CLI users for API Keys Viewer because
+# a `source` web-framework deploy reads the web app config, API key included.
+# The deploy job refuses such a config, so recheck this when upgrading the CLI.
 echo "Granting roles/firebasehosting.admin"
 gcloud projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:${SERVICE_ACCOUNT}" \
   --role roles/firebasehosting.admin --condition None >/dev/null

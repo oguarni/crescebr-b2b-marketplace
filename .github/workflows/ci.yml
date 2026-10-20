@@ -242,8 +242,9 @@ jobs:
   # so a red main is never deployed.
   #
   # Runs finish their checks in any order, so an older push that finishes last
-  # would overwrite a newer release. Only the run for the tip of main goes on to
-  # deploy; a stale run stops here, green, and records no deployment.
+  # would overwrite a newer release. Only a run whose commit is still the tip of
+  # main goes on to deploy; a stale run stops here, green, and records no
+  # deployment.
   deploy-gate:
     name: Deploy Gate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -290,7 +291,9 @@ jobs:
     steps:
       # The gate answered before this job waited for the lock, and re-running
       # this job reuses that old answer. Asking again while holding the lock is
-      # what keeps an older commit from ever replacing a newer release.
+      # what keeps an older commit from ever replacing a newer release. A push
+      # that lands after this check does not stop this release; its own run
+      # releases it next.
       - name: Refuse a commit that is no longer the tip of main
         run: |
           tip=$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)
@@ -302,6 +305,21 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      # The CLI runs `predeploy` and `postdeploy` hooks and builds a `source`
+      # web framework, all able to mint the deploy token, and uploads whatever
+      # `public` names. Accept only the static-site keys this deploy uses,
+      # publishing only the downloaded build.
+      - name: Refuse a Hosting config that runs code or publishes anything else
+        run: |
+          if ! jq -e '
+            (.hosting | type == "object")
+            and .hosting.public == "frontend/dist"
+            and (.hosting | keys - ["public", "ignore", "headers", "rewrites", "redirects", "cleanUrls", "trailingSlash"] | length == 0)
+          ' firebase.json >/dev/null; then
+            echo "::error::firebase.json hosting may hold only public (frontend/dist), ignore, headers, rewrites, redirects, cleanUrls and trailingSlash."
+            exit 1
+          fi
 
       - name: Download hosting build
         uses: actions/download-artifact@v7
