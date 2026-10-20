@@ -15,6 +15,7 @@ import {
 import { Search, ViewList, ViewModule } from '@mui/icons-material';
 import { useT } from '../../contexts/LanguageContext';
 import { PRODUCT_AVAILABILITIES, type ProductFilters } from '../../utils/supplierProducts';
+import { categoryLabel } from '../../utils/catalogLabels';
 
 export type ProductViewMode = 'grid' | 'table';
 
@@ -78,10 +79,11 @@ export const ProductFilterBar: React.FC<ProductFilterBarProps> = ({
                 onChange={e => onFilterChange('category', e.target.value)}
               >
                 <MenuItem value=''>{t('supplierProducts.filters.allCategories')}</MenuItem>
-                {/* Categories are free-form strings from the catalogue, so they are not translated. */}
+                {/* The seeded taxonomy shows a translated label and free-form
+                    categories show as stored; the stored value is what is selected. */}
                 {categories.map(category => (
                   <MenuItem key={category} value={category}>
-                    {category}
+                    {categoryLabel(t, category)}
                   </MenuItem>
                 ))}
               </Select>

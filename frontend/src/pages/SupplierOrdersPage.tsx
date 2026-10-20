@@ -57,6 +57,9 @@ import { ordersService, type OrderTimelineEntry } from '../services/ordersServic
 import toast from 'react-hot-toast';
 import { formatBRL } from '../utils/currency';
 import { browserLogger } from '../utils/browserLogger';
+import { useT } from '../contexts/LanguageContext';
+import type { TranslationKey } from '../locales';
+import { orderStatusLabel, orderTimelineDescription } from '../utils/orderStatus';
 
 interface StatusUpdateDialog {
   open: boolean;
@@ -68,11 +71,18 @@ interface StatusUpdateDialog {
 }
 
 const statusSteps = [
-  { value: 'pending', label: 'Pending', icon: <Schedule />, color: 'warning' },
-  { value: 'processing', label: 'Processing', icon: <PlayArrow />, color: 'info' },
-  { value: 'shipped', label: 'Shipped', icon: <LocalShipping />, color: 'primary' },
-  { value: 'delivered', label: 'Delivered', icon: <CheckCircle />, color: 'success' },
+  { value: 'pending', icon: <Schedule />, color: 'warning' },
+  { value: 'processing', icon: <PlayArrow />, color: 'info' },
+  { value: 'shipped', icon: <LocalShipping />, color: 'primary' },
+  { value: 'delivered', icon: <CheckCircle />, color: 'success' },
 ];
+
+/**
+ * Order of the status tabs. Indexes into the grouped orders and into the
+ * `supplierOrders.tabs.*` / `.empty.*` dictionary sections, so it must stay in
+ * step with the rendered Tabs.
+ */
+const TAB_KEYS = ['all', 'pending', 'processing', 'shipped', 'delivered'] as const;
 
 const getStatusColor = (
   status: string
@@ -123,9 +133,14 @@ const getNextStatus = (currentStatus: string): string => {
   }
 };
 
-const canUpdateStatus = (status: string): boolean => {
-  return ['pending', 'processing', 'shipped'].includes(status);
+/** Label of the one-click action that advances an order to its next status. */
+const NEXT_ACTION_KEYS: Record<string, TranslationKey> = {
+  pending: 'supplierOrders.next.processing',
+  processing: 'supplierOrders.next.shipped',
+  shipped: 'supplierOrders.next.delivered',
 };
+
+const canUpdateStatus = (status: string): boolean => status in NEXT_ACTION_KEYS;
 
 interface OrderCardProps {
   order: Order;
@@ -147,83 +162,98 @@ interface OrderCardProps {
  *   onOpenStatusDialog={handleOpenStatusDialog}
  * />
  */
-const OrderCard: React.FC<OrderCardProps> = ({ order, onViewDetails, onOpenStatusDialog }) => (
-  <Card sx={{ mb: 2 }}>
-    <CardContent>
-      <Box display='flex' justifyContent='space-between' alignItems='start' mb={2}>
-        <Box>
-          <Typography variant='h6'>Order #{order.id}</Typography>
-          <Typography variant='body2' color='text.secondary'>
-            {order.company?.companyName}
-          </Typography>
-          <Typography variant='body2' color='text.secondary'>
-            {new Date(order.createdAt!).toLocaleDateString()}
-          </Typography>
-        </Box>
-        <Chip
-          label={order.status}
-          color={getStatusColor(order.status)}
-          icon={getStatusIcon(order.status)}
-        />
-      </Box>
+const OrderCard: React.FC<OrderCardProps> = ({ order, onViewDetails, onOpenStatusDialog }) => {
+  const t = useT();
+  const nextStatus = getNextStatus(order.status);
 
-      <Box mb={2}>
-        <Typography variant='body2' color='text.secondary'>
-          Items: {order.items?.length || 0} | Total: {formatBRL(order.totalAmount)}
-        </Typography>
-        {order.trackingNumber && (
-          <Typography variant='body2' color='text.secondary'>
-            Tracking: {order.trackingNumber}
-          </Typography>
-        )}
-        {order.estimatedDeliveryDate && (
-          <Typography variant='body2' color='text.secondary'>
-            Est. Delivery: {new Date(order.estimatedDeliveryDate).toLocaleDateString()}
-          </Typography>
-        )}
-      </Box>
-
-      <Box display='flex' alignItems='center' gap={1}>
-        {order.items?.slice(0, 3).map((item, index) => (
+  return (
+    <Card sx={{ mb: 2 }}>
+      <CardContent>
+        <Box display='flex' justifyContent='space-between' alignItems='start' mb={2}>
+          <Box>
+            <Typography variant='h6'>{t('supplierOrders.orderTitle', { id: order.id })}</Typography>
+            <Typography variant='body2' color='text.secondary'>
+              {order.company?.companyName}
+            </Typography>
+            <Typography variant='body2' color='text.secondary'>
+              {new Date(order.createdAt!).toLocaleDateString()}
+            </Typography>
+          </Box>
           <Chip
-            key={index}
-            label={`${item.quantity}x ${item.product?.name || 'Product'}`}
-            size='small'
-            variant='outlined'
+            label={orderStatusLabel(t, order.status)}
+            color={getStatusColor(order.status)}
+            icon={getStatusIcon(order.status)}
           />
-        ))}
-        {(order.items?.length || 0) > 3 && (
-          <Chip label={`+${(order.items?.length || 0) - 3} more`} size='small' variant='outlined' />
-        )}
-      </Box>
-    </CardContent>
+        </Box>
 
-    <CardActions>
-      <Button size='small' startIcon={<Visibility />} onClick={() => onViewDetails(order)}>
-        Details
-      </Button>
-      {canUpdateStatus(order.status) && (
+        <Box mb={2}>
+          <Typography variant='body2' color='text.secondary'>
+            {t('supplierOrders.itemsAndTotal', {
+              count: order.items?.length || 0,
+              total: formatBRL(order.totalAmount),
+            })}
+          </Typography>
+          {order.trackingNumber && (
+            <Typography variant='body2' color='text.secondary'>
+              {t('supplierOrders.tracking', { code: order.trackingNumber })}
+            </Typography>
+          )}
+          {order.estimatedDeliveryDate && (
+            <Typography variant='body2' color='text.secondary'>
+              {t('supplierOrders.estimatedDelivery', {
+                date: new Date(order.estimatedDeliveryDate).toLocaleDateString(),
+              })}
+            </Typography>
+          )}
+        </Box>
+
+        <Box display='flex' alignItems='center' gap={1}>
+          {order.items?.slice(0, 3).map((item, index) => (
+            <Chip
+              key={index}
+              label={`${item.quantity}x ${item.product?.name || t('supplierOrders.productFallback')}`}
+              size='small'
+              variant='outlined'
+            />
+          ))}
+          {(order.items?.length || 0) > 3 && (
+            <Chip
+              label={t('supplierOrders.moreItems', { count: (order.items?.length || 0) - 3 })}
+              size='small'
+              variant='outlined'
+            />
+          )}
+        </Box>
+      </CardContent>
+
+      <CardActions>
+        <Button size='small' startIcon={<Visibility />} onClick={() => onViewDetails(order)}>
+          {t('supplierOrders.details')}
+        </Button>
+        {canUpdateStatus(order.status) && (
+          <Button
+            size='small'
+            variant='contained'
+            startIcon={getStatusIcon(nextStatus)}
+            onClick={() => onOpenStatusDialog(order, nextStatus)}
+          >
+            {t(NEXT_ACTION_KEYS[order.status])}
+          </Button>
+        )}
         <Button
           size='small'
-          variant='contained'
-          startIcon={getStatusIcon(getNextStatus(order.status))}
-          onClick={() => onOpenStatusDialog(order, getNextStatus(order.status))}
+          startIcon={<Edit />}
+          onClick={() => onOpenStatusDialog(order, order.status)}
         >
-          Mark as {getNextStatus(order.status)}
+          {t('supplierOrders.update')}
         </Button>
-      )}
-      <Button
-        size='small'
-        startIcon={<Edit />}
-        onClick={() => onOpenStatusDialog(order, order.status)}
-      >
-        Update
-      </Button>
-    </CardActions>
-  </Card>
-);
+      </CardActions>
+    </Card>
+  );
+};
 
 const SupplierOrdersPage: React.FC = () => {
+  const t = useT();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState(0);
@@ -257,11 +287,11 @@ const SupplierOrdersPage: React.FC = () => {
       setOrders(result.orders);
     } catch (_error) {
       browserLogger.error('Failed to load orders', { error: _error });
-      toast.error('Error loading orders');
+      toast.error(t('supplierOrders.loadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadOrders();
@@ -282,11 +312,7 @@ const SupplierOrdersPage: React.FC = () => {
     try {
       const updateData = {
         status: statusUpdateDialog.newStatus as
-          | 'pending'
-          | 'processing'
-          | 'shipped'
-          | 'delivered'
-          | 'cancelled',
+          'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled',
         notes: statusUpdateDialog.notes || undefined,
         trackingNumber: statusUpdateDialog.trackingNumber || undefined,
         nfeAccessKey: statusUpdateDialog.nfeAccessKey || undefined,
@@ -294,7 +320,7 @@ const SupplierOrdersPage: React.FC = () => {
 
       await ordersService.updateOrderStatus(statusUpdateDialog.order.id, updateData);
 
-      toast.success('Order status updated successfully');
+      toast.success(t('supplierOrders.updateSuccess'));
       setStatusUpdateDialog({
         open: false,
         order: null,
@@ -308,7 +334,7 @@ const SupplierOrdersPage: React.FC = () => {
         loadOrderHistory(statusUpdateDialog.order.id);
       }
     } catch (_error) {
-      toast.error('Error updating order status');
+      toast.error(t('supplierOrders.updateError'));
     }
   };
 
@@ -380,10 +406,10 @@ const SupplierOrdersPage: React.FC = () => {
       {/* Header */}
       <Box mb={4}>
         <Typography variant='h4' component='h1' gutterBottom>
-          Order Management
+          {t('supplierOrders.title')}
         </Typography>
         <Typography variant='subtitle1' color='text.secondary'>
-          Track and fulfill your customer orders
+          {t('supplierOrders.subtitle')}
         </Typography>
       </Box>
 
@@ -396,7 +422,7 @@ const SupplierOrdersPage: React.FC = () => {
                 <Assignment color='primary' sx={{ mr: 1 }} />
                 <Box>
                   <Typography color='text.secondary' variant='body2'>
-                    Total Orders
+                    {t('supplierOrders.totalOrders')}
                   </Typography>
                   <Typography variant='h6'>{orders.length}</Typography>
                 </Box>
@@ -411,7 +437,7 @@ const SupplierOrdersPage: React.FC = () => {
                 <Schedule color='warning' sx={{ mr: 1 }} />
                 <Box>
                   <Typography color='text.secondary' variant='body2'>
-                    Pending
+                    {orderStatusLabel(t, 'pending')}
                   </Typography>
                   <Typography variant='h6'>{ordersByStatus.pending.length}</Typography>
                 </Box>
@@ -426,7 +452,7 @@ const SupplierOrdersPage: React.FC = () => {
                 <PlayArrow color='info' sx={{ mr: 1 }} />
                 <Box>
                   <Typography color='text.secondary' variant='body2'>
-                    Processing
+                    {orderStatusLabel(t, 'processing')}
                   </Typography>
                   <Typography variant='h6'>{ordersByStatus.processing.length}</Typography>
                 </Box>
@@ -441,7 +467,7 @@ const SupplierOrdersPage: React.FC = () => {
                 <LocalShipping color='primary' sx={{ mr: 1 }} />
                 <Box>
                   <Typography color='text.secondary' variant='body2'>
-                    Shipped
+                    {orderStatusLabel(t, 'shipped')}
                   </Typography>
                   <Typography variant='h6'>{ordersByStatus.shipped.length}</Typography>
                 </Box>
@@ -458,7 +484,7 @@ const SupplierOrdersPage: React.FC = () => {
             <Grid size={{ xs: 12, sm: 4 }}>
               <TextField
                 fullWidth
-                placeholder='Search orders...'
+                placeholder={t('supplierOrders.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -472,33 +498,35 @@ const SupplierOrdersPage: React.FC = () => {
             </Grid>
             <Grid size={{ xs: 12, sm: 3 }}>
               <FormControl fullWidth>
-                <InputLabel>Status</InputLabel>
+                <InputLabel>{t('supplierOrders.status')}</InputLabel>
                 <Select
                   value={statusFilter}
-                  label='Status'
+                  label={t('supplierOrders.status')}
                   onChange={e => setStatusFilter(e.target.value)}
                 >
-                  <MenuItem value=''>All Status</MenuItem>
-                  <MenuItem value='pending'>Pending</MenuItem>
-                  <MenuItem value='processing'>Processing</MenuItem>
-                  <MenuItem value='shipped'>Shipped</MenuItem>
-                  <MenuItem value='delivered'>Delivered</MenuItem>
-                  <MenuItem value='cancelled'>Cancelled</MenuItem>
+                  <MenuItem value=''>{t('supplierOrders.allStatus')}</MenuItem>
+                  {(['pending', 'processing', 'shipped', 'delivered', 'cancelled'] as const).map(
+                    status => (
+                      <MenuItem key={status} value={status}>
+                        {orderStatusLabel(t, status)}
+                      </MenuItem>
+                    )
+                  )}
                 </Select>
               </FormControl>
             </Grid>
             <Grid size={{ xs: 12, sm: 3 }}>
               <FormControl fullWidth>
-                <InputLabel>Date Range</InputLabel>
+                <InputLabel>{t('supplierOrders.dateRange')}</InputLabel>
                 <Select
                   value={dateFilter}
-                  label='Date Range'
+                  label={t('supplierOrders.dateRange')}
                   onChange={e => setDateFilter(e.target.value)}
                 >
-                  <MenuItem value=''>All Time</MenuItem>
-                  <MenuItem value='today'>Today</MenuItem>
-                  <MenuItem value='week'>This Week</MenuItem>
-                  <MenuItem value='month'>This Month</MenuItem>
+                  <MenuItem value=''>{t('supplierOrders.allTime')}</MenuItem>
+                  <MenuItem value='today'>{t('supplierOrders.today')}</MenuItem>
+                  <MenuItem value='week'>{t('supplierOrders.thisWeek')}</MenuItem>
+                  <MenuItem value='month'>{t('supplierOrders.thisMonth')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -508,35 +536,23 @@ const SupplierOrdersPage: React.FC = () => {
 
       {/* Tabs */}
       <Tabs value={selectedTab} onChange={(_, newValue) => setSelectedTab(newValue)} sx={{ mb: 2 }}>
-        <Tab label={`All (${ordersByStatus.all.length})`} />
-        <Tab label={`Pending (${ordersByStatus.pending.length})`} />
-        <Tab label={`Processing (${ordersByStatus.processing.length})`} />
-        <Tab label={`Shipped (${ordersByStatus.shipped.length})`} />
-        <Tab label={`Delivered (${ordersByStatus.delivered.length})`} />
+        {TAB_KEYS.map(key => (
+          <Tab
+            key={key}
+            label={t(`supplierOrders.tabs.${key}`, { count: ordersByStatus[key].length })}
+          />
+        ))}
       </Tabs>
 
       {/* Orders List */}
       {(() => {
-        let displayOrders = ordersByStatus.all;
-        if (selectedTab === 1) displayOrders = ordersByStatus.pending;
-        if (selectedTab === 2) displayOrders = ordersByStatus.processing;
-        if (selectedTab === 3) displayOrders = ordersByStatus.shipped;
-        if (selectedTab === 4) displayOrders = ordersByStatus.delivered;
+        const tabKey = TAB_KEYS[selectedTab];
+        const displayOrders = ordersByStatus[tabKey];
 
         if (displayOrders.length === 0) {
           return (
             <Alert severity='info' sx={{ mt: 2 }}>
-              {selectedTab === 0
-                ? 'No orders found.'
-                : `No ${
-                    selectedTab === 1
-                      ? 'pending'
-                      : selectedTab === 2
-                        ? 'processing'
-                        : selectedTab === 3
-                          ? 'shipped'
-                          : 'delivered'
-                  } orders found.`}
+              {t(`supplierOrders.empty.${tabKey}`)}
             </Alert>
           );
         }
@@ -558,14 +574,14 @@ const SupplierOrdersPage: React.FC = () => {
         maxWidth='sm'
         fullWidth
       >
-        <DialogTitle>Update Order Status</DialogTitle>
+        <DialogTitle>{t('supplierOrders.dialog.title')}</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Status</InputLabel>
+              <InputLabel>{t('supplierOrders.status')}</InputLabel>
               <Select
                 value={statusUpdateDialog.newStatus}
-                label='Status'
+                label={t('supplierOrders.status')}
                 onChange={e =>
                   setStatusUpdateDialog({
                     ...statusUpdateDialog,
@@ -577,7 +593,7 @@ const SupplierOrdersPage: React.FC = () => {
                   <MenuItem key={step.value} value={step.value}>
                     <Box display='flex' alignItems='center'>
                       {step.icon}
-                      <Typography sx={{ ml: 1 }}>{step.label}</Typography>
+                      <Typography sx={{ ml: 1 }}>{orderStatusLabel(t, step.value)}</Typography>
                     </Box>
                   </MenuItem>
                 ))}
@@ -588,7 +604,7 @@ const SupplierOrdersPage: React.FC = () => {
               statusUpdateDialog.newStatus === 'delivered') && (
               <TextField
                 fullWidth
-                label='Tracking Number'
+                label={t('supplierOrders.dialog.trackingNumber')}
                 value={statusUpdateDialog.trackingNumber}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setStatusUpdateDialog({
@@ -604,7 +620,7 @@ const SupplierOrdersPage: React.FC = () => {
               <TextField
                 fullWidth
                 required
-                label='NF-e Access Key'
+                label={t('supplierOrders.dialog.nfeKey')}
                 value={statusUpdateDialog.nfeAccessKey}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setStatusUpdateDialog({
@@ -617,7 +633,7 @@ const SupplierOrdersPage: React.FC = () => {
                 // gate shut with nothing on screen to explain why. onChange
                 // already strips non-digits and caps the result at 44.
                 inputProps={{ inputMode: 'numeric' }}
-                helperText='44-digit invoice access key'
+                helperText={t('supplierOrders.dialog.nfeHelp')}
                 sx={{ mb: 2 }}
               />
             )}
@@ -626,7 +642,7 @@ const SupplierOrdersPage: React.FC = () => {
               fullWidth
               multiline
               rows={3}
-              label='Notes (optional)'
+              label={t('supplierOrders.dialog.notes')}
               value={statusUpdateDialog.notes}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setStatusUpdateDialog({
@@ -639,7 +655,7 @@ const SupplierOrdersPage: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setStatusUpdateDialog({ ...statusUpdateDialog, open: false })}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             onClick={handleStatusUpdate}
@@ -650,7 +666,7 @@ const SupplierOrdersPage: React.FC = () => {
                 statusUpdateDialog.nfeAccessKey.length !== 44)
             }
           >
-            Update Status
+            {t('supplierOrders.dialog.submit')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -662,7 +678,9 @@ const SupplierOrdersPage: React.FC = () => {
         maxWidth='md'
         fullWidth
       >
-        <DialogTitle>Order Details - #{selectedOrder?.id}</DialogTitle>
+        <DialogTitle>
+          {t('supplierOrders.detailsDialog.title', { id: selectedOrder?.id ?? '' })}
+        </DialogTitle>
         <DialogContent>
           {selectedOrder && (
             <Box>
@@ -670,7 +688,7 @@ const SupplierOrdersPage: React.FC = () => {
                 {/* Customer Information */}
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Typography variant='h6' gutterBottom>
-                    Customer Information
+                    {t('supplierOrders.detailsDialog.customer')}
                   </Typography>
                   <Box display='flex' alignItems='center' mb={1}>
                     <Business sx={{ mr: 1 }} />
@@ -695,30 +713,34 @@ const SupplierOrdersPage: React.FC = () => {
                 {/* Order Information */}
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Typography variant='h6' gutterBottom>
-                    Order Information
+                    {t('supplierOrders.detailsDialog.order')}
                   </Typography>
                   <Typography variant='body2' color='text.secondary'>
-                    Created: {new Date(selectedOrder.createdAt!).toLocaleString()}
+                    {t('supplierOrders.detailsDialog.created', {
+                      date: new Date(selectedOrder.createdAt!).toLocaleString(),
+                    })}
                   </Typography>
                   <Typography component='div' variant='body2' color='text.secondary'>
-                    Status:{' '}
+                    {t('supplierOrders.detailsDialog.status')}{' '}
                     <Chip
-                      label={selectedOrder.status}
+                      label={orderStatusLabel(t, selectedOrder.status)}
                       color={getStatusColor(selectedOrder.status)}
                       size='small'
                     />
                   </Typography>
                   <Typography variant='body2' color='text.secondary'>
-                    Total: {formatBRL(selectedOrder.totalAmount)}
+                    {t('supplierOrders.detailsDialog.total', {
+                      total: formatBRL(selectedOrder.totalAmount),
+                    })}
                   </Typography>
                   {selectedOrder.trackingNumber && (
                     <Typography variant='body2' color='text.secondary'>
-                      Tracking: {selectedOrder.trackingNumber}
+                      {t('supplierOrders.tracking', { code: selectedOrder.trackingNumber })}
                     </Typography>
                   )}
                   {selectedOrder.notes && (
                     <Typography variant='body2' color='text.secondary'>
-                      Notes: {selectedOrder.notes}
+                      {t('supplierOrders.detailsDialog.notes', { notes: selectedOrder.notes })}
                     </Typography>
                   )}
                 </Grid>
@@ -726,22 +748,24 @@ const SupplierOrdersPage: React.FC = () => {
 
               {/* Order Items */}
               <Typography variant='h6' gutterBottom>
-                Order Items
+                {t('supplierOrders.detailsDialog.items')}
               </Typography>
               <TableContainer component={Paper} sx={{ mb: 3 }}>
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Product</TableCell>
-                      <TableCell>Quantity</TableCell>
-                      <TableCell>Price</TableCell>
-                      <TableCell>Total</TableCell>
+                      <TableCell>{t('supplierOrders.detailsDialog.product')}</TableCell>
+                      <TableCell>{t('supplierOrders.detailsDialog.quantity')}</TableCell>
+                      <TableCell>{t('supplierOrders.detailsDialog.price')}</TableCell>
+                      <TableCell>{t('supplierOrders.detailsDialog.lineTotal')}</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {selectedOrder.items?.map((item, index) => (
                       <TableRow key={index}>
-                        <TableCell>{item.product?.name || 'Product'}</TableCell>
+                        <TableCell>
+                          {item.product?.name || t('supplierOrders.productFallback')}
+                        </TableCell>
                         <TableCell>{item.quantity}</TableCell>
                         <TableCell>{formatBRL(item.price)}</TableCell>
                         <TableCell>{formatBRL(item.totalPrice)}</TableCell>
@@ -753,7 +777,7 @@ const SupplierOrdersPage: React.FC = () => {
 
               {/* Order History */}
               <Typography variant='h6' gutterBottom>
-                Order History
+                {t('supplierOrders.detailsDialog.history')}
               </Typography>
               <List>
                 {orderHistory.map((entry, index) => (
@@ -765,7 +789,9 @@ const SupplierOrdersPage: React.FC = () => {
                     </ListItemAvatar>
                     <ListItemText
                       disableTypography
-                      primary={<Typography variant='body1'>{entry.status}</Typography>}
+                      primary={
+                        <Typography variant='body1'>{orderStatusLabel(t, entry.status)}</Typography>
+                      }
                       secondary={
                         <Box>
                           <Typography variant='body2' color='text.secondary'>
@@ -773,7 +799,7 @@ const SupplierOrdersPage: React.FC = () => {
                           </Typography>
                           {entry.description && (
                             <Typography variant='body2' color='text.secondary'>
-                              {entry.description}
+                              {orderTimelineDescription(t, entry.status, entry.description)}
                             </Typography>
                           )}
                         </Box>
@@ -786,7 +812,7 @@ const SupplierOrdersPage: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDetailsDialogOpen(false)}>Close</Button>
+          <Button onClick={() => setDetailsDialogOpen(false)}>{t('common.close')}</Button>
         </DialogActions>
       </Dialog>
     </Container>

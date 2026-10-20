@@ -19,6 +19,7 @@ import {
 import { alpha } from '@mui/material/styles';
 import { useT } from '../../contexts/LanguageContext';
 import type { TranslationKey } from '../../locales';
+import { categoryLabel } from '../../utils/catalogLabels';
 import {
   PRODUCT_AVAILABILITIES,
   type ProductAvailability,
@@ -192,7 +193,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({
                   >
                     {categories.map(category => (
                       <MenuItem key={category} value={category}>
-                        {category}
+                        {categoryLabel(t, category)}
                       </MenuItem>
                     ))}
                   </Select>

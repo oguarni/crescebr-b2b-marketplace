@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import type { Company, Order, OrderItem, Product } from '@shared/types';
 import SupplierOrdersPage from '../SupplierOrdersPage';
+import { LanguageProvider } from '../../contexts/LanguageContext';
 import { ordersService, type OrderHistory } from '../../services/ordersService';
 import toast from 'react-hot-toast';
 
@@ -151,7 +152,9 @@ const renderPage = async () => {
   await act(async () => {
     renderResult = render(
       <BrowserRouter>
-        <SupplierOrdersPage />
+        <LanguageProvider initialLanguage='en'>
+          <SupplierOrdersPage />
+        </LanguageProvider>
       </BrowserRouter>
     );
   });
@@ -175,7 +178,9 @@ describe('SupplierOrdersPage', () => {
     await act(async () => {
       render(
         <BrowserRouter>
-          <SupplierOrdersPage />
+          <LanguageProvider initialLanguage='en'>
+            <SupplierOrdersPage />
+          </LanguageProvider>
         </BrowserRouter>
       );
     });
@@ -356,12 +361,42 @@ describe('SupplierOrdersPage', () => {
   it('displays statistics cards with correct counts', async () => {
     await renderPage();
 
+    // Each label appears twice: on its statistics card and on the status chip
+    // of the one mock order in that status.
     await waitFor(() => {
       expect(screen.getByText('Total Orders')).toBeInTheDocument();
-      expect(screen.getByText('Pending')).toBeInTheDocument();
-      expect(screen.getByText('Processing')).toBeInTheDocument();
-      expect(screen.getByText('Shipped')).toBeInTheDocument();
+      expect(screen.getAllByText('Pending')).toHaveLength(2);
+      expect(screen.getAllByText('Processing')).toHaveLength(2);
+      expect(screen.getAllByText('Shipped')).toHaveLength(2);
     });
+  });
+
+  it('renders in Portuguese by default, translating stored statuses and API timeline text', async () => {
+    const user = userEvent.setup();
+    await act(async () => {
+      render(
+        <BrowserRouter>
+          <SupplierOrdersPage />
+        </BrowserRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Gestão de Pedidos')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Pedido #ORD-001')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Pendentes (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar processamento/ })).toBeInTheDocument();
+    expect(screen.queryByText('pending')).not.toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: /Detalhes/ })[0]);
+
+    // The API's English description is replaced by the sentence for its status.
+    await waitFor(() => {
+      expect(screen.getByText('Histórico do pedido')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Pedido em preparação')).toBeInTheDocument();
+    expect(screen.queryByText('Order processing')).not.toBeInTheDocument();
   });
 
   it('fills notes field in status update dialog', async () => {

@@ -55,6 +55,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOrders } from '../hooks';
 import toast from 'react-hot-toast';
 import { useT } from '../contexts/LanguageContext';
+import { orderTimelineDescription } from '../utils/orderStatus';
 
 interface OrderHistory {
   order: Order;
@@ -413,7 +414,7 @@ const MyOrdersPage: React.FC = () => {
                         {ordersService.getStatusLabel(item.status)}
                       </Typography>
                       <Typography variant='body2' color='text.secondary'>
-                        {item.description}
+                        {orderTimelineDescription(t, item.status, item.description)}
                       </Typography>
                     </TimelineContent>
                   </TimelineItem>

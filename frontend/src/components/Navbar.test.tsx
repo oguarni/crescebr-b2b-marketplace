@@ -166,7 +166,7 @@ describe('Navbar', () => {
     renderNavbar();
 
     // Should show account icon instead of login/register buttons
-    expect(screen.getByLabelText('account of current user')).toBeInTheDocument();
+    expect(screen.getByLabelText('Menu da conta')).toBeInTheDocument();
     expect(screen.queryByText('Entrar')).not.toBeInTheDocument();
     expect(screen.queryByText('Cadastrar')).not.toBeInTheDocument();
   });
@@ -193,7 +193,7 @@ describe('Navbar', () => {
     renderNavbar();
 
     // Click on user menu to open it
-    const accountButton = screen.getByLabelText('account of current user');
+    const accountButton = screen.getByLabelText('Menu da conta');
     accountButton.click();
 
     expect(screen.getByText('Painel Admin')).toBeInTheDocument();
@@ -220,7 +220,7 @@ describe('Navbar', () => {
 
     renderNavbar();
 
-    expect(screen.getByLabelText('quotation request')).toBeInTheDocument();
+    expect(screen.getByLabelText('Solicitação de cotação')).toBeInTheDocument();
   });
 
   it('badge counts distinct line items, not total units', () => {
@@ -235,7 +235,7 @@ describe('Navbar', () => {
 
     renderNavbar();
 
-    const quoteButton = screen.getByLabelText('quotation request');
+    const quoteButton = screen.getByLabelText('Solicitação de cotação');
     expect(quoteButton).toHaveTextContent('3');
     expect(quoteButton).not.toHaveTextContent('35');
   });
@@ -260,7 +260,7 @@ describe('Navbar', () => {
     };
 
     renderNavbar();
-    fireEvent.click(screen.getByLabelText('account of current user'));
+    fireEvent.click(screen.getByLabelText('Menu da conta'));
 
     await waitFor(() => {
       expect(screen.getByText('Minhas Cotações')).toBeInTheDocument();
@@ -290,7 +290,7 @@ describe('Navbar', () => {
     };
 
     renderNavbar();
-    fireEvent.click(screen.getByLabelText('account of current user'));
+    fireEvent.click(screen.getByLabelText('Menu da conta'));
 
     await waitFor(() => {
       expect(screen.getByText('Meus Pedidos')).toBeInTheDocument();
@@ -320,7 +320,7 @@ describe('Navbar', () => {
     };
 
     renderNavbar();
-    fireEvent.click(screen.getByLabelText('account of current user'));
+    fireEvent.click(screen.getByLabelText('Menu da conta'));
 
     await waitFor(() => {
       expect(screen.getByText('Comparar Preços')).toBeInTheDocument();
@@ -350,7 +350,7 @@ describe('Navbar', () => {
     };
 
     renderNavbar();
-    fireEvent.click(screen.getByLabelText('account of current user'));
+    fireEvent.click(screen.getByLabelText('Menu da conta'));
 
     await waitFor(() => {
       expect(screen.getByText('Sair')).toBeInTheDocument();
@@ -381,13 +381,13 @@ describe('Navbar', () => {
     };
 
     renderNavbar();
-    fireEvent.click(screen.getByLabelText('account of current user'));
+    fireEvent.click(screen.getByLabelText('Menu da conta'));
 
     await waitFor(() => {
-      expect(screen.getByText('Dashboard Fornecedor')).toBeInTheDocument();
+      expect(screen.getByText('Painel do Fornecedor')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Dashboard Fornecedor'));
+    fireEvent.click(screen.getByText('Painel do Fornecedor'));
     expect(mockNavigate).toHaveBeenCalledWith('/supplier/dashboard');
   });
 
@@ -411,7 +411,7 @@ describe('Navbar', () => {
     };
 
     renderNavbar();
-    fireEvent.click(screen.getByLabelText('account of current user'));
+    fireEvent.click(screen.getByLabelText('Menu da conta'));
 
     await waitFor(() => {
       expect(screen.getByText('Painel Admin')).toBeInTheDocument();
@@ -441,13 +441,13 @@ describe('Navbar', () => {
     };
 
     renderNavbar();
-    fireEvent.click(screen.getByLabelText('account of current user'));
+    fireEvent.click(screen.getByLabelText('Menu da conta'));
 
     await waitFor(() => {
-      expect(screen.getByText('Analytics')).toBeInTheDocument();
+      expect(screen.getByText('Análises')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Analytics'));
+    fireEvent.click(screen.getByText('Análises'));
     expect(mockNavigate).toHaveBeenCalledWith('/admin/analytics');
   });
 
@@ -471,7 +471,7 @@ describe('Navbar', () => {
     };
 
     renderNavbar();
-    fireEvent.click(screen.getByLabelText('account of current user'));
+    fireEvent.click(screen.getByLabelText('Menu da conta'));
 
     await waitFor(() => {
       expect(screen.getByText('Verificação de Empresas')).toBeInTheDocument();
@@ -501,7 +501,7 @@ describe('Navbar', () => {
     };
 
     renderNavbar();
-    fireEvent.click(screen.getByLabelText('account of current user'));
+    fireEvent.click(screen.getByLabelText('Menu da conta'));
 
     await waitFor(() => {
       expect(screen.getByText('Configurações')).toBeInTheDocument();
@@ -531,7 +531,7 @@ describe('Navbar', () => {
     };
 
     renderNavbar();
-    fireEvent.click(screen.getByLabelText('account of current user'));
+    fireEvent.click(screen.getByLabelText('Menu da conta'));
 
     await waitFor(() => {
       expect(screen.getByText(/Fornecedor.*Pendente/i)).toBeInTheDocument();
