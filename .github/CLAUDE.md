@@ -19,6 +19,17 @@ Both jobs upload coverage artifacts on completion.
 
 **Node version**: 20 (pinned in workflow)
 
+### Deploy
+
+On a push to `main`, `Deploy Hosting` publishes the Frontend job's `frontend/dist` artifact to
+Firebase Hosting after every other job passes, and `Live Grade` then runs `npm run security:grade`
+against the live site. Releases follow the order of `main`: a run deploys only if its commit is
+still the tip when the deploy job checks under the release lock (`Deploy Gate` skips stale runs
+earlier), and a push landing after that check deploys through its own run. It authenticates through
+Workload Identity Federation, so no secret is stored, and no repository code runs in that job: it
+refuses a `firebase.json` with hooks, a `source` build, or a `public` other than `frontend/dist`. The
+one-time setup is `scripts/setup-hosting-deploy.sh`. See `docs/SECURITY.md` → Hosting Deployment.
+
 ## Docker
 
 **File**: `docker-compose.yml`
