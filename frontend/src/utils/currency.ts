@@ -17,3 +17,15 @@ export const formatBRL = (value: number | string | null | undefined): string => 
     currency: 'BRL',
   }).format(Number.isFinite(numeric as number) ? (numeric as number) : 0);
 };
+
+/**
+ * Whole-real variant for compact labels such as filter bounds, where cents are
+ * noise. Example: 1500 -> "R$ 1.500".
+ */
+export const formatBRLWhole = (value: number): string =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number.isFinite(value) ? value : 0);
