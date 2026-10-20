@@ -16,12 +16,34 @@ import { formatSpecLabel } from './catalogLabels';
 export interface RangeLimits {
   min: number;
   max: number;
-  step: number;
+  /** The values a slider can rest on, from `min` to `max`, evenly spaced on its track. */
+  stops: readonly number[];
 }
 
-export const PRICE_LIMITS: RangeLimits = { min: 0, max: 50000, step: 500 };
-export const MOQ_LIMITS: RangeLimits = { min: 1, max: 1000, step: 10 };
-export const LEAD_TIME_LIMITS: RangeLimits = { min: 1, max: 90, step: 1 };
+const fromStops = (stops: readonly number[]): RangeLimits => ({
+  min: stops[0],
+  max: stops[stops.length - 1],
+  stops,
+});
+
+// Catalogue values cluster at the low end: every seeded MOQ is 20 or less and
+// most prices are under R$ 10.000. On a linear 1–1000 or 0–50,000 track, a
+// phone-width slider packed all of them into its first few pixels, so most of
+// a drag changed nothing. Stops on a rising scale give each step of the track
+// an effect while still reaching the high values.
+export const PRICE_LIMITS = fromStops([0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000]);
+export const MOQ_LIMITS = fromStops([1, 5, 10, 25, 50, 100, 250, 500, 1000]);
+export const LEAD_TIME_LIMITS = fromStops([1, 3, 5, 7, 10, 14, 21, 30, 60, 90]);
+
+/** Slider position of a value: the first stop at or above it. */
+export const toStopIndex = (limits: RangeLimits, value: number): number => {
+  const index = limits.stops.findIndex(stop => stop >= value);
+  return index === -1 ? limits.stops.length - 1 : index;
+};
+
+/** The value at a slider position. */
+export const fromStopIndex = (limits: RangeLimits, index: number): number =>
+  limits.stops[index] ?? limits.max;
 
 export type Availability = Product['availability'];
 

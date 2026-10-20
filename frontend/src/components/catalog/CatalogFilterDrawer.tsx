@@ -36,13 +36,16 @@ import {
   describeMoqRange,
   describePriceRange,
   fromSpecOptions,
+  fromStopIndex,
   LEAD_TIME_LIMITS,
   MOQ_LIMITS,
   PRICE_LIMITS,
+  type RangeLimits,
   type SpecOption,
   availabilityLabel,
   toSelectedSpecOptions,
   toSpecOptions,
+  toStopIndex,
 } from '../../utils/catalogFilters';
 
 /** Shared with the filter button's `aria-controls`. */
@@ -68,6 +71,27 @@ const filterSpecOptions = createFilterOptions<SpecOption>({
 });
 
 const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
+
+// The sliders move through stop positions, not values. `scale` turns a position
+// back into its value for the value label and the aria-value* attributes, so
+// both still read in reais, units and days.
+const stopSliderProps = (limits: RangeLimits) => ({
+  min: 0,
+  max: limits.stops.length - 1,
+  step: 1,
+  marks: true,
+  scale: (position: number) => fromStopIndex(limits, position),
+});
+
+const toPositions = (limits: RangeLimits, [min, max]: [number, number]): [number, number] => [
+  toStopIndex(limits, min),
+  toStopIndex(limits, max),
+];
+
+const toRange = (limits: RangeLimits, positions: number | number[]): [number, number] => {
+  const [min, max] = positions as number[];
+  return [fromStopIndex(limits, min), fromStopIndex(limits, max)];
+};
 
 interface SectionProps {
   icon?: React.ReactNode;
@@ -142,12 +166,12 @@ const CatalogFilterDrawer: React.FC<CatalogFilterDrawerProps> = ({
   const moqRange = draftMoq ?? filters.moqRange;
   const maxLeadTime = draftLeadTime ?? filters.maxLeadTime;
 
+  const unitWord = (value: number) => (value === 1 ? t('home.filters.oneUnit') : t('home.units'));
+
   const priceSummary = capitalize(describePriceRange(t, priceRange) ?? t('home.filters.anyPrice'));
   const moqDescription = describeMoqRange(t, moqRange);
   const moqSummary = moqDescription
-    ? capitalize(
-        `${moqDescription} ${moqRange[1] === 1 ? t('home.filters.oneUnit') : t('home.units')}`
-      )
+    ? capitalize(`${moqDescription} ${unitWord(moqRange[1])}`)
     : t('home.filters.anyQuantity');
   const leadTimeSummary = describeLeadTime(t, maxLeadTime);
 
@@ -224,15 +248,13 @@ const CatalogFilterDrawer: React.FC<CatalogFilterDrawerProps> = ({
         >
           <Box sx={{ px: 1.5 }}>
             <Slider
-              value={priceRange}
-              onChange={(_, value) => setDraftPrice(value as [number, number])}
+              {...stopSliderProps(PRICE_LIMITS)}
+              value={toPositions(PRICE_LIMITS, priceRange)}
+              onChange={(_, value) => setDraftPrice(toRange(PRICE_LIMITS, value))}
               onChangeCommitted={(_, value) => {
                 setDraftPrice(null);
-                update({ priceRange: value as [number, number] });
+                update({ priceRange: toRange(PRICE_LIMITS, value) });
               }}
-              min={PRICE_LIMITS.min}
-              max={PRICE_LIMITS.max}
-              step={PRICE_LIMITS.step}
               valueLabelDisplay='auto'
               valueLabelFormat={value =>
                 value >= PRICE_LIMITS.max ? `${formatBRLWhole(value)}+` : formatBRLWhole(value)
@@ -251,21 +273,19 @@ const CatalogFilterDrawer: React.FC<CatalogFilterDrawerProps> = ({
         >
           <Box sx={{ px: 1.5 }}>
             <Slider
-              value={moqRange}
-              onChange={(_, value) => setDraftMoq(value as [number, number])}
+              {...stopSliderProps(MOQ_LIMITS)}
+              value={toPositions(MOQ_LIMITS, moqRange)}
+              onChange={(_, value) => setDraftMoq(toRange(MOQ_LIMITS, value))}
               onChangeCommitted={(_, value) => {
                 setDraftMoq(null);
-                update({ moqRange: value as [number, number] });
+                update({ moqRange: toRange(MOQ_LIMITS, value) });
               }}
-              min={MOQ_LIMITS.min}
-              max={MOQ_LIMITS.max}
-              step={MOQ_LIMITS.step}
               valueLabelDisplay='auto'
               valueLabelFormat={value =>
-                value >= MOQ_LIMITS.max ? `${value}+` : `${value} ${t('home.units')}`
+                value >= MOQ_LIMITS.max ? `${value}+` : `${value} ${unitWord(value)}`
               }
               getAriaLabel={rangeAriaLabel(t('home.moq'))}
-              getAriaValueText={value => `${value} ${t('home.units')}`}
+              getAriaValueText={value => `${value} ${unitWord(value)}`}
             />
           </Box>
         </FilterSection>
@@ -278,15 +298,15 @@ const CatalogFilterDrawer: React.FC<CatalogFilterDrawerProps> = ({
         >
           <Box sx={{ px: 1.5 }}>
             <Slider
-              value={maxLeadTime}
-              onChange={(_, value) => setDraftLeadTime(value as number)}
+              {...stopSliderProps(LEAD_TIME_LIMITS)}
+              value={toStopIndex(LEAD_TIME_LIMITS, maxLeadTime)}
+              onChange={(_, value) =>
+                setDraftLeadTime(fromStopIndex(LEAD_TIME_LIMITS, value as number))
+              }
               onChangeCommitted={(_, value) => {
                 setDraftLeadTime(null);
-                update({ maxLeadTime: value as number });
+                update({ maxLeadTime: fromStopIndex(LEAD_TIME_LIMITS, value as number) });
               }}
-              min={LEAD_TIME_LIMITS.min}
-              max={LEAD_TIME_LIMITS.max}
-              step={LEAD_TIME_LIMITS.step}
               valueLabelDisplay='auto'
               valueLabelFormat={value =>
                 value >= LEAD_TIME_LIMITS.max

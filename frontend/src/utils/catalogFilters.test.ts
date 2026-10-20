@@ -10,9 +10,11 @@ import {
   PRICE_LIMITS,
   describeLeadTime,
   fromSpecOptions,
+  fromStopIndex,
   getActiveFilters,
   toProductQuery,
   toSpecOptions,
+  toStopIndex,
   type CatalogFilters,
 } from './catalogFilters';
 
@@ -34,6 +36,27 @@ const withFilters = (patch: Partial<CatalogFilters>): CatalogFilters => ({
   ...patch,
 });
 
+describe('slider stops', () => {
+  it.each([
+    ['price', PRICE_LIMITS],
+    ['MOQ', MOQ_LIMITS],
+    ['lead time', LEAD_TIME_LIMITS],
+  ])('%s stops rise strictly from min to max', (_, limits) => {
+    expect(limits.stops[0]).toBe(limits.min);
+    expect(limits.stops[limits.stops.length - 1]).toBe(limits.max);
+    limits.stops.slice(1).forEach((stop, i) => expect(stop).toBeGreaterThan(limits.stops[i]));
+  });
+
+  it('maps values and positions both ways', () => {
+    expect(toStopIndex(MOQ_LIMITS, 10)).toBe(2);
+    expect(fromStopIndex(MOQ_LIMITS, 2)).toBe(10);
+    // A value between stops takes the next stop up; one past the end, the last.
+    expect(toStopIndex(MOQ_LIMITS, 11)).toBe(3);
+    expect(toStopIndex(MOQ_LIMITS, 5000)).toBe(MOQ_LIMITS.stops.length - 1);
+    expect(fromStopIndex(MOQ_LIMITS, 99)).toBe(MOQ_LIMITS.max);
+  });
+});
+
 describe('toProductQuery', () => {
   it('sends nothing while every control rests on its default', () => {
     expect(toProductQuery(DEFAULT_CATALOG_FILTERS)).toEqual({});
@@ -42,16 +65,16 @@ describe('toProductQuery', () => {
   it('treats a slider resting on its outer limit as no bound', () => {
     expect(
       toProductQuery(
-        withFilters({ priceRange: [PRICE_LIMITS.min, 5000], moqRange: [11, MOQ_LIMITS.max] })
+        withFilters({ priceRange: [PRICE_LIMITS.min, 5000], moqRange: [10, MOQ_LIMITS.max] })
       )
-    ).toEqual({ maxPrice: 5000, minMoq: 11 });
+    ).toEqual({ maxPrice: 5000, minMoq: 10 });
   });
 
   it('sends every narrowed constraint', () => {
     expect(
       toProductQuery({
         priceRange: [500, 5000],
-        moqRange: [11, 101],
+        moqRange: [10, 100],
         maxLeadTime: 10,
         availability: ['in_stock', 'limited'],
         specifications: { material: 'Steel' },
@@ -59,8 +82,8 @@ describe('toProductQuery', () => {
     ).toEqual({
       minPrice: 500,
       maxPrice: 5000,
-      minMoq: 11,
-      maxMoq: 101,
+      minMoq: 10,
+      maxMoq: 100,
       maxLeadTime: 10,
       availability: ['in_stock', 'limited'],
       specifications: { material: 'Steel' },
@@ -69,9 +92,7 @@ describe('toProductQuery', () => {
 
   it('omits the lead time only at the slider maximum', () => {
     expect(toProductQuery(withFilters({ maxLeadTime: LEAD_TIME_LIMITS.max }))).toEqual({});
-    expect(toProductQuery(withFilters({ maxLeadTime: LEAD_TIME_LIMITS.max - 1 }))).toEqual({
-      maxLeadTime: LEAD_TIME_LIMITS.max - 1,
-    });
+    expect(toProductQuery(withFilters({ maxLeadTime: 60 }))).toEqual({ maxLeadTime: 60 });
   });
 });
 
@@ -84,7 +105,7 @@ describe('getActiveFilters', () => {
     const labels = getActiveFilters(
       {
         priceRange: [1000, 5000],
-        moqRange: [MOQ_LIMITS.min, 101],
+        moqRange: [MOQ_LIMITS.min, 100],
         maxLeadTime: 10,
         availability: ['custom_order'],
         specifications: { flashPoint: '62C' },
@@ -94,7 +115,7 @@ describe('getActiveFilters', () => {
 
     expect(labels).toEqual([
       `Preço: R$${nbsp}1.000 – R$${nbsp}5.000`,
-      'Pedido mínimo: até 101 un.',
+      'Pedido mínimo: até 100 un.',
       'Entrega em até 10 dias',
       'Sob encomenda',
       'Flash point: 62C',
@@ -133,7 +154,7 @@ describe('getActiveFilters', () => {
   });
 
   it('returns a range to its slider limits when cleared', () => {
-    const filters = withFilters({ priceRange: [500, 5000], moqRange: [11, 101], maxLeadTime: 7 });
+    const filters = withFilters({ priceRange: [500, 5000], moqRange: [10, 100], maxLeadTime: 7 });
     const active = getActiveFilters(filters, tEn);
     const cleared = (id: string) => active.find(f => f.id === id)!.clear(filters);
 
