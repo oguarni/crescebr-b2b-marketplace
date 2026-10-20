@@ -16,6 +16,7 @@ import { Product } from '@shared/types';
 import { useT } from '../contexts/LanguageContext';
 import { formatBRL } from '../utils/currency';
 import { optimizeImageUrl } from '../utils/imageUrl';
+import { categoryLabel, formatSpecLabel } from '../utils/catalogLabels';
 
 interface ProductCardProps {
   product: Product;
@@ -207,7 +208,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   fontSize: '0.625rem',
                 }}
               >
-                {product.category || t('home.uncategorized')}
+                {product.category ? categoryLabel(t, product.category) : t('home.uncategorized')}
               </Typography>
 
               <Typography
@@ -379,7 +380,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       key={key}
                       size='small'
                       variant='outlined'
-                      label={`${key}: ${String(value)}`}
+                      label={`${formatSpecLabel(key)}: ${String(value)}`}
                     />
                   ))}
                 </Box>

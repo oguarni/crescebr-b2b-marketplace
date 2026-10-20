@@ -1,7 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { CircularProgress, Box } from '@mui/material';
-import { LanguageProvider } from './contexts/LanguageContext';
+import { LanguageProvider, useT } from './contexts/LanguageContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { QuotationRequestProvider } from './contexts/QuotationContext';
@@ -32,6 +32,12 @@ const PageFallback = () => (
     <CircularProgress />
   </Box>
 );
+
+// Rendered inside LanguageProvider, so unlike App itself it can translate.
+const SettingsPlaceholder = () => {
+  const t = useT();
+  return <div>{t('nav.settingsPlaceholder')}</div>;
+};
 
 const App: React.FC = () => {
   return (
@@ -131,7 +137,7 @@ const App: React.FC = () => {
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         {/* Settings page would go here */}
-                        <div>System Settings (To be implemented)</div>
+                        <SettingsPlaceholder />
                       </ProtectedRoute>
                     }
                   />

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import HomePage from '../HomePage';
@@ -205,16 +205,17 @@ describe('HomePage', () => {
     });
   });
 
-  it('should display error state when loading fails', async () => {
-    vi.mocked(productsService.getAllProducts).mockRejectedValue(
-      new Error('Failed to load products')
-    );
+  it('should display a translated error state when loading fails', async () => {
+    vi.mocked(productsService.getAllProducts).mockRejectedValue(new Error('Network Error'));
 
     await renderHomePage();
 
+    // The transport's own message is English whatever the interface language,
+    // so the page shows its translated message instead of echoing it.
     await waitFor(() => {
       expect(screen.getByText('Failed to load products')).toBeInTheDocument();
     });
+    expect(screen.queryByText('Network Error')).not.toBeInTheDocument();
   });
 
   it('should have a search input', async () => {
@@ -289,6 +290,32 @@ describe('HomePage', () => {
     expect(pagination).toBeInTheDocument();
   });
 
+  it('changes page, and returns to the first page when the category changes', async () => {
+    vi.mocked(productsService.getAllProducts).mockResolvedValue({
+      products: mockProducts,
+      pagination: { total: 24, page: 1, limit: 12, totalPages: 2 },
+    });
+    const user = userEvent.setup();
+    await renderHomePage();
+    await screen.findByText('Industrial Pump');
+
+    // MUI's own labels would be English ("Go to page 2") in every language.
+    expect(screen.getByRole('button', { name: 'Page 1, current' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Go to page 2' }));
+    await waitFor(() => {
+      expect(productsService.getAllProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 })
+      );
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Safety Equipment' }));
+    await waitFor(() => {
+      expect(productsService.getAllProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ category: 'Safety Equipment', page: 1 })
+      );
+    });
+  });
+
   it('should not render pagination when there is only one page', async () => {
     await renderHomePage();
 
@@ -333,181 +360,241 @@ describe('HomePage', () => {
     });
   });
 
-  it('should toggle advanced filters panel when filter icon button is clicked', async () => {
-    const user = userEvent.setup();
+  it('does not invent placeholder categories while the real ones load', async () => {
+    vi.mocked(productsService.getCategories).mockReturnValue(new Promise(() => {}));
+
     await renderHomePage();
 
     await waitFor(() => {
       expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
     });
+    expect(screen.getByRole('button', { name: 'All Products' })).toBeInTheDocument();
+    expect(screen.queryByText('Safety Gear')).not.toBeInTheDocument();
+    expect(screen.queryByText('Hydraulics')).not.toBeInTheDocument();
+  });
 
-    // Find the tune/filter button
-    const filterButton = screen
-      .getAllByRole('button')
-      .find(btn => btn.querySelector('[data-testid="TuneIcon"]'));
-    expect(filterButton).toBeDefined();
+  describe('advanced filters', () => {
+    const lastQuery = () => vi.mocked(productsService.getAllProducts).mock.lastCall?.[0];
 
-    // Click to show advanced filters
-    await user.click(filterButton!);
+    const openFilters = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: /^Open filters/ }));
+      return screen.findByRole('dialog', { name: 'Filters' });
+    };
 
-    await waitFor(() => {
-      expect(screen.getByText('Advanced Filters')).toBeInTheDocument();
-      expect(screen.getByText('Clear All')).toBeInTheDocument();
+    const renderLoaded = async () => {
+      await renderHomePage();
+      await waitFor(() => {
+        expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+      });
+    };
+
+    it('has a single filter control, which opens the panel over the results', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      // The header button used to share its job with a floating duplicate.
+      expect(screen.getAllByRole('button', { name: /filters/i })).toHaveLength(1);
+
+      const dialog = await openFilters(user);
+      expect(within(dialog).getByText('Price Range')).toBeInTheDocument();
+      expect(within(dialog).getByText('Minimum Order (MOQ)')).toBeInTheDocument();
+      expect(within(dialog).getByText('Max Lead Time')).toBeInTheDocument();
+      expect(within(dialog).getByText('Any price')).toBeInTheDocument();
+      expect(within(dialog).getByText('Availability Status')).toBeInTheDocument();
+      // Opening the panel leaves the grid where it is.
+      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+    });
+
+    it('does not narrow the catalogue merely because the panel was opened', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+      await openFilters(user);
+
+      // The old panel sent maxPrice/maxLeadTime as soon as it opened, which
+      // hid any product above either default.
+      expect(productsService.getAllProducts).toHaveBeenCalledTimes(1);
+      expect(lastQuery()).toEqual({ search: undefined, category: undefined, page: 1, limit: 12 });
+    });
+
+    it('keeps a filter applied after the panel closes and lists it above the results', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+      const dialog = await openFilters(user);
+
+      await user.click(within(dialog).getByRole('checkbox', { name: 'In Stock' }));
+      await waitFor(() => {
+        expect(lastQuery()).toEqual(expect.objectContaining({ availability: ['in_stock'] }));
+      });
+
+      await user.click(within(dialog).getByRole('button', { name: 'Close filters' }));
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+
+      // Closing the panel used to drop every advanced filter from the request.
+      expect(lastQuery()).toEqual(expect.objectContaining({ availability: ['in_stock'] }));
+      expect(screen.getByRole('button', { name: 'Open filters (1 active)' })).toBeInTheDocument();
+      const active = screen.getByRole('list', { name: 'Active filters' });
+      expect(within(active).getByText('In Stock')).toBeInTheDocument();
+      expect(screen.getByText('2 products')).toBeInTheDocument();
+    });
+
+    it('drops a single filter when its chip is removed', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+      const dialog = await openFilters(user);
+      await user.click(within(dialog).getByRole('checkbox', { name: 'Limited' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Close filters' }));
+
+      const active = await screen.findByRole('list', { name: 'Active filters' });
+      fireEvent.click(within(active).getByTestId('CancelIcon'));
+
+      await waitFor(() => {
+        expect(lastQuery()).not.toHaveProperty('availability');
+      });
+      expect(screen.queryByRole('list', { name: 'Active filters' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Open filters' })).toBeInTheDocument();
+    });
+
+    it('reports the matching count in the panel footer and closes from it', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+      const dialog = await openFilters(user);
+
+      const showResults = within(dialog).getByRole('button', { name: 'Show 2 products' });
+      await user.click(showResults);
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+    });
+
+    it('resets every advanced filter from the panel', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+      const dialog = await openFilters(user);
+
+      const clear = within(dialog).getByRole('button', { name: 'Clear' });
+      expect(clear).toBeDisabled();
+
+      await user.click(within(dialog).getByRole('checkbox', { name: 'Made to Order' }));
+      await waitFor(() => expect(clear).toBeEnabled());
+
+      await user.click(clear);
+      await waitFor(() => {
+        expect(lastQuery()).not.toHaveProperty('availability');
+      });
+      expect(within(dialog).getByRole('checkbox', { name: 'Made to Order' })).not.toBeChecked();
+    });
+
+    it('filters by one value per specification, replacing an earlier value for the same key', async () => {
+      vi.mocked(productsService.getAvailableSpecifications).mockResolvedValue({
+        color: ['red', 'blue'],
+        flashPoint: ['62C'],
+      });
+      const user = userEvent.setup();
+      await renderLoaded();
+      const dialog = await openFilters(user);
+
+      const specs = within(dialog).getByLabelText('Search specifications');
+      // The key's label is searchable, not only the values.
+      await user.type(specs, 'color');
+      await user.click(await screen.findByRole('option', { name: 'red' }));
+      await waitFor(() => {
+        expect(lastQuery()).toEqual(expect.objectContaining({ specifications: { color: 'red' } }));
+      });
+      expect(within(dialog).getByText('Color: red')).toBeInTheDocument();
+
+      await user.type(specs, 'blue');
+      await user.click(await screen.findByRole('option', { name: 'blue' }));
+      await waitFor(() => {
+        expect(lastQuery()).toEqual(expect.objectContaining({ specifications: { color: 'blue' } }));
+      });
+      expect(within(dialog).queryByText('Color: red')).not.toBeInTheDocument();
+    });
+
+    it('offers to clear search and filters when nothing matches', async () => {
+      vi.mocked(productsService.getAllProducts).mockResolvedValue({
+        products: [],
+        pagination: { total: 0, page: 1, limit: 12, totalPages: 0 },
+      });
+      const user = userEvent.setup();
+      await renderHomePage();
+      await screen.findByText('No products found');
+
+      // Nothing is set yet, so there is nothing to clear.
+      expect(screen.queryByRole('button', { name: 'Clear search and filters' })).toBeNull();
+
+      await user.type(screen.getByPlaceholderText('Search industrial parts...'), 'xyz');
+      const clearAll = await screen.findByRole('button', { name: 'Clear search and filters' });
+      await waitFor(() => {
+        expect(lastQuery()).toEqual(expect.objectContaining({ search: 'xyz' }));
+      });
+
+      await user.click(clearAll);
+      expect(screen.getByPlaceholderText('Search industrial parts...')).toHaveValue('');
+      await waitFor(() => {
+        expect(lastQuery()).toEqual(expect.objectContaining({ search: undefined }));
+      });
     });
   });
 
-  it('should render price range slider labels when advanced filters are shown', async () => {
+  it('ignores a response that arrives after a newer request was made', async () => {
+    let resolveFirst: (
+      value: Awaited<ReturnType<typeof productsService.getAllProducts>>
+    ) => void = () => {};
+    vi.mocked(productsService.getAllProducts)
+      .mockImplementationOnce(() => new Promise(resolve => (resolveFirst = resolve)))
+      .mockResolvedValueOnce({
+        products: [mockProducts[1]],
+        pagination: { total: 1, page: 1, limit: 12, totalPages: 1 },
+      });
     const user = userEvent.setup();
     await renderHomePage();
 
-    await waitFor(() => {
-      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
-    });
+    await user.click(await screen.findByRole('button', { name: 'Safety Equipment' }));
+    await screen.findByText('Safety Helmet');
 
-    const filterButton = screen
-      .getAllByRole('button')
-      .find(btn => btn.querySelector('[data-testid="TuneIcon"]'));
-    await user.click(filterButton!);
-
-    await waitFor(() => {
-      expect(screen.getByText('Price Range')).toBeInTheDocument();
+    // The unfiltered request answers last; it must not replace the newer result.
+    await act(async () => {
+      resolveFirst({
+        products: [mockProducts[0]],
+        pagination: { total: 1, page: 1, limit: 12, totalPages: 1 },
+      });
     });
+    expect(screen.getByText('Safety Helmet')).toBeInTheDocument();
+    expect(screen.queryByText('Industrial Pump')).not.toBeInTheDocument();
   });
 
-  it('should render MOQ range section when advanced filters are shown', async () => {
+  it('shows translated category labels in Portuguese and filters by the stored value', async () => {
+    vi.mocked(productsService.getCategories).mockResolvedValue(['Machinery', 'Valves']);
     const user = userEvent.setup();
-    await renderHomePage();
+    await act(async () => {
+      render(
+        <BrowserRouter>
+          <LanguageProvider initialLanguage='pt'>
+            <HomePage />
+          </LanguageProvider>
+        </BrowserRouter>
+      );
+    });
 
+    expect(await screen.findByRole('button', { name: 'Máquinas' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Todos os produtos' })).toBeInTheDocument();
+    // A category outside the seeded taxonomy is shown as stored.
+    expect(screen.getByRole('button', { name: 'Valves' })).toBeInTheDocument();
+    expect(screen.queryByText('Machinery')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Máquinas' }));
     await waitFor(() => {
-      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
+      expect(productsService.getAllProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ category: 'Machinery' })
+      );
     });
-
-    const filterButton = screen
-      .getAllByRole('button')
-      .find(btn => btn.querySelector('[data-testid="TuneIcon"]'));
-    await user.click(filterButton!);
-
-    await waitFor(() => {
-      expect(screen.getByText('Minimum Order (MOQ)')).toBeInTheDocument();
-    });
-  });
-
-  it('should render lead time section when advanced filters are shown', async () => {
-    const user = userEvent.setup();
-    await renderHomePage();
-
-    await waitFor(() => {
-      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
-    });
-
-    const filterButton = screen
-      .getAllByRole('button')
-      .find(btn => btn.querySelector('[data-testid="TuneIcon"]'));
-    await user.click(filterButton!);
-
-    await waitFor(() => {
-      expect(screen.getByText('Max Lead Time')).toBeInTheDocument();
-      expect(screen.getByText('Up to 30 days')).toBeInTheDocument();
-    });
-  });
-
-  it('should render availability checkboxes when advanced filters are shown', async () => {
-    const user = userEvent.setup();
-    await renderHomePage();
-
-    await waitFor(() => {
-      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
-    });
-
-    const filterButton = screen
-      .getAllByRole('button')
-      .find(btn => btn.querySelector('[data-testid="TuneIcon"]'));
-    await user.click(filterButton!);
-
-    await waitFor(() => {
-      expect(screen.getByText('Availability Status')).toBeInTheDocument();
-      expect(screen.getByText('In Stock')).toBeInTheDocument();
-      expect(screen.getByText('Limited')).toBeInTheDocument();
-      expect(screen.getByText('Made to Order')).toBeInTheDocument();
-    });
-  });
-
-  it('should toggle availability checkbox state', async () => {
-    const user = userEvent.setup();
-    await renderHomePage();
-
-    await waitFor(() => {
-      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
-    });
-
-    const filterButton = screen
-      .getAllByRole('button')
-      .find(btn => btn.querySelector('[data-testid="TuneIcon"]'));
-    await user.click(filterButton!);
-
-    await waitFor(() => {
-      expect(screen.getByText('In Stock')).toBeInTheDocument();
-    });
-
-    // Click the "In Stock" checkbox
-    const inStockCheckbox = screen.getByRole('checkbox', { name: /In Stock/ });
-    await user.click(inStockCheckbox);
-    expect(inStockCheckbox).toBeChecked();
-
-    // Click again to toggle off
-    await user.click(inStockCheckbox);
-    expect(inStockCheckbox).not.toBeChecked();
-  });
-
-  it('should render specs autocomplete fields when specs are available', async () => {
-    vi.mocked(productsService.getAvailableSpecifications).mockResolvedValue({
-      color: ['red', 'blue', 'green'],
-      material: ['steel', 'aluminum'],
-    });
-
-    const user = userEvent.setup();
-    await renderHomePage();
-
-    await waitFor(() => {
-      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
-    });
-
-    const filterButton = screen
-      .getAllByRole('button')
-      .find(btn => btn.querySelector('[data-testid="TuneIcon"]'));
-    await user.click(filterButton!);
-
-    await waitFor(() => {
-      expect(screen.getByText('Technical Specifications')).toBeInTheDocument();
-      expect(screen.getByLabelText('Color')).toBeInTheDocument();
-      expect(screen.getByLabelText('Material')).toBeInTheDocument();
-    });
-  });
-
-  it('should call handleClearFilters when Clear All is clicked', async () => {
-    const user = userEvent.setup();
-    await renderHomePage();
-
-    await waitFor(() => {
-      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
-    });
-
-    // Open advanced filters
-    const filterButton = screen
-      .getAllByRole('button')
-      .find(btn => btn.querySelector('[data-testid="TuneIcon"]'));
-    await user.click(filterButton!);
-
-    await waitFor(() => {
-      expect(screen.getByText('Clear All')).toBeInTheDocument();
-    });
-
-    // Click Clear All
-    await user.click(screen.getByText('Clear All'));
-
-    // Search input should be cleared
-    const searchInput = screen.getByPlaceholderText('Search industrial parts...');
-    expect(searchInput).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Máquinas' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
   });
 
   it('should navigate to cart when cart icon button is clicked', async () => {
@@ -737,48 +824,5 @@ describe('HomePage - Customer View', () => {
       await user.click(addButtons[0]);
       expect(mockAddToQuotationRequest).toHaveBeenCalled();
     }
-  });
-
-  it('should select and clear specs filter via Autocomplete', async () => {
-    vi.mocked(productsService.getAvailableSpecifications).mockResolvedValue({
-      color: ['red', 'blue', 'green'],
-    });
-
-    const user = userEvent.setup();
-    await renderHomePage();
-
-    await waitFor(() => {
-      expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
-    });
-
-    // Open advanced filters
-    const filterButton = screen
-      .getAllByRole('button')
-      .find(btn => btn.querySelector('[data-testid="TuneIcon"]'));
-    await user.click(filterButton!);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Color')).toBeInTheDocument();
-    });
-
-    // Type in the autocomplete to open the dropdown
-    const colorInput = screen.getByLabelText('Color');
-    await user.type(colorInput, 'red');
-
-    const option = await screen.findByRole('option', { name: 'red' });
-    await user.click(option);
-
-    // The active specs chip should appear
-    await waitFor(() => {
-      expect(screen.getByText('color: red')).toBeInTheDocument();
-    });
-
-    // Delete the chip via the CancelIcon (onDelete handler → removeSpecsFilter)
-    const cancelIcon = screen.getByTestId('CancelIcon');
-    fireEvent.click(cancelIcon);
-
-    await waitFor(() => {
-      expect(screen.queryByText('color: red')).not.toBeInTheDocument();
-    });
   });
 });

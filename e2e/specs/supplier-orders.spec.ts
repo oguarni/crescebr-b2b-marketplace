@@ -17,12 +17,17 @@ import { signIn } from '../fixtures/accounts';
  * `backend/seeders/20260827000000-order-lifecycle-fixtures.cjs`, one per status
  * the screen branches on.
  *
- * Unlike `LoginPage`, this page's copy is hardcoded English rather than i18n
- * (a single `t()` call in the whole file), so locating the dialog fields by
- * label is stable here. Do not copy that habit to a translated page.
+ * The page is translated, and the interface defaults to Portuguese. These
+ * specs pin English through the stored language preference before any page
+ * loads, so the labels they locate by cannot change underneath them. Prefer
+ * ids for new specs; pinning is for the ones written against labels.
  */
 
 test.describe('supplier orders', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem('crescebr_language', 'en'));
+  });
+
   test('the order timeline renders real statuses and dates', async ({ page }) => {
     await signIn(page, 'supplier');
     await page.goto('/supplier/orders');
@@ -42,10 +47,11 @@ test.describe('supplier orders', () => {
     // The seeded shipped order has createdAt != updatedAt, so the service emits
     // the opening 'pending' entry plus one for the current status.
     await expect(entries).toHaveCount(2);
-    await expect(entries.first()).toContainText('pending');
-    await expect(entries.nth(1)).toContainText('shipped');
+    await expect(entries.first()).toContainText('Pending');
+    await expect(entries.nth(1)).toContainText('Shipped');
 
-    // Read off the real `description` field, which the old cast left undefined.
+    // The entry's text is chosen by its real `status` field, which the old
+    // cast left undefined; in English it is the API's own wording.
     await expect(entries.nth(1)).toContainText('Order has been shipped');
 
     // The exact regression. `new Date(undefined).toLocaleString()` is the string

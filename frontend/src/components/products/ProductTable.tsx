@@ -16,6 +16,7 @@ import type { Product } from '@shared/types';
 import { useT } from '../../contexts/LanguageContext';
 import type { TranslationKey } from '../../locales';
 import { formatBRL } from '../../utils/currency';
+import { categoryLabel } from '../../utils/catalogLabels';
 import { ProductAvailabilityChip } from './ProductAvailabilityChip';
 import { PRODUCT_IMAGE_FALLBACK } from './ProductCardGrid';
 
@@ -81,7 +82,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ products, onEdit, on
                   </Box>
                 </Box>
               </TableCell>
-              <TableCell>{product.category}</TableCell>
+              <TableCell>{categoryLabel(t, product.category)}</TableCell>
               <TableCell>{formatBRL(product.price)}</TableCell>
               <TableCell>{product.minimumOrderQuantity}</TableCell>
               <TableCell>

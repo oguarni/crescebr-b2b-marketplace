@@ -34,6 +34,7 @@ import { productsService } from '../services/productsService';
 import toast from 'react-hot-toast';
 import { useT } from '../contexts/LanguageContext';
 import { browserLogger } from '../utils/browserLogger';
+import { categoryLabel } from '../utils/catalogLabels';
 
 interface ProductFormData {
   name: string;
@@ -262,7 +263,7 @@ const AdminProductsPage: React.FC = () => {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Chip label={product.category} size='small' />
+                        <Chip label={categoryLabel(t, product.category)} size='small' />
                       </TableCell>
                       <TableCell>
                         <Typography variant='subtitle2' color='primary'>
@@ -354,7 +355,7 @@ const AdminProductsPage: React.FC = () => {
                 >
                   {categories.map(category => (
                     <MenuItem key={category} value={category}>
-                      {category}
+                      {categoryLabel(t, category)}
                     </MenuItem>
                   ))}
                   <MenuItem value='Nova Categoria'>

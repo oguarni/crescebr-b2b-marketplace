@@ -11,7 +11,7 @@ interface ProductsResponse {
   };
 }
 
-interface ProductsQueryParams {
+export interface ProductsQueryParams {
   category?: string;
   search?: string;
   page?: number;

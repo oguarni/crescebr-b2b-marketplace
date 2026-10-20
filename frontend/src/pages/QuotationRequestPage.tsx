@@ -29,6 +29,7 @@ import { useQuotationRequest } from '../contexts/QuotationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { quotationsService } from '../services/quotationsService';
 import { getOrderStep } from '../utils/orderQuantity';
+import { categoryLabel } from '../utils/catalogLabels';
 import toast from 'react-hot-toast';
 import { useT } from '../contexts/LanguageContext';
 import { browserLogger } from '../utils/browserLogger';
@@ -228,7 +229,9 @@ const QuotationRequestPage: React.FC = () => {
                             : item.product.description}
                         </Typography>
                         <Typography variant='body2' color='text.secondary'>
-                          Categoria: {item.product.category}
+                          {t('common.categoryValue', {
+                            category: categoryLabel(t, item.product.category),
+                          })}
                         </Typography>
                         {(() => {
                           const calculation = getItemCalculation(item.productId);

@@ -78,8 +78,10 @@ describe('LoginPage', () => {
     const passwordField = screen.getByLabelText(/Senha/);
     expect(passwordField).toHaveAttribute('type', 'password');
 
-    await user.click(screen.getByLabelText('toggle password visibility'));
+    // The button names the action it performs, in the interface language.
+    await user.click(screen.getByLabelText('Mostrar senha'));
     expect(passwordField).toHaveAttribute('type', 'text');
+    expect(screen.getByLabelText('Ocultar senha')).toBeInTheDocument();
   });
 
   it('should login with CNPJ successfully', async () => {

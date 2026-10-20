@@ -61,7 +61,7 @@ describe('ProductCard', () => {
     expect(screen.getByText('Lead Time')).toBeInTheDocument();
     expect(screen.getByText('14 days')).toBeInTheDocument();
     expect(screen.getByText('In Stock')).toBeInTheDocument();
-    expect(screen.getByText('material: steel')).toBeInTheDocument();
+    expect(screen.getByText('Material: steel')).toBeInTheDocument();
   });
 
   it('calls onAddToCart with the product when the add button is clicked', async () => {

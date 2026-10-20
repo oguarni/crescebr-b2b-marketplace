@@ -18,6 +18,7 @@ import { Remove, Add, Delete, ShoppingCartCheckout, ArrowBack } from '@mui/icons
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrderStep } from '../utils/orderQuantity';
+import { categoryLabel } from '../utils/catalogLabels';
 import { useT } from '../contexts/LanguageContext';
 
 const CartPage: React.FC = () => {
@@ -112,7 +113,9 @@ const CartPage: React.FC = () => {
                             : item.product.description}
                         </Typography>
                         <Typography variant='body2' color='text.secondary'>
-                          Categoria: {item.product.category}
+                          {t('common.categoryValue', {
+                            category: categoryLabel(t, item.product.category),
+                          })}
                         </Typography>
                         <Typography variant='h6' color='primary' sx={{ mt: 1 }}>
                           {formatPrice(item.product.price)} cada

@@ -125,7 +125,7 @@ const Navbar: React.FC = () => {
             <IconButton
               color='inherit'
               onClick={() => navigate('/quotation-request')}
-              aria-label='quotation request'
+              aria-label={t('nav.quotationRequestAria')}
             >
               <Badge badgeContent={quotationItems.length} color='secondary'>
                 <RequestQuote />
@@ -134,7 +134,7 @@ const Navbar: React.FC = () => {
           </CustomerOnly>
 
           <AdminOnly>
-            <IconButton color='inherit' onClick={toggleCart} aria-label='shopping cart'>
+            <IconButton color='inherit' onClick={toggleCart} aria-label={t('nav.cartAria')}>
               <Badge badgeContent={totalItems} color='secondary'>
                 <ShoppingCart />
               </Badge>
@@ -145,7 +145,7 @@ const Navbar: React.FC = () => {
             <IconButton
               color='inherit'
               onClick={() => navigate('/quotation-request')}
-              aria-label='quotation request'
+              aria-label={t('nav.quotationRequestAria')}
             >
               <Badge badgeContent={quotationItems.length} color='secondary'>
                 <RequestQuote />
@@ -158,7 +158,7 @@ const Navbar: React.FC = () => {
             <>
               <IconButton
                 size='large'
-                aria-label='account of current user'
+                aria-label={t('nav.accountMenuAria')}
                 aria-controls='menu-appbar'
                 aria-haspopup='true'
                 onClick={handleMenu}
