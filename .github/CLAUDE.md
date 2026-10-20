@@ -22,11 +22,11 @@ Both jobs upload coverage artifacts on completion.
 ### Deploy
 
 On a push to `main`, `Deploy Hosting` publishes the Frontend job's `frontend/dist` artifact to
-Firebase Hosting after every other job passes, then runs `npm run security:grade` against the live
-site. `Deploy Gate` skips the release when the run is no longer the tip of `main`, so an older push
-that finishes last cannot overwrite a newer one. It authenticates through Workload Identity
-Federation, so no secret is stored; the one-time setup is `scripts/setup-hosting-deploy.sh`. See
-`docs/SECURITY.md` → Hosting Deployment.
+Firebase Hosting after every other job passes, and `Live Grade` then runs `npm run security:grade`
+against the live site. Only the tip of `main` is released: `Deploy Gate` skips a stale run, and the
+deploy job checks again while it holds the release lock. It authenticates through Workload Identity
+Federation, so no secret is stored, and no repository code runs in that job; the one-time setup is
+`scripts/setup-hosting-deploy.sh`. See `docs/SECURITY.md` → Hosting Deployment.
 
 ## Docker
 

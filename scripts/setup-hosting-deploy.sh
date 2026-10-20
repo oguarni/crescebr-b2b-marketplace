@@ -11,9 +11,10 @@
 # exclude every other workflow and pull requests; the event and the
 # `production` environment in `sub` exclude any other job or trigger in ci.yml.
 #
-# Needs gcloud signed in as a project owner and gh signed in as a repository
-# admin. Safe to re-run: existing resources are kept and the provider
-# condition is brought back in line with this file.
+# Needs gcloud signed in as a project owner. Safe to re-run: existing resources
+# are kept and the provider condition is brought back in line with this file.
+# It never removes a role binding, so a role dropped from this file has to be
+# removed by hand.
 set -euo pipefail
 
 PROJECT_ID=crescebr-portfolio-9048
@@ -32,6 +33,17 @@ ATTRIBUTE_MAPPING="google.subject=assertion.sub,attribute.repository_id=assertio
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
 PROVIDER_NAME="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL}/providers/${PROVIDER}"
 
+# ci.yml names the provider and the service account itself, so a mismatch here
+# would build a trust configuration that no deploy uses. Check before changing
+# anything.
+CI_WORKFLOW="$(dirname "$0")/../.github/workflows/ci.yml"
+for expected in "workload_identity_provider: ${PROVIDER_NAME}" "service_account: ${SERVICE_ACCOUNT}"; do
+  if ! grep -qF "$expected" "$CI_WORKFLOW"; then
+    echo "error: ${CI_WORKFLOW} does not contain '${expected}'" >&2
+    exit 1
+  fi
+done
+
 echo "Enabling the IAM APIs that the token exchange uses"
 gcloud services enable iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com \
   cloudresourcemanager.googleapis.com --project "$PROJECT_ID"
@@ -42,14 +54,14 @@ if ! gcloud iam service-accounts describe "$SERVICE_ACCOUNT" --project "$PROJECT
     --display-name "GitHub Actions Firebase Hosting deploy"
 fi
 
-# The two roles Firebase's own GitHub integration grants for Hosting deploys,
-# without the Auth and Cloud Run roles it adds for preview channels and
-# Cloud Run rewrites, neither of which this site uses.
-for role in roles/firebasehosting.admin roles/serviceusage.apiKeysViewer; do
-  echo "Granting $role"
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:${SERVICE_ACCOUNT}" \
-    --role "$role" --condition None >/dev/null
-done
+# A Hosting deploy checks only firebase.projects.get and
+# firebasehosting.sites.update (firebase-tools 15.34.0, lib/deploy/index.js),
+# and Firebase Hosting Admin holds both. Firebase's own GitHub integration also
+# grants API Keys Viewer, Firebase Auth Admin and Cloud Run Viewer; this deploy
+# uses none of them.
+echo "Granting roles/firebasehosting.admin"
+gcloud projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:${SERVICE_ACCOUNT}" \
+  --role roles/firebasehosting.admin --condition None >/dev/null
 
 if ! gcloud iam workload-identity-pools describe "$POOL" --project "$PROJECT_ID" --location global \
   >/dev/null 2>&1; then
@@ -77,10 +89,5 @@ gcloud iam service-accounts add-iam-policy-binding "$SERVICE_ACCOUNT" --project 
   --role roles/iam.workloadIdentityUser \
   --member "principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL}/attribute.repository_id/${REPOSITORY_ID}" \
   >/dev/null
-
-# Not a secret: it names the provider, and only a token that passes the
-# condition above can use it.
-echo "Setting GCP_WORKLOAD_IDENTITY_PROVIDER on $REPOSITORY"
-gh variable set GCP_WORKLOAD_IDENTITY_PROVIDER --repo "$REPOSITORY" --body "$PROVIDER_NAME"
 
 echo "Done. The next push to main deploys through $PROVIDER_NAME"

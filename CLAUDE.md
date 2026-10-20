@@ -278,9 +278,9 @@ they are simply not hosted.
 **Merging to `main` deploys it** (2026-10-20). Until then a merge changed nothing live: the site
 stayed on the 2026-08-27 release while main moved on, because every deploy was a manual
 `firebase deploy`. The `Deploy Hosting` job in `ci.yml` now publishes the Frontend job's build after
-every job passes, keyless through Workload Identity Federation, then checks the live grade. One-time
-setup is `scripts/setup-hosting-deploy.sh`; the trust boundary is in `docs/SECURITY.md` → Hosting
-Deployment.
+every job passes, keyless through Workload Identity Federation, and `Live Grade` checks the result.
+One-time setup is `scripts/setup-hosting-deploy.sh`; the trust boundary is in `docs/SECURITY.md` →
+Hosting Deployment.
 
 ## End-to-End Tests (Playwright, added 2026-08-07)
 

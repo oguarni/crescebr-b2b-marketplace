@@ -266,7 +266,6 @@ jobs:
             echo "::notice::main is now at $tip; the run for that commit deploys it."
           fi
 
-  # The live grade is checked against the new release instead of racing it.
   deploy:
     name: Deploy Hosting
     needs: deploy-gate
@@ -275,29 +274,34 @@ jobs:
     environment:
       name: production
       url: https://crescebr.com.br
-    # One release at a time, never cut off mid-upload. A run passes the gate
-    # minutes before any newer push can finish its checks, so runs arrive here
-    # in push order: when a newer run replaces a waiting older one, the newer
-    # commit still deploys last.
+    # One release at a time, never cut off mid-upload. A newer run waiting here
+    # replaces an older waiting one, which the tip check below makes harmless.
     concurrency:
       group: firebase-hosting-production
       cancel-in-progress: false
     # Keyless. Workload Identity Federation trades this job's OIDC token for a
     # short-lived token of a Hosting-only service account, and the provider
-    # accepts only this job's claims (scripts/setup-hosting-deploy.sh).
+    # accepts only this job's claims (scripts/setup-hosting-deploy.sh). Every
+    # step here can request that token, so no repository code runs in this job.
     permissions:
       contents: read
       id-token: write
 
     steps:
+      # The gate answered before this job waited for the lock, and re-running
+      # this job reuses that old answer. Asking again while holding the lock is
+      # what keeps an older commit from ever replacing a newer release.
+      - name: Refuse a commit that is no longer the tip of main
+        run: |
+          tip=$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)
+          if [ "$tip" != "$GITHUB_SHA" ]; then
+            echo "::error::main is at ${tip:-an unknown commit}, so deploying $GITHUB_SHA would roll the site back. Re-run the workflow run for the tip of main instead."
+            exit 1
+          fi
+
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '20'
 
       - name: Download hosting build
         uses: actions/download-artifact@v7
@@ -321,7 +325,9 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
-          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          # Not secrets: they name the trust configuration, and only a token
+          # that satisfies the provider's condition can use it.
+          workload_identity_provider: projects/218563817415/locations/global/workloadIdentityPools/github/providers/crescebr-ci
           service_account: github-hosting-deploy@crescebr-portfolio-9048.iam.gserviceaccount.com
 
       - name: Deploy to Firebase Hosting
@@ -329,6 +335,23 @@ jobs:
           "$RUNNER_TEMP/firebase" deploy --only hosting
           --project crescebr-portfolio-9048 --non-interactive
           --message "main $GITHUB_SHA"
+
+  # The live grade is checked against the new release instead of racing it, in
+  # its own job so the repository's script never runs where the credential can.
+  live-grade:
+    name: Live Grade
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
 
       - name: Require live grade A or better
         run: npm run security:grade
