@@ -55,11 +55,23 @@ The live site was independently verified on August 27, 2026:
 The repository verifies this requirement at two levels:
 
 - Pull-request and main-branch CI validates the Firebase and Nginx policies before a change can pass the `Security Grade` job.
-- The `Live Security Grade` workflow checks the deployed site after every main-branch push and once per day. It fails when MDN Observatory reports anything below A or when required live headers are missing or weakened.
+- The `Deploy Hosting` job checks the live site right after every release, and the `Live Security Grade` workflow checks it once per day. Both fail when MDN Observatory reports anything below A or when required live headers are missing or weakened.
 
 The `main` branch requires the `Security Grade` status check in strict mode before merging, and the rule applies to administrators. Do not disable or bypass this protection.
 
 A failed grade check is a security regression until investigated. Do not suppress, skip, or lower the minimum grade to make the workflow pass.
+
+## Hosting Deployment
+
+Merging to `main` deploys the site. The `Deploy Hosting` job in `ci.yml` runs on a push to `main` once the `Security Grade`, `Backend`, `Frontend`, and `End-to-End` jobs have passed. It publishes the exact `frontend/dist` that the `Frontend` job built and tested, and then runs the live grade check against the new release. If that check fails, the regression is already live: roll back from the Hosting release history in the Firebase console, then fix forward.
+
+The `Deploy Gate` job lets only the run for the current tip of `main` deploy. Otherwise an older push whose checks finished last would overwrite a newer release. A stale run ends green without deploying. If the newer push then fails its checks, nothing deploys until `main` is green again.
+
+The job holds no stored credential. Workload Identity Federation trades its GitHub OIDC token for a short-lived token of `github-hosting-deploy@crescebr-portfolio-9048.iam.gserviceaccount.com`, which holds only `roles/firebasehosting.admin` and `roles/serviceusage.apiKeysViewer`. The provider accepts a token only for this repository's ID, the workflow `ci.yml` on `refs/heads/main`, a `push` event, and a job in the `production` environment. Pinning the job is deliberate: `claude.yml` also holds `id-token: write` and runs on `main` for issue and comment events, so a repository-only condition would let it deploy.
+
+Every step in that job can request the token, so the job runs no project dependencies. The build arrives as an artifact, the third-party auth action is pinned by commit SHA, and the Firebase CLI is the standalone release binary checked against a SHA-256 in the workflow. To upgrade the CLI, change both `FIREBASE_TOOLS_VERSION` and `FIREBASE_TOOLS_SHA256` to the `firebase-tools-linux` asset of the new release.
+
+`scripts/setup-hosting-deploy.sh` creates the service account, pool, provider, and bindings, and sets the `GCP_WORKLOAD_IDENTITY_PROVIDER` repository variable. It is safe to re-run and needs `gcloud` signed in as a project owner and `gh` signed in as a repository admin. Do not replace it with a service account key or a `FIREBASE_TOKEN` secret.
 
 ## Requirements Before the Next Backend Deployment
 

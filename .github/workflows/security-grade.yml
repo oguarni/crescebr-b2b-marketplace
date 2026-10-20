@@ -1,8 +1,9 @@
 name: Live Security Grade
 
 on:
-  push:
-    branches: [main]
+  # No push trigger: a push to main changes nothing live until the Deploy
+  # Hosting job in ci.yml releases it, and that job runs this same check right
+  # after the release. Checking at push time would grade the previous release.
   schedule:
     - cron: '23 6 * * *'
   workflow_dispatch:

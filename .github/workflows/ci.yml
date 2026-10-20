@@ -117,6 +117,17 @@ jobs:
         working-directory: frontend
         run: npm test
 
+      # Deploy Hosting publishes exactly this build, so the one job that can
+      # obtain a Google credential never installs or runs project dependencies.
+      - name: Upload hosting build
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: hosting-dist
+          path: frontend/dist/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload frontend coverage
         if: always()
         uses: actions/upload-artifact@v7
@@ -226,3 +237,98 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # Merging to main publishes the site. The release waits for every job above,
+  # so a red main is never deployed.
+  #
+  # Runs finish their checks in any order, so an older push that finishes last
+  # would overwrite a newer release. Only the run for the tip of main goes on to
+  # deploy; a stale run stops here, green, and records no deployment.
+  deploy-gate:
+    name: Deploy Gate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [security-grade, backend, frontend, e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      current: ${{ steps.tip.outputs.current }}
+
+    steps:
+      - name: Check this is still the tip of main
+        id: tip
+        run: |
+          tip=$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)
+          test -n "$tip"
+          if [ "$tip" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::main is now at $tip; the run for that commit deploys it."
+          fi
+
+  # The live grade is checked against the new release instead of racing it.
+  deploy:
+    name: Deploy Hosting
+    needs: deploy-gate
+    if: needs.deploy-gate.outputs.current == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://crescebr.com.br
+    # One release at a time, never cut off mid-upload. A run passes the gate
+    # minutes before any newer push can finish its checks, so runs arrive here
+    # in push order: when a newer run replaces a waiting older one, the newer
+    # commit still deploys last.
+    concurrency:
+      group: firebase-hosting-production
+      cancel-in-progress: false
+    # Keyless. Workload Identity Federation trades this job's OIDC token for a
+    # short-lived token of a Hosting-only service account, and the provider
+    # accepts only this job's claims (scripts/setup-hosting-deploy.sh).
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Download hosting build
+        uses: actions/download-artifact@v7
+        with:
+          name: hosting-dist
+          path: frontend/dist
+
+      # The standalone CLI bundles its dependencies, so its checksum pins every
+      # line of code that runs with the deploy credential. `npx` would resolve
+      # firebase-tools' dependency ranges afresh on each run.
+      - name: Install Firebase CLI
+        env:
+          FIREBASE_TOOLS_VERSION: 15.34.0
+          FIREBASE_TOOLS_SHA256: e6e271a8050b70f92725e4349faf9a586ff12e1d4b57deb751e86211a107f644
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/firebase" \
+            "https://github.com/firebase/firebase-tools/releases/download/v${FIREBASE_TOOLS_VERSION}/firebase-tools-linux"
+          echo "${FIREBASE_TOOLS_SHA256}  $RUNNER_TEMP/firebase" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/firebase"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: github-hosting-deploy@crescebr-portfolio-9048.iam.gserviceaccount.com
+
+      - name: Deploy to Firebase Hosting
+        run: >-
+          "$RUNNER_TEMP/firebase" deploy --only hosting
+          --project crescebr-portfolio-9048 --non-interactive
+          --message "main $GITHUB_SHA"
+
+      - name: Require live grade A or better
+        run: npm run security:grade
