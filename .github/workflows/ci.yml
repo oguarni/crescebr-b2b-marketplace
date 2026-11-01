@@ -322,7 +322,7 @@ jobs:
           fi
 
       - name: Download hosting build
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: hosting-dist
           path: frontend/dist
