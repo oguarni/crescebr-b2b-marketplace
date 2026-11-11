@@ -20,16 +20,25 @@ import {
 import { handleValidationErrors } from '../middleware/handleValidationErrors';
 import { authenticateJWT } from '../middleware/auth';
 import { authRateLimit, generalRateLimit } from '../middleware/rateLimiting';
+import { requirePublicRegistration } from '../middleware/registrationGate';
 
 const router = Router();
 
 // POST /auth/register
-router.post('/register', authRateLimit, registerValidation, handleValidationErrors, register);
+router.post(
+  '/register',
+  authRateLimit,
+  requirePublicRegistration,
+  registerValidation,
+  handleValidationErrors,
+  register
+);
 
 // POST /auth/register-supplier
 router.post(
   '/register-supplier',
   authRateLimit,
+  requirePublicRegistration,
   supplierRegisterValidation,
   handleValidationErrors,
   registerSupplier

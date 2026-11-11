@@ -13,6 +13,7 @@ middleware/
 ├── auth.ts          # JWT authentication + role-specific guards + resource ownership
 ├── rbac.ts          # Permission-based access control (RBAC) engine
 ├── rateLimiting.ts  # In-memory rate limiter with predefined profiles
+├── registrationGate.ts # Closes public sign-up in production (PUBLIC_REGISTRATION=true reopens it)
 ├── validation.ts    # Input validation rules (express-validator)
 └── errorHandler.ts  # Centralized error handling + asyncHandler
 ```

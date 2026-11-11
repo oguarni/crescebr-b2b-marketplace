@@ -28,7 +28,12 @@ jest.mock('../../controllers/authController', () => {
   };
 });
 
-import { getProfile, getActiveSessions } from '../../controllers/authController';
+import {
+  getProfile,
+  getActiveSessions,
+  register,
+  registerSupplier,
+} from '../../controllers/authController';
 import { generalRateLimit } from '../../middleware/rateLimiting';
 import authRouter from '../auth';
 
@@ -80,4 +85,29 @@ describe('authenticated auth read routes', () => {
       expect(route.controller).not.toHaveBeenCalled();
     }
   );
+});
+
+describe('public registration routes', () => {
+  const originalEnv = { ...process.env };
+  const app = express();
+  app.use(express.json());
+  app.use('/auth', authRouter);
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+    jest.clearAllMocks();
+  });
+
+  it.each([
+    { path: '/register', controller: register },
+    { path: '/register-supplier', controller: registerSupplier },
+  ])('refuses $path in production before validation and the controller', async route => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.PUBLIC_REGISTRATION;
+
+    const response = await request(app).post(`/auth${route.path}`).send({}).expect(403);
+
+    expect(response.body.error).toBe('Public registration is disabled');
+    expect(route.controller).not.toHaveBeenCalled();
+  });
 });
