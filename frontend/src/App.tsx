@@ -9,7 +9,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
@@ -49,7 +48,10 @@ const App: React.FC = () => {
               <Routes>
                 {/* Public routes */}
                 <Route path='/login' element={<LoginPage />} />
-                <Route path='/register' element={<RegisterPage />} />
+                {/* Public sign-up is closed: the portfolio demo is explored through
+                    the three demo accounts on the login page. The old address
+                    still resolves, to the page that offers them. */}
+                <Route path='/register' element={<Navigate to='/login' replace />} />
 
                 {/* Protected routes with layout */}
                 <Route path='/' element={<Layout />}>

@@ -163,56 +163,13 @@ const loginWithEmail = (req: DemoRequest): DemoResponse => {
 };
 
 /**
- * Registration is accepted so the signup flow is walkable, but the account is
- * not persisted to storage as a credential: the demo has no password store, so
- * a new account could not sign in again after a refresh. It signs in
- * immediately instead, which is what a visitor is trying to see.
+ * Public sign-up is closed on the hosted demo: visitors explore it through the
+ * three seeded demo accounts. The route still answers, with the same refusal
+ * the backend gives in production, so a stray request fails loudly rather than
+ * as a 404 — and nothing is ever added to the visitor's stored demo state.
  */
-const register = (req: DemoRequest): DemoResponse => {
-  const state = getState();
-  const email = String(req.body.email ?? '').toLowerCase();
-  const cpf = String(req.body.cpf ?? '');
-  const cnpj = String(req.body.cnpj ?? '');
-
-  if (state.companies.some(c => c.email.toLowerCase() === email)) {
-    throw new DemoHttpError(409, 'A company with this email already exists');
-  }
-  if (state.companies.some(c => digits(c.cpf) === digits(cpf))) {
-    throw new DemoHttpError(409, 'A company with this CPF already exists');
-  }
-  if (state.companies.some(c => digits(c.cnpj) === digits(cnpj))) {
-    throw new DemoHttpError(409, 'A company with this CNPJ already exists');
-  }
-
-  const companyType = (req.body.companyType as Company['companyType']) || 'buyer';
-  const role: Company['role'] = companyType === 'supplier' ? 'supplier' : 'customer';
-  const company: Company = {
-    id: state.nextCompanyId++,
-    email,
-    cpf,
-    address: String(req.body.address ?? ''),
-    role,
-    status: role === 'supplier' ? 'pending' : 'approved',
-    companyName: String(req.body.companyName ?? ''),
-    corporateName: String(req.body.corporateName ?? ''),
-    cnpj,
-    cnpjValidated: false,
-    industrySector: String(req.body.industrySector ?? 'other'),
-    companyType,
-    city: req.body.city ? String(req.body.city) : undefined,
-    state: req.body.state ? String(req.body.state) : undefined,
-    zipCode: req.body.zipCode ? String(req.body.zipCode) : undefined,
-    phone: req.body.phone ? String(req.body.phone) : undefined,
-    contactPerson: req.body.contactPerson ? String(req.body.contactPerson) : undefined,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
-  state.companies.push(company);
-  DEMO_PASSWORDS[company.email] = String(req.body.password ?? '');
-  persist();
-
-  return created({ token: issueToken(company), user: publicCompany(company) });
+const registrationClosed = (): DemoResponse => {
+  throw new DemoHttpError(403, 'Public registration is disabled');
 };
 
 const me = (req: DemoRequest): DemoResponse => ok({ user: publicCompany(requireAuth(req)) });
@@ -902,7 +859,8 @@ const route = (method: string, path: string, handle: (req: DemoRequest) => DemoR
 export const ROUTES: Route[] = [
   route('POST', '/auth/login', login),
   route('POST', '/auth/login-email', loginWithEmail),
-  route('POST', '/auth/register', register),
+  route('POST', '/auth/register', registrationClosed),
+  route('POST', '/auth/register-supplier', registrationClosed),
   route('GET', '/auth/me', me),
   route('POST', '/auth/logout', () => ok(null, 'Logged out')),
 

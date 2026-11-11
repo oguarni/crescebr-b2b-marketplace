@@ -19,7 +19,7 @@ interface ViaCepResponse {
  *
  * The service throws a code rather than a display string so the message stays
  * English in code (per the English-only rule) while the UI still renders it in
- * the user's language — RegisterPage maps each code to a `register.cep.*` key.
+ * the user's language through a translated message chosen by the caller.
  */
 export type ViaCepErrorCode = 'INVALID_LENGTH' | 'NOT_FOUND' | 'TIMEOUT' | 'NETWORK' | 'UNKNOWN';
 
