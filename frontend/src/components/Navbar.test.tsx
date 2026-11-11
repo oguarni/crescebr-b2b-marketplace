@@ -116,10 +116,11 @@ describe('Navbar', () => {
     expect(screen.getByAltText('CresceBR')).toBeInTheDocument();
   });
 
-  it('shows the login and register buttons for anonymous visitors', () => {
+  it('offers sign-in, and no sign-up, to anonymous visitors', () => {
     renderNavbar();
-    expect(screen.getByText('Entrar')).toBeInTheDocument();
-    expect(screen.getByText('Cadastrar')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/login');
+    expect(screen.queryByText('Cadastrar')).not.toBeInTheDocument();
+    expect(document.querySelector('a[href="/register"]')).toBeNull();
   });
 
   it('shows the login button on mobile', () => {
@@ -165,7 +166,7 @@ describe('Navbar', () => {
 
     renderNavbar();
 
-    // Should show account icon instead of login/register buttons
+    // Should show account icon instead of the sign-in button
     expect(screen.getByLabelText('Menu da conta')).toBeInTheDocument();
     expect(screen.queryByText('Entrar')).not.toBeInTheDocument();
     expect(screen.queryByText('Cadastrar')).not.toBeInTheDocument();

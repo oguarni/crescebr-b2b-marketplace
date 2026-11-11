@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
+import { AxiosError, AxiosHeaders } from 'axios';
 import type { Product } from '@shared/types';
 import { useProducts, useProduct } from '../useProducts';
 
@@ -216,15 +217,65 @@ describe('useProduct', () => {
     expect(result.current.error).toBe('An unexpected error occurred');
   });
 
-  it('should not fetch when id is falsy', async () => {
-    const { result } = renderHook(() => useProduct(0));
+  it.each([0, -3, 1.5, Number.NaN])('reports id %s as not found without fetching', id => {
+    const { result } = renderHook(() => useProduct(id));
 
-    // Wait a tick to confirm no call was made
-    await waitFor(() => {
-      expect(productsService.getProductById).not.toHaveBeenCalled();
+    expect(productsService.getProductById).not.toHaveBeenCalled();
+    expect(result.current).toMatchObject({
+      product: null,
+      loading: false,
+      error: null,
+      notFound: true,
     });
+  });
 
-    expect(result.current.product).toBeNull();
-    expect(result.current.loading).toBe(true);
+  it('reports a 404 as not found rather than as an error', async () => {
+    vi.mocked(productsService.getProductById).mockRejectedValueOnce(
+      new AxiosError('Product not found', AxiosError.ERR_BAD_REQUEST, undefined, null, {
+        status: 404,
+        statusText: 'Not Found',
+        data: { success: false, error: 'Product not found' },
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      })
+    );
+
+    const { result } = renderHook(() => useProduct(999));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.notFound).toBe(true);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('loads the next product when the id changes and ignores a late answer', async () => {
+    let answerFirst: (product: Product) => void = () => {};
+    vi.mocked(productsService.getProductById)
+      .mockReturnValueOnce(new Promise(resolve => (answerFirst = resolve)))
+      .mockResolvedValueOnce(mockProducts[1]);
+
+    const { result, rerender } = renderHook(({ id }) => useProduct(id), {
+      initialProps: { id: 1 },
+    });
+    rerender({ id: 2 });
+
+    await waitFor(() => expect(result.current.product).toEqual(mockProducts[1]));
+    await act(async () => answerFirst(mockProducts[0]));
+
+    expect(result.current.product).toEqual(mockProducts[1]);
+  });
+
+  it('retries a failed load on refetch', async () => {
+    vi.mocked(productsService.getProductById)
+      .mockRejectedValueOnce(new Error('Network Error'))
+      .mockResolvedValueOnce(mockProducts[0]);
+
+    const { result } = renderHook(() => useProduct(1));
+    await waitFor(() => expect(result.current.error).toBe('Network Error'));
+
+    act(() => result.current.refetch());
+
+    await waitFor(() => expect(result.current.product).toEqual(mockProducts[0]));
+    expect(result.current.error).toBeNull();
+    expect(productsService.getProductById).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { startTransition, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -54,9 +54,14 @@ const Navbar: React.FC = () => {
   };
 
   const handleLogout = () => {
-    logout();
-    toast.success(t('nav.logoutSuccess'));
+    // Leave the page and end the session in one render. React Router applies
+    // the navigation as a transition; an urgent logout rendered first would
+    // show the protected page signed out, and its ProtectedRoute would redirect
+    // to /login with that page as the return path — so the next demo account
+    // was sent to the previous role's page and shown "access denied".
     navigate('/');
+    startTransition(() => logout());
+    toast.success(t('nav.logoutSuccess'));
     handleClose();
   };
 
@@ -280,22 +285,11 @@ const Navbar: React.FC = () => {
               </Menu>
             </>
           ) : (
-            /* Register stays hidden on xs so the narrow toolbar keeps a single
-               primary action; the login page hosts the one-click demo accounts,
-               the fastest path for new visitors. */
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                color='inherit'
-                component={Link}
-                to='/register'
-                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-              >
-                {t('nav.register')}
-              </Button>
-              <Button variant='contained' color='primary' component={Link} to='/login'>
-                {t('nav.login')}
-              </Button>
-            </Box>
+            /* Sign-in is the only entry point: the login page hosts the three
+               one-click demo accounts, and public sign-up is closed. */
+            <Button variant='contained' color='primary' component={Link} to='/login'>
+              {t('nav.login')}
+            </Button>
           )}
         </Box>
       </Toolbar>

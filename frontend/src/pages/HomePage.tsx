@@ -60,9 +60,6 @@ const HomePage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  // Only one product card is expanded at a time; clicking another collapses the
-  // previous one, and clicking outside collapses the open card.
-  const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
 
   // Advanced filters. Whether the panel is open has no bearing on whether they
   // apply: they used to be sent only while it was open, so closing it silently
@@ -513,13 +510,6 @@ const HomePage: React.FC = () => {
                       product={product}
                       onAddToCart={handleAddToCart}
                       showAddToCart={user?.role !== 'supplier'}
-                      expanded={expandedProductId === product.id}
-                      onToggleExpand={() =>
-                        setExpandedProductId(prev => (prev === product.id ? null : product.id))
-                      }
-                      onCollapse={() =>
-                        setExpandedProductId(prev => (prev === product.id ? null : prev))
-                      }
                     />
                   ))}
                 </Box>

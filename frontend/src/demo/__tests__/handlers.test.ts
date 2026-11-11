@@ -83,11 +83,13 @@ describe('demo API — auth', () => {
     expect(call('GET', '/auth/me', {}, 'demo.@@@').status).toBe(401);
   });
 
-  it('registers a company, signs it in, and can sign in again with it', () => {
-    const { status, body } = call<{ token: string; user: { id: number } }>(
-      'POST',
-      '/auth/register',
-      {
+  it.each(['/auth/register', '/auth/register-supplier'])(
+    'refuses public sign-up at %s and stores nothing',
+    path => {
+      const companiesBefore = getState().companies.length;
+      const stored = window.localStorage.length;
+
+      const { status, body } = call('POST', path, {
         email: 'new@fabrica.com.br',
         password: 'fabrica123',
         companyName: 'Fábrica Nova',
@@ -96,56 +98,19 @@ describe('demo API — auth', () => {
         cpf: '111.111.111-11',
         address: 'Rua Nova, 1',
         industrySector: 'machinery',
-        companyType: 'buyer',
-      }
-    );
+        companyType: 'supplier',
+      });
 
-    expect(status).toBe(201);
-    expect(call('GET', '/auth/me', {}, body.data?.token ?? null).status).toBe(200);
-    expect(signIn('new@fabrica.com.br', 'fabrica123')).toBeTruthy();
-  });
-
-  it('derives a pending supplier account from companyType', () => {
-    const { body } = call<{ user: { role: string; status: string } }>('POST', '/auth/register', {
-      email: 'supplier@fabrica.com.br',
-      password: 'fabrica123',
-      companyName: 'Fábrica Fornecedora',
-      corporateName: 'Fábrica Fornecedora LTDA',
-      cnpj: '12.345.678/0002-70',
-      cpf: '222.222.222-22',
-      address: 'Rua Nova, 2',
-      industrySector: 'machinery',
-      companyType: 'supplier',
-    });
-
-    expect(body.data?.user).toMatchObject({ role: 'supplier', status: 'pending' });
-  });
-
-  it('refuses to register an email that already exists', () => {
-    const { status } = call('POST', '/auth/register', {
-      email: 'buyer@example.com',
-      password: 'x',
-    });
-
-    expect(status).toBe(409);
-  });
-
-  it('refuses duplicate CPF and CNPJ values even when formatting differs', () => {
-    expect(
-      call('POST', '/auth/register', {
-        email: 'unique-cpf@example.com',
-        cpf: '55566677788',
-        cnpj: '12.345.678/0001-90',
-      }).status
-    ).toBe(409);
-    expect(
-      call('POST', '/auth/register', {
-        email: 'unique-cnpj@example.com',
-        cpf: '222.222.222-22',
-        cnpj: '33333333000133',
-      }).status
-    ).toBe(409);
-  });
+      expect(status).toBe(403);
+      expect(body).toEqual({ success: false, error: 'Public registration is disabled' });
+      expect(getState().companies).toHaveLength(companiesBefore);
+      expect(window.localStorage.length).toBe(stored);
+      expect(
+        call('POST', '/auth/login-email', { email: 'new@fabrica.com.br', password: 'fabrica123' })
+          .status
+      ).toBe(401);
+    }
+  );
 });
 
 describe('demo API — products', () => {

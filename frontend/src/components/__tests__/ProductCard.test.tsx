@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import ProductCard from '../ProductCard';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import ProductCard, { PREVIEW_DELAY_MS } from '../ProductCard';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import { Product } from '@shared/types';
 
@@ -21,14 +22,28 @@ const mockProduct: Product = {
   tierPricing: [],
 };
 
+const LocationProbe = () => <div data-testid='location'>{useLocation().pathname}</div>;
+
 const renderCard = (onAddToCart = vi.fn()) => {
   render(
     <LanguageProvider initialLanguage='en'>
-      <ProductCard product={mockProduct} onAddToCart={onAddToCart} />
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route
+            path='/'
+            element={<ProductCard product={mockProduct} onAddToCart={onAddToCart} />}
+          />
+          <Route path='*' element={null} />
+        </Routes>
+        <LocationProbe />
+      </MemoryRouter>
     </LanguageProvider>
   );
   return { onAddToCart };
 };
+
+const detailsLink = () => screen.getByRole('link', { name: /^Industrial Pump — View details/ });
+const previewText = () => screen.queryByText('High-performance industrial water pump');
 
 describe('ProductCard', () => {
   it('renders the name, category, SKU and formatted price', () => {
@@ -40,40 +55,154 @@ describe('ProductCard', () => {
     expect(screen.getByText(/1\.500,00/)).toBeInTheDocument();
   });
 
-  it('keeps detailed information hidden until the card is clicked', () => {
+  it('links to the product details page by product id', () => {
     renderCard();
 
-    // Collapse uses unmountOnExit, so details are absent before expanding.
-    expect(screen.queryByText('High-performance industrial water pump')).not.toBeInTheDocument();
+    expect(detailsLink()).toHaveAttribute('href', '/products/42');
+  });
+
+  it('navigates to the details page when the card is clicked', async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.click(detailsLink());
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/products/42');
+  });
+
+  it('opens the details page from the keyboard', async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.tab();
+    expect(detailsLink()).toHaveFocus();
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/products/42');
+  });
+
+  it('keeps the preview hidden until a mouse pointer rests on the card', () => {
+    renderCard();
+
+    expect(previewText()).not.toBeInTheDocument();
     expect(screen.queryByText('Lead Time')).not.toBeInTheDocument();
   });
 
-  it('reveals description, lead time, availability and specs when clicked', async () => {
+  it('shows a preview with description, MOQ, lead time and availability on hover', async () => {
     const user = userEvent.setup();
     renderCard();
 
-    // The accessible name is "<product> — View details"; anchoring distinguishes
-    // the expand trigger from the "Add to quote — <product>" icon button.
-    const trigger = screen.getByRole('button', { name: /^Industrial Pump/i });
-    await user.click(trigger);
+    await user.hover(detailsLink());
 
     expect(await screen.findByText('High-performance industrial water pump')).toBeInTheDocument();
-    expect(screen.getByText('Lead Time')).toBeInTheDocument();
+    expect(screen.getByText('Minimum Order (MOQ)')).toBeInTheDocument();
+    expect(screen.getByText('5 units')).toBeInTheDocument();
     expect(screen.getByText('14 days')).toBeInTheDocument();
     expect(screen.getByText('In Stock')).toBeInTheDocument();
-    expect(screen.getByText('Material: steel')).toBeInTheDocument();
+    // Hovering is not a click: the visitor stays on the catalog.
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
   });
 
-  it('calls onAddToCart with the product when the add button is clicked', async () => {
+  it('dismisses the preview when the pointer leaves the card', async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.hover(detailsLink());
+    expect(await screen.findByText('High-performance industrial water pump')).toBeInTheDocument();
+
+    await user.unhover(detailsLink());
+
+    await waitFor(() => expect(previewText()).not.toBeInTheDocument());
+  });
+
+  describe('with a controlled clock', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // jsdom has no PointerEvent, so fireEvent cannot set pointerType; React
+    // derives enter/leave from pointerover/pointerout and reads pointerType
+    // off the native event.
+    const point = (type: 'pointerover' | 'pointerout', pointerType: string) => {
+      const event = new MouseEvent(type, { bubbles: true });
+      Object.defineProperty(event, 'pointerType', { value: pointerType });
+      act(() => {
+        detailsLink().dispatchEvent(event);
+      });
+    };
+    const advance = (ms: number) =>
+      act(() => {
+        vi.advanceTimersByTime(ms);
+      });
+
+    it('opens the preview only after the pointer has rested for the delay', () => {
+      renderCard();
+
+      point('pointerover', 'mouse');
+      advance(PREVIEW_DELAY_MS - 1);
+      expect(previewText()).not.toBeInTheDocument();
+
+      advance(1);
+      expect(previewText()).toBeInTheDocument();
+    });
+
+    it('does not open a preview for a pointer that only sweeps across the card', () => {
+      renderCard();
+
+      point('pointerover', 'mouse');
+      advance(100);
+      point('pointerout', 'mouse');
+      advance(1000);
+
+      expect(previewText()).not.toBeInTheDocument();
+    });
+
+    it('never opens a hover preview for touch input', () => {
+      renderCard();
+
+      point('pointerover', 'touch');
+      advance(1000);
+
+      expect(previewText()).not.toBeInTheDocument();
+    });
+  });
+
+  it('closes the preview on Escape while focus is elsewhere on the page', async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.hover(detailsLink());
+    expect(await screen.findByText('High-performance industrial water pump')).toBeInTheDocument();
+
+    // A hovering mouse leaves focus on the page body, not on the card.
+    expect(document.activeElement).toBe(document.body);
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    await waitFor(() => expect(previewText()).not.toBeInTheDocument());
+  });
+
+  it('adds to the quote without navigating away', async () => {
     const user = userEvent.setup();
     const { onAddToCart } = renderCard();
 
-    const addButton = screen
-      .getAllByRole('button')
-      .find(btn => btn.querySelector('[data-testid="AddShoppingCartIcon"]'));
-    expect(addButton).toBeDefined();
+    await user.click(screen.getByRole('button', { name: 'Add to quote — Industrial Pump' }));
 
-    await user.click(addButton!);
     expect(onAddToCart).toHaveBeenCalledWith(mockProduct);
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
+  });
+
+  it('hides the add-to-quote action when showAddToCart is false', () => {
+    render(
+      <LanguageProvider initialLanguage='en'>
+        <MemoryRouter>
+          <ProductCard product={mockProduct} onAddToCart={vi.fn()} showAddToCart={false} />
+        </MemoryRouter>
+      </LanguageProvider>
+    );
+
+    expect(screen.queryByRole('button', { name: /Add to quote/ })).not.toBeInTheDocument();
   });
 });
