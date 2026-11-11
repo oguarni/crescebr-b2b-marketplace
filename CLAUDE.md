@@ -132,6 +132,12 @@ These are seeded into the local development database by `backend/seeders/`, and 
 not secrets — the hosted build has no backend to authenticate against. Change them in the seeder and
 run `npm run demo:data`; never treat them as credentials for anything real.
 
+**Sign-in is demo-only and public sign-up is closed (2026-11-11).** The three cards are the only
+sign-in the interface offers, and `/register` redirects to `/login`. The demo adapter answers
+`POST /auth/register` and `/auth/register-supplier` with 403. The backend refuses them under
+`NODE_ENV=production` unless `PUBLIC_REGISTRATION=true` (`middleware/registrationGate.ts`).
+Development and test keep them open for local work, jest and Playwright.
+
 ## Conventions
 
 ### Git
@@ -301,15 +307,22 @@ Conventions that are load-bearing:
 - **`API_PREFIX` is `/api/v1`, not `/api`** (`backend/src/server.ts:15`). A health probe pointed at
   `/api/health` fails as a bare 120s `webServer` timeout that says nothing about the URL.
 - **Locate by `id`, never by label.** Every form label on this app comes from i18n, so a
-  `getByLabel(/email/i)` locator breaks the moment the interface language changes. `LoginPage` also
-  opens on the **CNPJ tab** — `#email` is not rendered until the Email tab is selected, which is why
-  `openEmailTab()` exists.
+  `getByLabel(/email/i)` locator breaks the moment the interface language changes. `LoginPage` has
+  no credential form (2026-11-11): `signIn()` clicks `#demo-login-<role>`, and a check on a wrong
+  password goes straight to the API.
 - **`ProtectedRoute` does not redirect on a role mismatch.** It redirects only when there is no
   session; a signed-in user with the wrong role keeps the URL and gets an MUI `<Alert>`. Asserting a
   URL change there asserts the opposite of the design — assert `getByRole('alert')`.
 - **Seed credentials are fixtures, not secrets** — the same values are committed in
-  `backend/seeders/`. They stay overridable via `E2E_*` env vars so a differently seeded CI database
-  does not require editing specs.
+  `backend/seeders/`. The `E2E_*` env vars override them for the API-level specs only. The sign-in
+  cards submit the credentials compiled into `LoginPage`, so a differently seeded database must keep
+  the three demo accounts.
+- **The suite shares one product-request budget.** Every `/products*` route, `/products/:id`
+  included, is behind `searchRateLimit`: 200 requests per 15 minutes per IP, in every `NODE_ENV`,
+  with no override. The run comes from a single IP, and a dev-server catalog load costs several
+  requests, because StrictMode doubles effects and 304s still count. The full suite used 126 on
+  2026-11-11. Consolidate catalog loads in new specs, and never point a second browser at the same
+  backend during a run. Running out shows up as an empty catalog ("Erro ao carregar produtos").
 - **globalSetup probes TCP ports, not the API.** Playwright has changed the ordering of `webServer`
   against `globalSetup` between releases, so a hook that asks the backend whether it is up reports
   the wrong thing on half of them.
