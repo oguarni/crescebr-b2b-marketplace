@@ -26,6 +26,7 @@ const TITLE_KEY_BY_PREFIX: [string, TranslationKey][] = [
   ['/quotations', 'pageTitle.quotationDetail'],
   ['/checkout', 'pageTitle.checkout'],
   ['/cart', 'pageTitle.cart'],
+  ['/products/', 'pageTitle.productDetail'],
 ];
 
 const BASE_TITLE = 'CresceBR - B2B Marketplace';

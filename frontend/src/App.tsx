@@ -10,6 +10,7 @@ import Layout from './components/Layout';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const QuotationRequestPage = lazy(() => import('./pages/QuotationRequestPage'));
@@ -56,6 +57,7 @@ const App: React.FC = () => {
                 {/* Protected routes with layout */}
                 <Route path='/' element={<Layout />}>
                   <Route index element={<HomePage />} />
+                  <Route path='products/:id' element={<ProductDetailPage />} />
 
                   {/* Customer routes */}
                   <Route path='cart' element={<CartPage />} />

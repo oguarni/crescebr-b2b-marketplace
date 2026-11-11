@@ -1,22 +1,28 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Card,
   CardActionArea,
   CardContent,
   CardMedia,
-  Chip,
-  ClickAwayListener,
+  Fade,
   IconButton,
   Typography,
 } from '@mui/material';
-import { AddShoppingCart, ExpandMore, StorefrontOutlined } from '@mui/icons-material';
+import { AddShoppingCart, StorefrontOutlined } from '@mui/icons-material';
 
 import { Product } from '@shared/types';
 import { useT } from '../contexts/LanguageContext';
 import { formatBRL } from '../utils/currency';
 import { optimizeImageUrl } from '../utils/imageUrl';
-import { categoryLabel, formatSpecLabel } from '../utils/catalogLabels';
+import { categoryLabel } from '../utils/catalogLabels';
+import {
+  PRODUCT_PLACEHOLDER_IMAGE,
+  availabilityLabel,
+  showPlaceholderOnError,
+  supplierDisplayName,
+} from '../utils/productDisplay';
 
 interface ProductCardProps {
   product: Product;
@@ -27,383 +33,349 @@ interface ProductCardProps {
    * but cannot purchase, so the action is hidden for them. Defaults to true.
    */
   showAddToCart?: boolean;
-  /**
-   * Controlled expand state. When provided together with `onToggleExpand`, the
-   * parent owns the state so that only one card is expanded at a time. When the
-   * props are omitted, the card falls back to managing its own expand state.
-   */
-  expanded?: boolean;
-  onToggleExpand?: () => void;
-  onCollapse?: () => void;
 }
 
-// Self-contained inline SVG placeholder so missing images never depend on an
-// external service (a remote placeholder host can fail and break the grid).
-const PLACEHOLDER_IMAGE =
-  'data:image/svg+xml,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="225" viewBox="0 0 300 225">' +
-      '<rect width="300" height="225" fill="#f1f5f9"/>' +
-      '<g fill="none" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">' +
-      '<rect x="105" y="78" width="90" height="70" rx="8"/>' +
-      '<circle cx="128" cy="100" r="9"/>' +
-      '<path d="M108 140l26-24 20 18 22-26 24 32"/>' +
-      '</g></svg>'
-  );
+/**
+ * How long the pointer must rest on a card before its preview opens. Sweeping
+ * the pointer across the grid crosses several cards; without a delay each one
+ * would flash its preview on the way.
+ */
+export const PREVIEW_DELAY_MS = 250;
 
 /**
- * A single product card for the catalog grid. The image and title act as an
- * expand trigger that reveals detailed product information. When expanded, the
- * details are rendered as an overlay that drops below the card and covers the
- * card beneath it (without shifting the rest of the grid). Clicking outside the
- * card collapses it again.
+ * A single product card for the catalog grid. The image and title are a link to
+ * the product's details page. Resting a mouse pointer on the card fades in a
+ * preview over the image — description, minimum order, lead time and
+ * availability — without resizing the card or covering its neighbours. Touch
+ * pointers have no hover, so a tap goes straight to the details page, and
+ * keyboard users reach the same page through the focusable link.
  */
 const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onAddToCart,
   showAddToCart = true,
-  expanded: controlledExpanded,
-  onToggleExpand,
-  onCollapse,
 }) => {
   const t = useT();
-  const [internalExpanded, setInternalExpanded] = useState(false);
-  const isControlled = controlledExpanded !== undefined;
-  const expanded = isControlled ? controlledExpanded : internalExpanded;
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const openTimer = useRef<number | undefined>(undefined);
 
-  const detailsId = `product-details-${product.id}`;
+  useEffect(() => () => window.clearTimeout(openTimer.current), []);
+
   // `stockQuantity` is a runtime-only field not present on the Product type.
   const hasStock = ((product as { stockQuantity?: number }).stockQuantity ?? 0) > 0;
-  const specEntries = Object.entries(product.specifications ?? {});
+  const detailsPath = `/products/${product.id}`;
 
-  // Human-readable label for every availability state defined in the Product type.
-  const availabilityLabels: Record<Product['availability'], string> = {
-    in_stock: t('home.inStockOption'),
-    out_of_stock: t('home.outOfStockOption'),
-    limited: t('home.limitedOption'),
-    custom_order: t('home.madeToOrderOption'),
+  const handlePointerEnter = (event: React.PointerEvent) => {
+    if (event.pointerType !== 'mouse') return;
+    window.clearTimeout(openTimer.current);
+    openTimer.current = window.setTimeout(() => setPreviewOpen(true), PREVIEW_DELAY_MS);
   };
 
-  const toggleExpanded = () => {
-    if (onToggleExpand) onToggleExpand();
-    if (!isControlled) setInternalExpanded(prev => !prev);
+  const closePreview = () => {
+    window.clearTimeout(openTimer.current);
+    setPreviewOpen(false);
   };
 
-  const collapse = () => {
-    if (onCollapse) onCollapse();
-    if (!isControlled) setInternalExpanded(false);
-  };
-
-  const handleClickAway = () => {
-    if (expanded) collapse();
-  };
+  // Hover content must be dismissible without moving the pointer (WCAG 1.4.13).
+  // A hovering mouse rarely holds focus on the card, so Escape is heard on the
+  // whole document while a preview is open, not only inside the card.
+  useEffect(() => {
+    if (!previewOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [previewOpen]);
 
   return (
-    <ClickAwayListener onClickAway={handleClickAway}>
-      <Box sx={{ position: 'relative', height: '100%', zIndex: expanded ? 5 : 'auto' }}>
-        <Card
-          variant='outlined'
+    <Card
+      variant='outlined'
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={closePreview}
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: 3,
+        overflow: 'hidden',
+        transition: 'box-shadow 0.2s',
+        '&:hover': { boxShadow: 3 },
+      }}
+    >
+      <CardActionArea
+        component={RouterLink}
+        to={detailsPath}
+        aria-label={`${product.name} — ${t('home.viewDetails')}`}
+        sx={{
+          display: 'block',
+          // The default focus highlight is a faint tint; an outline makes the
+          // focused card unmistakable for keyboard users.
+          '&.Mui-focusVisible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: '-2px',
+          },
+        }}
+      >
+        <Box
           sx={{
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            borderRadius: 3,
-            // Square the bottom corners while expanded so the details overlay
-            // reads as a seamless continuation of the card.
-            borderBottomLeftRadius: expanded ? 0 : undefined,
-            borderBottomRightRadius: expanded ? 0 : undefined,
+            position: 'relative',
+            width: '100%',
+            paddingTop: '75%',
+            bgcolor: 'grey.100',
             overflow: 'hidden',
-            transition: 'box-shadow 0.2s',
-            boxShadow: expanded ? 6 : undefined,
-            '&:hover': { boxShadow: 3 },
           }}
         >
-          <CardActionArea
-            onClick={toggleExpanded}
-            aria-expanded={expanded}
-            aria-controls={detailsId}
-            aria-label={`${product.name} — ${expanded ? t('home.hideDetails') : t('home.viewDetails')}`}
-            sx={{ display: 'block' }}
-          >
-            <Box
-              sx={{
-                position: 'relative',
-                width: '100%',
-                paddingTop: '75%',
-                bgcolor: 'grey.100',
-                overflow: 'hidden',
-              }}
-            >
-              <CardMedia
-                component='img'
-                image={optimizeImageUrl(product.imageUrl) || PLACEHOLDER_IMAGE}
-                alt={product.name}
-                loading='lazy'
-                onError={event => {
-                  // Fall back to the inline placeholder if the remote image fails.
-                  const img = event.currentTarget as HTMLImageElement;
-                  if (img.src !== PLACEHOLDER_IMAGE) {
-                    img.src = PLACEHOLDER_IMAGE;
-                  }
-                }}
-                sx={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                }}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 8,
-                  bgcolor: 'rgba(255,255,255,0.9)',
-                  backdropFilter: 'blur(4px)',
-                  px: 1,
-                  py: 0.5,
-                  borderRadius: 1,
-                  fontSize: '0.625rem',
-                  fontFamily: 'monospace',
-                  fontWeight: 700,
-                  color: 'text.secondary',
-                  border: 1,
-                  borderColor: 'divider',
-                }}
-              >
-                SKU-{product.id}
-              </Box>
-              {hasStock && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bgcolor: 'success.main',
-                    color: 'success.contrastText',
-                    px: 1,
-                    py: 0.5,
-                    borderBottomRightRadius: 4,
-                    fontSize: '0.625rem',
-                    fontWeight: 700,
-                  }}
-                >
-                  {t('home.inStockBadge')}
-                </Box>
-              )}
-            </Box>
-
-            <CardContent sx={{ p: { xs: 1.25, sm: 2 }, pb: { xs: 1, sm: 1.5 } }}>
-              <Typography
-                variant='caption'
-                noWrap
-                sx={{
-                  display: 'block',
-                  fontWeight: 700,
-                  color: 'primary.main',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  fontSize: '0.625rem',
-                }}
-              >
-                {product.category ? categoryLabel(t, product.category) : t('home.uncategorized')}
-              </Typography>
-
-              <Typography
-                variant='subtitle2'
-                sx={{
-                  fontWeight: 600,
-                  color: 'text.primary',
-                  lineHeight: 1.2,
-                  mt: 0.5,
-                  mb: 1,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  // Model codes like "XYZ-500" are unbreakable words wider than
-                  // a narrow column, and the card clips its overflow — without
-                  // this they are cut mid-word instead of wrapping.
-                  overflowWrap: 'anywhere',
-                  minHeight: '2.4em',
-                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-                }}
-              >
-                {product.name}
-              </Typography>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <StorefrontOutlined sx={{ fontSize: 14, color: 'text.secondary' }} />
-                <Typography
-                  variant='caption'
-                  color='text.secondary'
-                  noWrap
-                  sx={{ flex: 1, minWidth: 0 }}
-                >
-                  {product.supplier?.companyName ||
-                    product.supplier?.corporateName ||
-                    (product.supplierId
-                      ? t('home.supplierId', { id: product.supplierId })
-                      : t('home.fallbackSupplier'))}
-                </Typography>
-                <ExpandMore
-                  sx={{
-                    fontSize: 18,
-                    color: 'text.secondary',
-                    transition: 'transform 0.2s',
-                    transform: expanded ? 'rotate(180deg)' : 'none',
-                  }}
-                />
-              </Box>
-            </CardContent>
-          </CardActionArea>
-
-          {/* Footer: price and add-to-cart stay visible regardless of expand state. */}
-          <Box
-            sx={{
-              mt: 'auto',
-              px: { xs: 1.25, sm: 2 },
-              py: 1.25,
-              borderTop: 1,
-              borderColor: 'divider',
-              display: 'flex',
-              alignItems: 'center',
-              // A price is never worth truncating: where the column is too
-              // narrow to hold the amount and the action side by side, the
-              // action drops to its own line instead of eliding "R$ 15.000,00".
-              flexWrap: 'wrap',
-              columnGap: 1,
-              rowGap: 0.75,
-            }}
-          >
-            <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: '1 1 auto' }}>
-              <Typography variant='caption' sx={{ fontSize: '0.625rem', color: 'text.secondary' }}>
-                {t('home.unitPrice')}
-              </Typography>
-              <Typography
-                variant='subtitle1'
-                noWrap
-                sx={{
-                  fontFamily: 'monospace',
-                  fontWeight: 700,
-                  color: 'text.primary',
-                  lineHeight: 1,
-                  fontSize: { xs: '0.8125rem', sm: '1rem' },
-                }}
-              >
-                {formatBRL(product.price)}
-              </Typography>
-            </Box>
-            {showAddToCart && (
-              <IconButton
-                onClick={event => {
-                  // Keep the cart action independent from the expand trigger.
-                  event.stopPropagation();
-                  onAddToCart(product);
-                }}
-                aria-label={`${t('home.addToQuote')} — ${product.name}`}
-                color='primary'
-                sx={{
-                  flexShrink: 0,
-                  ml: 'auto',
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
-                  borderRadius: 2,
-                  p: { xs: 0.75, sm: 1 },
-                  boxShadow: 1,
-                  '&:hover': { bgcolor: 'primary.dark' },
-                }}
-              >
-                <AddShoppingCart fontSize='small' />
-              </IconButton>
-            )}
-          </Box>
-        </Card>
-
-        {/* Expandable details: rendered as an overlay anchored to the bottom of
-            the card so it covers the card below without resizing the grid. Only
-            the clicked card shows this; clicking away collapses it. */}
-        {expanded && (
-          <Box
-            id={detailsId}
+          <CardMedia
+            component='img'
+            image={optimizeImageUrl(product.imageUrl) || PRODUCT_PLACEHOLDER_IMAGE}
+            alt={product.name}
+            loading='lazy'
+            onError={showPlaceholderOnError}
             sx={{
               position: 'absolute',
-              top: '100%',
+              top: 0,
               left: 0,
-              right: 0,
-              zIndex: 5,
-              bgcolor: 'background.paper',
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              bgcolor: 'rgba(255,255,255,0.9)',
+              backdropFilter: 'blur(4px)',
+              px: 1,
+              py: 0.5,
+              borderRadius: 1,
+              fontSize: '0.625rem',
+              fontFamily: 'monospace',
+              fontWeight: 700,
+              color: 'text.secondary',
               border: 1,
-              borderTop: 0,
               borderColor: 'divider',
-              borderBottomLeftRadius: 12,
-              borderBottomRightRadius: 12,
-              boxShadow: 6,
-              px: { xs: 1.25, sm: 2 },
-              pt: 1.5,
-              pb: 2,
             }}
           >
-            <Typography variant='caption' sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>
-              {t('home.descriptionLabel')}
-            </Typography>
-            <Typography variant='body2' color='text.secondary' sx={{ mb: 1.5 }}>
-              {product.description?.trim() ? product.description : t('home.noDescription')}
-            </Typography>
+            SKU-{product.id}
+          </Box>
+          {hasStock && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                bgcolor: 'success.main',
+                color: 'success.contrastText',
+                px: 1,
+                py: 0.5,
+                borderBottomRightRadius: 4,
+                fontSize: '0.625rem',
+                fontWeight: 700,
+              }}
+            >
+              {t('home.inStockBadge')}
+            </Box>
+          )}
 
-            <DetailRow
-              label={t('home.moq')}
-              value={`${product.minimumOrderQuantity ?? '—'} ${t('home.units')}`}
-            />
-            <DetailRow
-              label={t('home.leadTimeLabel')}
-              value={`${product.leadTime ?? '—'} ${t('home.days')}`}
-            />
-            <DetailRow
-              label={t('home.availabilityLabel')}
-              value={availabilityLabels[product.availability] ?? product.availability ?? '—'}
-            />
+          {/* The preview covers the image area only, so it never shifts the
+              grid or overlaps another card. It repeats what the details page
+              shows in full, so it is hidden from assistive technology, which
+              reaches that page through the link's accessible name instead. */}
+          <Fade in={previewOpen} timeout={150} unmountOnExit>
+            <Box
+              data-testid={`product-preview-${product.id}`}
+              aria-hidden
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                // Never a hit-test target: the pointer stays on the image and
+                // link beneath, so clicks still navigate, and showing or
+                // removing the overlay cannot make the browser report a fresh
+                // pointer entry that would reopen a dismissed preview.
+                pointerEvents: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.75,
+                p: { xs: 1.25, sm: 1.5 },
+                bgcolor: 'rgba(255,255,255,0.97)',
+                backdropFilter: 'blur(2px)',
+                textAlign: 'left',
+              }}
+            >
+              <Typography
+                variant='body2'
+                color='text.secondary'
+                sx={{
+                  // Narrow cards give the preview little height; the text
+                  // yields space to the facts below rather than pushing
+                  // them out of view.
+                  flex: '0 1 auto',
+                  minHeight: 0,
+                  fontSize: '0.75rem',
+                  lineHeight: 1.35,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 4,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {product.description?.trim() ? product.description : t('home.noDescription')}
+              </Typography>
 
-            {specEntries.length > 0 && (
-              <>
+              <Box sx={{ mt: 'auto' }}>
+                <PreviewRow
+                  label={t('home.moq')}
+                  value={`${product.minimumOrderQuantity ?? '—'} ${t('home.units')}`}
+                />
+                <PreviewRow
+                  label={t('home.leadTimeLabel')}
+                  value={`${product.leadTime ?? '—'} ${t('home.days')}`}
+                />
+                <PreviewRow
+                  label={t('home.availabilityLabel')}
+                  value={availabilityLabel(t, product.availability)}
+                />
                 <Typography
                   variant='caption'
-                  sx={{ fontWeight: 700, display: 'block', mt: 1.5, mb: 0.5 }}
+                  sx={{ display: 'block', mt: 0.5, fontWeight: 700, color: 'primary.main' }}
                 >
-                  {t('home.technicalSpecs')}
+                  {t('home.previewHint')}
                 </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {specEntries.map(([key, value]) => (
-                    <Chip
-                      key={key}
-                      size='small'
-                      variant='outlined'
-                      label={`${formatSpecLabel(key)}: ${String(value)}`}
-                    />
-                  ))}
-                </Box>
-              </>
-            )}
+              </Box>
+            </Box>
+          </Fade>
+        </Box>
+
+        <CardContent sx={{ p: { xs: 1.25, sm: 2 }, pb: { xs: 1, sm: 1.5 } }}>
+          <Typography
+            variant='caption'
+            noWrap
+            sx={{
+              display: 'block',
+              fontWeight: 700,
+              color: 'primary.main',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              fontSize: '0.625rem',
+            }}
+          >
+            {product.category ? categoryLabel(t, product.category) : t('home.uncategorized')}
+          </Typography>
+
+          <Typography
+            variant='subtitle2'
+            sx={{
+              fontWeight: 600,
+              color: 'text.primary',
+              lineHeight: 1.2,
+              mt: 0.5,
+              mb: 1,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              // Model codes like "XYZ-500" are unbreakable words wider than
+              // a narrow column, and the card clips its overflow — without
+              // this they are cut mid-word instead of wrapping.
+              overflowWrap: 'anywhere',
+              minHeight: '2.4em',
+              fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+            }}
+          >
+            {product.name}
+          </Typography>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <StorefrontOutlined sx={{ fontSize: 14, color: 'text.secondary' }} />
+            <Typography
+              variant='caption'
+              color='text.secondary'
+              noWrap
+              sx={{ flex: 1, minWidth: 0 }}
+            >
+              {supplierDisplayName(t, product) ?? t('home.fallbackSupplier')}
+            </Typography>
           </Box>
+        </CardContent>
+      </CardActionArea>
+
+      {/* Footer: price and add-to-cart sit outside the link, so the action
+          never navigates. */}
+      <Box
+        sx={{
+          mt: 'auto',
+          px: { xs: 1.25, sm: 2 },
+          py: 1.25,
+          borderTop: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          alignItems: 'center',
+          // A price is never worth truncating: where the column is too
+          // narrow to hold the amount and the action side by side, the
+          // action drops to its own line instead of eliding "R$ 15.000,00".
+          flexWrap: 'wrap',
+          columnGap: 1,
+          rowGap: 0.75,
+        }}
+      >
+        <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: '1 1 auto' }}>
+          <Typography variant='caption' sx={{ fontSize: '0.625rem', color: 'text.secondary' }}>
+            {t('home.unitPrice')}
+          </Typography>
+          <Typography
+            variant='subtitle1'
+            noWrap
+            sx={{
+              fontFamily: 'monospace',
+              fontWeight: 700,
+              color: 'text.primary',
+              lineHeight: 1,
+              fontSize: { xs: '0.8125rem', sm: '1rem' },
+            }}
+          >
+            {formatBRL(product.price)}
+          </Typography>
+        </Box>
+        {showAddToCart && (
+          <IconButton
+            onClick={() => onAddToCart(product)}
+            aria-label={`${t('home.addToQuote')} — ${product.name}`}
+            color='primary'
+            sx={{
+              flexShrink: 0,
+              ml: 'auto',
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              borderRadius: 2,
+              p: { xs: 0.75, sm: 1 },
+              boxShadow: 1,
+              '&:hover': { bgcolor: 'primary.dark' },
+            }}
+          >
+            <AddShoppingCart fontSize='small' />
+          </IconButton>
         )}
       </Box>
-    </ClickAwayListener>
+    </Card>
   );
 };
 
-interface DetailRowProps {
+interface PreviewRowProps {
   label: string;
   value: string;
 }
 
-const DetailRow: React.FC<DetailRowProps> = ({ label, value }) => (
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, py: 0.25 }}>
-    <Typography variant='caption' color='text.secondary'>
+const PreviewRow: React.FC<PreviewRowProps> = ({ label, value }) => (
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, py: 0.125 }}>
+    <Typography variant='caption' color='text.secondary' noWrap sx={{ minWidth: 0 }}>
       {label}
     </Typography>
-    <Typography variant='caption' sx={{ fontWeight: 600, textAlign: 'right' }}>
+    <Typography variant='caption' sx={{ fontWeight: 600, textAlign: 'right', flexShrink: 0 }}>
       {value}
     </Typography>
   </Box>

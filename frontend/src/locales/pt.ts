@@ -79,6 +79,7 @@ export const pt = {
     quotationDetail: 'Detalhes da Cotação',
     checkout: 'Checkout',
     cart: 'Carrinho',
+    productDetail: 'Detalhes do Produto',
   },
   login: {
     title: 'Escolha uma conta de demonstração',
@@ -398,7 +399,7 @@ export const pt = {
     availabilityLabel: 'Disponibilidade',
     outOfStockOption: 'Esgotado',
     viewDetails: 'Ver detalhes',
-    hideDetails: 'Ocultar detalhes',
+    previewHint: 'Clique para ver todos os detalhes',
     filters: {
       title: 'Filtros',
       open: 'Abrir filtros',
@@ -448,6 +449,23 @@ export const pt = {
   },
   // Labels for the seeded product taxonomy, keyed by the stored category value.
   // The stored value is what the API filters on, so it is never translated.
+  productDetail: {
+    backToCatalog: 'Voltar ao catálogo',
+    browseCatalog: 'Explorar o catálogo',
+    productCode: 'Código do produto',
+    supplier: 'Fornecedor',
+    quoteNote: 'Preços finais, frete e impostos são calculados na sua cotação.',
+    noSpecs: 'Nenhuma especificação técnica informada.',
+    volumePricing: 'Preços por volume',
+    volumePricingNote: 'O desconto se aplica à quantidade de cada item da sua cotação.',
+    tierQuantity: 'Quantidade',
+    tierDiscount: 'Desconto',
+    tierRange: '{{min}}–{{max}} unidades',
+    tierFrom: '{{min}}+ unidades',
+    notFoundTitle: 'Produto não encontrado',
+    notFoundDescription: 'Este produto não existe ou não está mais disponível.',
+    loadError: 'Não foi possível carregar este produto. Tente novamente.',
+  },
   categories: {
     Chemicals: 'Químicos',
     Components: 'Componentes',

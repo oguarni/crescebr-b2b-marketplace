@@ -7,6 +7,7 @@ import App from './App';
 // Mock all lazy-loaded pages
 vi.mock('./pages/LoginPage', () => ({ default: () => <div>LoginPage</div> }));
 vi.mock('./pages/HomePage', () => ({ default: () => <div>HomePage</div> }));
+vi.mock('./pages/ProductDetailPage', () => ({ default: () => <div>ProductDetailPage</div> }));
 vi.mock('./pages/CartPage', () => ({ default: () => <div>CartPage</div> }));
 vi.mock('./pages/CheckoutPage', () => ({ default: () => <div>CheckoutPage</div> }));
 vi.mock('./pages/QuotationRequestPage', () => ({ default: () => <div>QuotationRequestPage</div> }));
@@ -102,6 +103,14 @@ describe('App', () => {
 
       await waitFor(() => {
         expect(screen.getByText('LoginPage')).toBeInTheDocument();
+      });
+    });
+
+    it('renders ProductDetailPage at /products/:id for anonymous visitors', async () => {
+      renderApp('/products/7');
+
+      await waitFor(() => {
+        expect(screen.getByText('ProductDetailPage')).toBeInTheDocument();
       });
     });
   });
