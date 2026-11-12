@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { quotationsService } from '../services/quotationsService';
+import { quotationsService, type CalculateQuoteResponse } from '../services/quotationsService';
 import { getErrorMessage } from '../utils/errorHandler';
 
 interface QuoteItem {
@@ -14,7 +14,7 @@ interface CalculationOptions {
 }
 
 export const useQuoteCalculation = () => {
-  const [calculation, setCalculation] = useState<unknown>(null);
+  const [calculation, setCalculation] = useState<CalculateQuoteResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

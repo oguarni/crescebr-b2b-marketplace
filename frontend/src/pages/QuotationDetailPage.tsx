@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Typography,
@@ -21,7 +21,6 @@ import {
   Storefront,
   InfoOutlined,
   LocalShipping,
-  Inventory2,
   ArrowForward,
   LocationOn,
   Check,
@@ -29,7 +28,7 @@ import {
 import { ordersService } from '../services/ordersService';
 import { useAuth } from '../contexts/AuthContext';
 import { useT } from '../contexts/LanguageContext';
-import { useQuotation } from '../hooks';
+import { useQuotation, useQuoteCalculation } from '../hooks';
 import toast from 'react-hot-toast';
 
 const QuotationDetailPage: React.FC = () => {
@@ -39,6 +38,22 @@ const QuotationDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const t = useT();
   const { quotation, loading, error } = useQuotation(parseInt(id ?? '0'));
+  const {
+    calculation,
+    loading: pricingLoading,
+    error: pricingError,
+    calculate,
+    reset,
+  } = useQuoteCalculation();
+
+  useEffect(() => {
+    if (!quotation) return;
+    reset();
+    // I calculate a current estimate; historical order totals are stored separately.
+    void calculate(
+      quotation.items.map(item => ({ productId: item.productId, quantity: item.quantity }))
+    ).catch(() => undefined);
+  }, [quotation, calculate, reset]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -47,15 +62,33 @@ const QuotationDetailPage: React.FC = () => {
     }).format(price);
   };
 
-  const calculateTotalReferenceValue = () => {
-    if (!quotation) return 0;
-    return quotation.items.reduce((total, item) => total + item.product.price * item.quantity, 0);
+  const calculations = calculation?.calculations;
+  // I hide results from an earlier quotation until the current inputs match.
+  const aligned =
+    quotation?.id === Number(id) &&
+    calculations?.items.length === quotation.items.length &&
+    calculations.items.every(
+      (result, index) =>
+        result.productId === quotation.items[index].productId &&
+        result.quantity === quotation.items[index].quantity
+    );
+  const pricing = !pricingLoading && !pricingError && aligned ? calculations : undefined;
+  const renderAmount = (amount: number | undefined) => {
+    if (pricingError) return '—';
+    if (!pricing) return <CircularProgress size={16} />;
+    return amount === undefined ? '—' : formatPrice(amount);
   };
 
   const isAdmin = user?.role === 'admin';
   const isCustomer = user?.role === 'customer';
   const isSupplier = user?.role === 'supplier';
   const canCreateOrder = isCustomer && quotation?.status === 'processed';
+  const pricingInfoKey =
+    quotation?.status === 'completed'
+      ? 'quotationDetail.completedEstimateInfo'
+      : quotation?.status === 'processed'
+        ? 'quotationDetail.tierInfo'
+        : 'quotationDetail.currentEstimateInfo';
 
   // Send each role back to a list page it is actually allowed to access.
   const backTo = isAdmin
@@ -102,12 +135,6 @@ const QuotationDetailPage: React.FC = () => {
       </Box>
     );
   }
-
-  const baseTotal = calculateTotalReferenceValue();
-  const taxAmount = baseTotal * 0.15;
-  const freight = 850;
-  const packaging = 120;
-  const grandTotal = baseTotal + taxAmount + freight + packaging;
 
   return (
     <Box
@@ -360,16 +387,15 @@ const QuotationDetailPage: React.FC = () => {
             '& .MuiAlert-message': { fontSize: '0.875rem' },
           }}
         >
-          {t('quotationDetail.tierInfo')}
+          {t(pricingInfoKey)}
         </Alert>
+
+        {pricingError && <Alert severity='error'>{t('quotationDetail.pricingError')}</Alert>}
 
         {/* Items List */}
         {quotation.items.map((item, index) => {
-          const basePrice = item.product.price;
+          const itemPricing = pricing?.items[index];
           const qty = item.quantity;
-          const volDiscount = basePrice * qty * 0.05;
-          const tax = basePrice * qty * 0.15;
-          const subtotal = basePrice * qty - volDiscount + tax;
 
           return (
             <Card
@@ -443,7 +469,7 @@ const QuotationDetailPage: React.FC = () => {
                       align='right'
                       sx={{ fontFamily: 'monospace', color: 'text.primary' }}
                     >
-                      {formatPrice(basePrice)}
+                      {renderAmount(itemPricing?.basePrice)}
                     </TableCell>
                   </TableRow>
                   <TableRow>
@@ -457,14 +483,18 @@ const QuotationDetailPage: React.FC = () => {
                       {qty} un
                     </TableCell>
                   </TableRow>
-                  <TableRow sx={{ bgcolor: '#ecfdf5' }}>
-                    <TableCell sx={{ color: '#059669', fontWeight: 500 }}>
-                      {t('quotationDetail.volDiscount')}
-                    </TableCell>
-                    <TableCell align='right' sx={{ color: '#059669', fontFamily: 'monospace' }}>
-                      - {formatPrice(volDiscount)}
-                    </TableCell>
-                  </TableRow>
+                  {itemPricing && itemPricing.savings > 0 && (
+                    <TableRow sx={{ bgcolor: '#ecfdf5' }}>
+                      <TableCell sx={{ color: '#059669', fontWeight: 500 }}>
+                        {t('quotationDetail.volDiscount', {
+                          percent: String(Math.round(itemPricing.tierDiscount * 1000) / 10),
+                        })}
+                      </TableCell>
+                      <TableCell align='right' sx={{ color: '#059669', fontFamily: 'monospace' }}>
+                        - {renderAmount(itemPricing.savings)}
+                      </TableCell>
+                    </TableRow>
+                  )}
                   <TableRow>
                     <TableCell sx={{ color: 'text.secondary' }}>
                       {t('quotationDetail.tax')}
@@ -473,7 +503,7 @@ const QuotationDetailPage: React.FC = () => {
                       align='right'
                       sx={{ fontFamily: 'monospace', color: 'text.primary' }}
                     >
-                      {formatPrice(tax)}
+                      {renderAmount(itemPricing?.tax)}
                     </TableCell>
                   </TableRow>
                   <TableRow
@@ -486,7 +516,9 @@ const QuotationDetailPage: React.FC = () => {
                       align='right'
                       sx={{ fontFamily: 'monospace', fontWeight: 'bold', color: 'text.primary' }}
                     >
-                      {formatPrice(subtotal)}
+                      {renderAmount(
+                        itemPricing ? itemPricing.subtotal + itemPricing.tax : undefined
+                      )}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -537,25 +569,7 @@ const QuotationDetailPage: React.FC = () => {
                   </Typography>
                 </Box>
                 <Typography variant='body2' sx={{ fontFamily: 'monospace', color: 'text.primary' }}>
-                  {formatPrice(freight)}
-                </Typography>
-              </Box>
-              <Box
-                sx={{
-                  p: 2,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Inventory2 sx={{ color: 'text.secondary', fontSize: 20 }} />
-                  <Typography variant='body2' color='text.primary'>
-                    {t('quotationDetail.packaging')}
-                  </Typography>
-                </Box>
-                <Typography variant='body2' sx={{ fontFamily: 'monospace', color: 'text.primary' }}>
-                  {formatPrice(packaging)}
+                  {renderAmount(pricing?.totalShipping)}
                 </Typography>
               </Box>
             </Box>
@@ -621,20 +635,20 @@ const QuotationDetailPage: React.FC = () => {
                 variant='caption'
                 sx={{ fontFamily: 'monospace', color: 'text.secondary' }}
               >
-                {formatPrice(baseTotal)}
+                {renderAmount(pricing?.totalSubtotal)}
               </Typography>
               <Typography
                 variant='caption'
                 sx={{ fontFamily: 'monospace', color: 'text.secondary' }}
               >
-                {formatPrice(taxAmount)}
+                {renderAmount(pricing?.totalTax)}
               </Typography>
               <Typography
                 variant='h6'
                 color='primary'
                 sx={{ fontFamily: 'monospace', fontWeight: 'bold', lineHeight: 1.2 }}
               >
-                {formatPrice(grandTotal)}
+                {renderAmount(pricing?.grandTotal)}
               </Typography>
             </Box>
           </Box>
