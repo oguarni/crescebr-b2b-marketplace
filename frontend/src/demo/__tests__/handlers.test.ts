@@ -395,6 +395,27 @@ describe('demo API — orders', () => {
     expect(quotation?.status).toBe('completed');
   });
 
+  it('creates the order with the total returned by the quotation calculation', () => {
+    const buyer = asBuyer();
+    const quotation = getState().quotations.find(q => q.id === 3);
+    if (!quotation) throw new Error('Missing processed demo quotation');
+    const calculated = call<{ calculations: { grandTotal: number } }>(
+      'POST',
+      '/quotations/calculate',
+      {
+        items: quotation.items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+      },
+      buyer
+    );
+    const order = call<{ totalAmount: number }>('POST', '/orders', { quotationId: 3 }, buyer);
+    expect(calculated.status).toBe(200);
+    expect(order.status).toBe(201);
+    expect(order.body.data?.totalAmount).toBe(calculated.body.data?.calculations.grandTotal);
+  });
+
   it('only converts an owned, processed, unexpired quotation', () => {
     const buyer = asBuyer();
     expect(call('POST', '/orders', { quotationId: 4 }, buyer).status).toBe(400);

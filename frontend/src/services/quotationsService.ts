@@ -91,7 +91,7 @@ interface QuoteComparisonResult {
   totalSavings: number;
 }
 
-interface CalculateQuoteResponse {
+export interface CalculateQuoteResponse {
   calculations: QuoteComparisonResult;
   summary: {
     totalItems: number;
