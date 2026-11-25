@@ -24,8 +24,15 @@ export const useDateFormat = (): DateFormat => {
   return useMemo(
     () => ({
       date: value => new Date(value).toLocaleDateString(locale),
+      // Four-digit year on purpose: `dateStyle: 'short'` gives "11/25/26" in English.
       dateTime: value =>
-        new Date(value).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' }),
+        new Date(value).toLocaleString(locale, {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
     }),
     [locale]
   );

@@ -11,14 +11,14 @@ import {
 } from '@mui/material';
 import { RestartAlt } from '@mui/icons-material';
 import toast from 'react-hot-toast';
-import { useLanguage, useT } from '../contexts/LanguageContext';
+import { useT } from '../contexts/LanguageContext';
+import { useDateFormat } from '../hooks/useDateFormat';
 import { useSystemSettings } from '../hooks/useSystemSettings';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { SettingsSection } from '../components/settings/SettingsSection';
 import { SettingsNumberField } from '../components/settings/SettingsNumberField';
 import { ShippingMethodsFields } from '../components/settings/ShippingMethodsFields';
 import { PricingTiersFields } from '../components/settings/PricingTiersFields';
-import { dateLocaleFor } from '../utils/supplierDashboard';
 
 /**
  * Admin screen for the commercial parameters every quote is priced with: tax,
@@ -29,7 +29,7 @@ import { dateLocaleFor } from '../utils/supplierDashboard';
  */
 const AdminSettingsPage: React.FC = () => {
   const t = useT();
-  const { language } = useLanguage();
+  const formatDate = useDateFormat();
   const {
     record,
     form,
@@ -69,10 +69,7 @@ const AdminSettingsPage: React.FC = () => {
   const lastUpdated =
     record.updatedAt && editor
       ? t('adminSettings.lastUpdated', {
-          date: new Date(record.updatedAt).toLocaleString(dateLocaleFor(language), {
-            dateStyle: 'short',
-            timeStyle: 'short',
-          }),
+          date: formatDate.dateTime(record.updatedAt),
           editor,
         })
       : t('adminSettings.neverUpdated');
