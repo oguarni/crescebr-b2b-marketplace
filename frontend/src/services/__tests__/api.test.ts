@@ -189,6 +189,17 @@ describe('api module', () => {
       expect(mockToastError).not.toHaveBeenCalled();
     });
 
+    it('leaves the message to a caller that reports its own errors', async () => {
+      const error = {
+        response: { status: 409, data: { error: 'System settings were changed by someone else' } },
+        config: { handlesErrors: true },
+        message: 'Request failed',
+      };
+
+      await expect(responseErrorFn(error)).rejects.toBe(error);
+      expect(mockToastError).not.toHaveBeenCalled();
+    });
+
     it('should handle error without response object', async () => {
       const error = {
         message: 'Network Error',
@@ -227,7 +238,7 @@ describe('api module', () => {
 
         const result = await apiService.post('/test', { name: 'test' });
 
-        expect(mockAxiosInstance.post).toHaveBeenCalledWith('/test', { name: 'test' });
+        expect(mockAxiosInstance.post).toHaveBeenCalledWith('/test', { name: 'test' }, undefined);
         expect(result).toEqual(mockData);
       });
 
@@ -236,7 +247,7 @@ describe('api module', () => {
 
         const result = await apiService.post('/test');
 
-        expect(mockAxiosInstance.post).toHaveBeenCalledWith('/test', undefined);
+        expect(mockAxiosInstance.post).toHaveBeenCalledWith('/test', undefined, undefined);
         expect(result).toEqual({ success: true });
       });
     });
@@ -248,8 +259,24 @@ describe('api module', () => {
 
         const result = await apiService.put('/test/1', { name: 'updated' });
 
-        expect(mockAxiosInstance.put).toHaveBeenCalledWith('/test/1', { name: 'updated' });
+        expect(mockAxiosInstance.put).toHaveBeenCalledWith(
+          '/test/1',
+          { name: 'updated' },
+          undefined
+        );
         expect(result).toEqual(mockData);
+      });
+
+      it('passes request options such as handlesErrors through', async () => {
+        mockAxiosInstance.put.mockResolvedValue({ data: { success: true } });
+
+        await apiService.put('/test/1', { a: 1 }, { handlesErrors: true });
+
+        expect(mockAxiosInstance.put).toHaveBeenCalledWith(
+          '/test/1',
+          { a: 1 },
+          { handlesErrors: true }
+        );
       });
 
       it('should handle put without data argument', async () => {
@@ -257,7 +284,7 @@ describe('api module', () => {
 
         const result = await apiService.put('/test/1');
 
-        expect(mockAxiosInstance.put).toHaveBeenCalledWith('/test/1', undefined);
+        expect(mockAxiosInstance.put).toHaveBeenCalledWith('/test/1', undefined, undefined);
         expect(result).toEqual({ success: true });
       });
     });

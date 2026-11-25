@@ -12,7 +12,7 @@ import { downloadCsv } from '../../utils/productCsv';
 // Mock services
 vi.mock('../../services/productsService', () => ({
   productsService: {
-    getAllProducts: vi.fn(),
+    getSupplierProducts: vi.fn(),
     getCategories: vi.fn(),
     createProduct: vi.fn(),
     updateProduct: vi.fn(),
@@ -103,10 +103,8 @@ const mockProducts: Product[] = [
 ];
 
 const mockCategories = ['Industrial Equipment', 'Safety Equipment', 'Construction Materials'];
-const productsResponse = (products: Product[]) => ({
-  products,
-  pagination: { total: products.length, page: 1, limit: 100, totalPages: products.length ? 1 : 0 },
-});
+// The supplier screen reads GET /products/supplier/mine, which returns a plain array.
+const productsResponse = (products: Product[]) => products;
 
 // Defaults to English so the assertions below can stay in the source language of
 // the screen's copy; the localization test at the bottom passes 'pt' explicitly.
@@ -127,7 +125,9 @@ const renderPage = async (language: 'pt' | 'en' = 'en') => {
 describe('SupplierProductsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(productsResponse(mockProducts));
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(
+      productsResponse(mockProducts)
+    );
     vi.mocked(productsService.getCategories).mockResolvedValue(mockCategories);
     vi.mocked(productsService.createProduct).mockResolvedValue({ ...mockProducts[0], id: 4 });
     vi.mocked(productsService.updateProduct).mockResolvedValue(mockProducts[0]);
@@ -177,7 +177,7 @@ describe('SupplierProductsPage', () => {
     await user.type(searchInput, 'Helmet');
 
     await waitFor(() => {
-      expect(productsService.getAllProducts).toHaveBeenCalled();
+      expect(productsService.getSupplierProducts).toHaveBeenCalled();
     });
   });
 
@@ -349,7 +349,7 @@ describe('SupplierProductsPage', () => {
   }, 15000);
 
   it('shows no active products alert when active tab is empty', async () => {
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(
       productsResponse([
         {
           ...mockProducts[2], // out_of_stock
@@ -374,7 +374,7 @@ describe('SupplierProductsPage', () => {
   }, 15000);
 
   it('shows no out of stock alert when out-of-stock tab is empty', async () => {
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(
       productsResponse([mockProducts[0]]) // only in_stock product
     );
     await renderPage();
@@ -393,7 +393,7 @@ describe('SupplierProductsPage', () => {
   }, 15000);
 
   it('shows no products found message on All tab when all products filtered out', async () => {
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(productsResponse([]));
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(productsResponse([]));
     await renderPage();
 
     await waitFor(() => {
@@ -410,7 +410,7 @@ describe('SupplierProductsPage', () => {
       name: 'Custom Order Product',
       availability: 'custom_order' as const,
     };
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(
       productsResponse([customOrderProduct])
     );
     await renderPage();
@@ -485,7 +485,7 @@ describe('SupplierProductsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
     });
-    const loadsBefore = vi.mocked(productsService.getAllProducts).mock.calls.length;
+    const loadsBefore = vi.mocked(productsService.getSupplierProducts).mock.calls.length;
 
     const fileInput = document.getElementById('csv-import') as HTMLInputElement;
     const file = new File(['name,price\nTest,100'], 'products.csv', { type: 'text/csv' });
@@ -496,7 +496,7 @@ describe('SupplierProductsPage', () => {
       expect(toast.success).toHaveBeenCalledWith('3 product(s) imported');
     });
     await waitFor(() =>
-      expect(vi.mocked(productsService.getAllProducts).mock.calls.length).toBeGreaterThan(
+      expect(vi.mocked(productsService.getSupplierProducts).mock.calls.length).toBeGreaterThan(
         loadsBefore
       )
     );
@@ -590,7 +590,7 @@ describe('SupplierProductsPage', () => {
       name: 'Unknown Availability Product',
       availability: 'unknown_value' as unknown as (typeof mockProducts)[0]['availability'],
     };
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(
       productsResponse([unknownAvailabilityProduct])
     );
     await renderPage();

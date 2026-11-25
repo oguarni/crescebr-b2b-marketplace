@@ -282,6 +282,10 @@ let state: DemoState = load();
  * databases, and a stale tab's save silently overwrites a newer one instead
  * of hitting the settings version check. The `storage` event fires only in
  * the tabs that did not write.
+ *
+ * It arrives asynchronously, so two saves landing within the same moment in
+ * two tabs can still both pass. That is acceptable for one visitor's demo; the
+ * backend's guarantee is its single conditional UPDATE.
  */
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', event => {

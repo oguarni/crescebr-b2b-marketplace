@@ -791,14 +791,16 @@ describe('demo API — system settings', () => {
       admin
     );
     expect(invalid.status).toBe(400);
-    expect((invalid.body as { details: Array<{ path: string; code: string }> }).details).toEqual([
-      expect.objectContaining({ path: 'settings.taxRate', code: 'range' }),
-    ]);
+    expect(
+      (invalid.body as unknown as { details: Array<{ path: string; code: string }> }).details
+    ).toEqual([expect.objectContaining({ path: 'settings.taxRate', code: 'range' })]);
 
     const envelope = call<unknown>('PUT', '/admin/settings', { version: -1 }, admin);
     expect(envelope.status).toBe(400);
     expect(
-      (envelope.body as { details: Array<{ path: string }> }).details.map(detail => detail.path)
+      (envelope.body as unknown as { details: Array<{ path: string }> }).details.map(
+        detail => detail.path
+      )
     ).toEqual(['version', 'settings']);
   });
 
@@ -856,3 +858,49 @@ describe('demo API — supplier summary', () => {
 function DEFAULTS() {
   return JSON.parse(JSON.stringify(DEFAULT_SYSTEM_SETTINGS));
 }
+
+describe('demo API — supplier catalogue and shared quotations', () => {
+  it("lists only the signed-in supplier's products, all of them", () => {
+    const supplier = asSupplier();
+    const supplierId = getState().companies.find(c => c.email === 'supplier@example.com')!.id;
+    const { status, body } = call<Array<{ supplierId: number }>>(
+      'GET',
+      '/products/supplier/mine',
+      {},
+      supplier
+    );
+    expect(status).toBe(200);
+    expect(body.data?.length).toBe(
+      getState().products.filter(p => p.supplierId === supplierId).length
+    );
+    expect(body.data?.every(p => p.supplierId === supplierId)).toBe(true);
+    expect(call('GET', '/products/supplier/mine', {}, asBuyer()).status).toBe(403);
+  });
+
+  it("refuses a supplier's status change on a quotation that lists another supplier's products", () => {
+    const supplier = asSupplier();
+    const supplierId = getState().companies.find(c => c.email === 'supplier@example.com')!.id;
+    const own = getState().products.find(p => p.supplierId === supplierId)!;
+    const other = getState().products.find(p => p.supplierId !== supplierId)!;
+    const created = call<{ id: number }>(
+      'POST',
+      '/quotations',
+      {
+        items: [
+          { productId: own.id, quantity: own.minimumOrderQuantity || 1 },
+          { productId: other.id, quantity: other.minimumOrderQuantity || 1 },
+        ],
+      },
+      asBuyer()
+    );
+
+    const response = call(
+      'PUT',
+      `/quotations/supplier/${created.body.data!.id}`,
+      { status: 'processed' },
+      supplier
+    );
+    expect(response.status).toBe(409);
+    expect(getState().quotations.find(q => q.id === created.body.data!.id)?.status).toBe('pending');
+  });
+});

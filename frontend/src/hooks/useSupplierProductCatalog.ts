@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import type { Product } from '@shared/types';
 import { productsService } from '../services/productsService';
-import { useProducts } from './useProducts';
 import { useAuth } from '../contexts/AuthContext';
 import { useT } from '../contexts/LanguageContext';
 import { browserLogger } from '../utils/browserLogger';
@@ -32,8 +31,28 @@ interface UseSupplierProductCatalogResult {
 export const useSupplierProductCatalog = (): UseSupplierProductCatalogResult => {
   const t = useT();
   const { user } = useAuth();
-  const { products, loading, refetch } = useProducts();
+  // The supplier's own catalogue in full. It used to come from the public,
+  // paginated list: the first ten products of every supplier, so the screen
+  // showed (and exported) other suppliers' products and missed its own.
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    try {
+      setProducts(await productsService.getSupplierProducts());
+    } catch (error) {
+      browserLogger.error('Failed to load supplier products', { error });
+      toast.error(t('supplierProducts.toast.loadError'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   useEffect(() => {
     const loadCategories = async () => {

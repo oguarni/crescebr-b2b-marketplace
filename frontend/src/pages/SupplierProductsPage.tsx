@@ -90,8 +90,9 @@ const SupplierProductsPage: React.FC = () => {
     deleteProduct(productId);
   };
 
-  // The export writes the importer's own format, so a catalogue can be
-  // exported, edited in a spreadsheet and imported back.
+  // The export writes the importer's own columns, so it doubles as a template
+  // and a backup. Import always creates new products: editing an exported row
+  // and importing it adds a copy rather than updating the original.
   const handleCsvImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     // Cleared so choosing the same file again still fires onChange.

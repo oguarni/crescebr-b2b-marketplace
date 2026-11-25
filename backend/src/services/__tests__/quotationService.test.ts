@@ -337,6 +337,24 @@ describe('QuotationService', () => {
       expect(result).toBeDefined();
     });
 
+    it("refuses to set the shared status of a quotation that lists another supplier's products", async () => {
+      mockQuotationRepo.findByIdWithItems.mockResolvedValue({
+        id: 1,
+        status: 'pending',
+        adminNotes: null,
+        items: [{ product: { supplierId: 7 } }, { product: { supplierId: 8 } }],
+      } as any);
+
+      await expect(
+        quotationService.updateBySupplier(1, 7, { status: 'processed' })
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        message:
+          "This quotation also includes other suppliers' products, so an administrator processes it",
+      });
+      expect(mockQuotationRepo.update).not.toHaveBeenCalled();
+    });
+
     it('should throw when quotation not found', async () => {
       mockQuotationRepo.findByIdWithItems.mockResolvedValue(null);
 

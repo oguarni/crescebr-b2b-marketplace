@@ -31,7 +31,8 @@ import { quotationsService } from '../services/quotationsService';
 import { getOrderStep } from '../utils/orderQuantity';
 import { categoryLabel } from '../utils/catalogLabels';
 import toast from 'react-hot-toast';
-import { useT } from '../contexts/LanguageContext';
+import { useLanguage, useT } from '../contexts/LanguageContext';
+import { formatBRL, formatPercent } from '../utils/currency';
 import { browserLogger } from '../utils/browserLogger';
 
 interface QuoteCalculation {
@@ -52,12 +53,17 @@ interface QuoteCalculation {
 interface QuoteComparisonResult {
   items: QuoteCalculation[];
   totalSubtotal: number;
+  totalShipping: number;
+  totalTax: number;
+  /** The rate the API priced the tax with, from the admin-editable settings. */
+  taxRate: number;
   totalSavings: number;
   grandTotal: number;
 }
 
 const QuotationRequestPage: React.FC = () => {
   const t = useT();
+  const { language } = useLanguage();
   const { items, totalItems, updateQuantity, removeItem, clearRequest } = useQuotationRequest();
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
@@ -479,6 +485,22 @@ const QuotationRequestPage: React.FC = () => {
                               style: 'currency',
                               currency: 'BRL',
                             }).format(priceCalculations.totalSubtotal)}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>{t('quotationRequest.estimatedShipping')}</TableCell>
+                          <TableCell align='right'>
+                            {formatBRL(priceCalculations.totalShipping)}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>
+                            {t('quotationRequest.estimatedTax', {
+                              rate: formatPercent(priceCalculations.taxRate, language),
+                            })}
+                          </TableCell>
+                          <TableCell align='right'>
+                            {formatBRL(priceCalculations.totalTax)}
                           </TableCell>
                         </TableRow>
                         {priceCalculations.totalSavings > 0 && (

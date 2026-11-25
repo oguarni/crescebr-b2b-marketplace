@@ -792,17 +792,9 @@ describe('SupplierQuotationsPage', () => {
     expect(screen.queryByText('Quote Request #2')).not.toBeInTheDocument();
   });
 
-  it('shows the supplier only its own lines, at catalogue price, and sends the notes', async () => {
-    const otherSupplierProduct = { ...mockQuotations[0].items[0].product!, supplierId: 99 };
+  it('shows the supplier its lines at catalogue price, without editable terms, and sends the notes', async () => {
     vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([
-      {
-        ...mockQuotations[0],
-        validUntil: new Date('2026-12-31T12:00:00Z'),
-        items: [
-          ...mockQuotations[0].items,
-          makeItem(99, 1, 4, { ...otherSupplierProduct, id: 99, name: 'Competitor Valve' }),
-        ],
-      },
+      { ...mockQuotations[0], validUntil: new Date('2026-12-31T12:00:00Z') },
       ...mockQuotations.slice(1),
     ]);
     await renderPage();
@@ -813,7 +805,6 @@ describe('SupplierQuotationsPage', () => {
     const dialog = await screen.findByRole('dialog');
 
     expect(within(dialog).getByText('Your items in this request')).toBeInTheDocument();
-    expect(within(dialog).queryByText('Competitor Valve')).not.toBeInTheDocument();
     expect(within(dialog).getByText(/Valid until 12\/31\/2026/)).toBeInTheDocument();
     // Nothing on the dialog pretends to set a price or terms the API would drop.
     expect(within(dialog).queryByRole('spinbutton')).not.toBeInTheDocument();
@@ -828,6 +819,30 @@ describe('SupplierQuotationsPage', () => {
         adminNotes: 'Ships from Curitiba',
       })
     );
+  });
+
+  it("hides another supplier's lines and leaves a shared quotation to the administrator", async () => {
+    const otherSupplierProduct = { ...mockQuotations[0].items[0].product!, supplierId: 99 };
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([
+      {
+        ...mockQuotations[0],
+        items: [
+          ...mockQuotations[0].items,
+          makeItem(99, 1, 4, { ...otherSupplierProduct, id: 99, name: 'Competitor Valve' }),
+        ],
+      },
+      ...mockQuotations.slice(1),
+    ]);
+    await renderPage();
+    const user = userEvent.setup();
+    await waitFor(() => expect(screen.getByText('Quote Request #1')).toBeInTheDocument());
+
+    await user.click(screen.getByText('Respond'));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).queryByText('Competitor Valve')).not.toBeInTheDocument();
+    expect(within(dialog).getByText(/an administrator releases it/)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Submit Quote' })).toBeDisabled();
   });
 
   describe('localization', () => {

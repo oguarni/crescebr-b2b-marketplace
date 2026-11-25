@@ -72,6 +72,15 @@ class ProductsService {
     return response.data;
   }
 
+  /** Every product of the signed-in supplier (not the public, paginated catalogue). */
+  async getSupplierProducts(): Promise<Product[]> {
+    const response = await apiService.get<ApiResponse<Product[]>>('/products/supplier/mine');
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to fetch your products');
+    }
+    return response.data;
+  }
+
   async getProductById(id: number): Promise<Product> {
     const response = await apiService.get<ApiResponse<Product>>(`/products/${id}`);
 
@@ -140,7 +149,8 @@ class ProductsService {
     form.append('csvFile', file);
     const response = await apiService.post<ApiResponse<ProductCsvImportResult>>(
       '/products/import/csv',
-      form
+      form,
+      { handlesErrors: true }
     );
     if (!response.data) {
       throw new Error(response.error || 'Failed to import products');

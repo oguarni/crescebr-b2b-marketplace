@@ -208,7 +208,8 @@ describe('SupplierDashboardPage', () => {
     expect(screen.getByTestId('metric-active')).toHaveTextContent('2');
     const volume = screen.getByTestId('metric-volume');
     expect(volume).toHaveTextContent(/R\$\s1\.234\.567,89/);
-    expect(volume).toHaveTextContent('31 pedidos não cancelados');
+    // Whole order totals: orders keep no per-supplier subtotal, and the caption says so.
+    expect(volume).toHaveTextContent('Total de 31 pedidos com seus produtos, sem cancelados');
     expect(volume).toHaveAttribute('href', '/supplier/orders');
   });
 
@@ -219,7 +220,9 @@ describe('SupplierDashboardPage', () => {
     ]);
     renderPage();
 
-    expect(await screen.findByText('1 pedido não cancelado')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Total de 1 pedido com seus produtos, sem cancelados')
+    ).toBeInTheDocument();
     expect(screen.getByText(/^1 item •/)).toBeInTheDocument();
   });
 

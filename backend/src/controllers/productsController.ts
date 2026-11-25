@@ -64,6 +64,13 @@ export const deleteProduct = asyncHandler(async (req: AuthenticatedRequest, res:
   res.status(200).json({ success: true, message: 'Product deleted successfully' });
 });
 
+export const getSupplierProducts = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const products = await productsService.getForSupplier(req.user!.id);
+    res.status(200).json({ success: true, data: products });
+  }
+);
+
 export const getCategories = asyncHandler(async (req: Request, res: Response) => {
   const categoryList = await productsService.getCategories();
   res.status(200).json({ success: true, data: categoryList });

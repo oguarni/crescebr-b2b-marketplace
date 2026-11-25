@@ -343,6 +343,15 @@ export const productsService = {
     await product.destroy();
   },
 
+  /**
+   * Every product of one supplier, newest first, for their own catalogue
+   * screen. Not paginated: the screen groups, filters and exports the whole
+   * catalogue, which the public, paginated list could not give it.
+   */
+  async getForSupplier(supplierId: number): Promise<Product[]> {
+    return Product.findAll({ where: { supplierId }, order: [['createdAt', 'DESC']] });
+  },
+
   async getCategories(): Promise<string[]> {
     const categories = await Product.findAll({
       attributes: ['category'],

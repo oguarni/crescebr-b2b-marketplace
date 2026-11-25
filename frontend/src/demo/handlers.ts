@@ -559,6 +559,16 @@ const updateSupplierQuotation = (req: DemoRequest): DemoResponse => {
   if (actor.role === 'supplier' && !isSuppliersQuotation(quotation, actor.id)) {
     throw new DemoHttpError(403, 'Access denied');
   }
+  // Mirrors quotation.service: a request that mixes suppliers is processed by an admin.
+  if (
+    actor.role === 'supplier' &&
+    !quotation.items.every(item => item.product?.supplierId === actor.id)
+  ) {
+    throw new DemoHttpError(
+      409,
+      "This quotation also includes other suppliers' products, so an administrator processes it"
+    );
+  }
 
   return ok(applyQuotationUpdate(quotation, req.body));
 };
@@ -1110,6 +1120,10 @@ export const ROUTES: Route[] = [
   route('GET', '/products', listProducts),
   route('POST', '/products', createProduct),
   route('POST', '/products/import/csv', importProductsCsv),
+  route('GET', '/products/supplier/mine', req => {
+    const supplier = requireRole(req, 'supplier');
+    return ok(getState().products.filter(product => product.supplierId === supplier.id));
+  }),
   route('GET', '/products/:id', req => ok(productById(Number(req.params.id)))),
   route('PUT', '/products/:id', updateProduct),
   route('DELETE', '/products/:id', deleteProduct),

@@ -56,6 +56,9 @@ export const SupplierQuotationResponseDialog: React.FC<SupplierQuotationResponse
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
   const lines = quotation && user ? responseLines(quotation, user.id) : [];
+  // The quotation's status is shared, so a request that also lists another
+  // supplier's products is released by an administrator, not by one supplier.
+  const mixedSuppliers = Boolean(quotation && lines.length < (quotation.items?.length ?? 0));
   const total = lines.reduce((sum, line) => sum + line.lineTotal, 0);
 
   return (
@@ -143,6 +146,10 @@ export const SupplierQuotationResponseDialog: React.FC<SupplierQuotationResponse
               </Box>
             </Box>
 
+            {mixedSuppliers && (
+              <Alert severity='warning'>{t('supplierQuotations.response.mixedSuppliers')}</Alert>
+            )}
+
             <Alert severity='info'>
               {t('supplierQuotations.response.pricingNote')}
               {quotation.validUntil &&
@@ -166,7 +173,7 @@ export const SupplierQuotationResponseDialog: React.FC<SupplierQuotationResponse
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 1.5 }}>
         <Button onClick={onClose}>{t('supplierQuotations.response.cancel')}</Button>
-        <Button onClick={onSubmit} variant='contained'>
+        <Button onClick={onSubmit} variant='contained' disabled={mixedSuppliers}>
           {t('supplierQuotations.response.submit')}
         </Button>
       </DialogActions>
