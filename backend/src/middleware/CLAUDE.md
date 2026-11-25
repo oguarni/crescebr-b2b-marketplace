@@ -64,6 +64,7 @@ middleware/
 | ACCESS_ADMIN_PANEL | Y | - | - |
 | VIEW_ANALYTICS | Y | - | - |
 | EXPORT_DATA | Y | - | - |
+| MANAGE_SYSTEM_CONFIG | Y | - | - |
 
 _Supplier permissions marked with `_`require`status: 'approved'`.
 

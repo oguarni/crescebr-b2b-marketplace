@@ -43,8 +43,8 @@ Open [crescebr.com.br](https://crescebr.com.br/). Browse anonymously or choose a
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Anonymous     | Search the catalog, apply availability or price filters, and open a product for its specifications and minimum order quantity.                                                                                                                    |
 | Buyer         | Add a product to a quotation and submit it. In **My Quotations**, convert a **processed** quotation to an order, then inspect **My Orders**. A fresh demo includes a processed quotation; a new request first needs supplier or admin processing. |
-| Supplier      | Open the dashboard, manage products and respond to quotations containing the supplier's products. In orders, shipping requires a tracking number and a 44-digit NF-e access key with a valid check digit. Use fictional test data.                |
-| Administrator | Review the company verification queue, process quotations and inspect transaction analytics. A fresh demo includes pending and rejected companies.                                                                                                |
+| Supplier      | Open the dashboard, manage products (including CSV export and import) and respond to quotations containing the supplier's products. In orders, shipping requires a tracking number and a 44-digit NF-e access key with a valid check digit. Use fictional test data. |
+| Administrator | Review the company verification queue, process quotations and inspect transaction analytics. In **Settings**, change the tax rate, quotation validity, freight table or default volume discounts and request a quote as a buyer to see the effect. A fresh demo includes pending and rejected companies. |
 
 ### Hosted Demo Limits
 
@@ -52,9 +52,9 @@ Open [crescebr.com.br](https://crescebr.com.br/). Browse anonymously or choose a
 - The hosted demo has no Express server or database. Browser-issued demo tokens and role checks illustrate the interface; they do not demonstrate server-side authentication, password hashing, JWT verification or API rate limiting.
 - Company verification is simulated. The demo's CNPJ action updates a local flag without calling Brasil API.
 - Demo records persist in this browser's localStorage and are not shared between visitors or devices. `resetCresceBRDemo()` in the browser console restores seeded demo records; it does not clear the cart or sign-in state. Clearing this site's browser data also clears its saved session and selections.
-- Pricing uses volume tiers, a flat 18% tax and estimated shipping based on assumed weight per unit and a default distance. These are illustrative calculations. The [demo implementation](frontend/src/demo/pricing.ts) is a separate port of the [backend pricing service](backend/src/services/quoteService.ts), with a remaining [drift risk (#18)](https://github.com/oguarni/crescebr-b2b-marketplace/issues/18).
+- Pricing uses volume tiers, an estimated tax and estimated shipping based on assumed weight per unit and a default distance. An administrator sets the tax rate (18% by default), the freight table, quotation validity and the default tiers in **Settings**; in the demo those settings persist in this browser's localStorage like any other record. These are illustrative calculations. The [demo implementation](frontend/src/demo/pricing.ts) and the [settings rules](frontend/src/utils/systemSettingsRules.ts) are separate ports of the [backend pricing service](backend/src/services/quoteService.ts) and [its rules](backend/src/services/systemSettingsRules.ts), with a remaining [drift risk (#18)](https://github.com/oguarni/crescebr-b2b-marketplace/issues/18).
 - Quotation detail pages show a current estimate from today's catalog prices, volume tiers and estimates, in the demo and the full stack alike. Quotations keep no historical price snapshot, so an order's recorded total can differ from its quotation's current estimate. Seeded order totals are illustrative.
-- CSV import is a backend API capability. The supplier UI exposes import/export placeholders; they do not import or export a catalog, and the hosted demo has no CSV import handler.
+- Supplier CSV export writes the importer's own column format, so an exported catalog can be edited and imported back. Import uses the backend endpoint; the hosted demo reads the file in the browser and applies the same row rules.
 
 The backend implementation, migrations and automated tests are available in this repository. The End-to-End CI job exercises the real stack with PostgreSQL 15 and Redis 7.
 
@@ -62,10 +62,10 @@ The backend implementation, migrations and automated tests are available in this
 
 - **Company review** — The backend checks CNPJ digits and queries Brasil API. Some provider failures fall back to digit validation only; timeouts and throttling report unavailability. Admin approval is a separate step.
 - **Access control** — Backend middleware enforces roles and supplier approval; services check resource ownership.
-- **Quotation pricing** — Volume discounts with illustrative tax and shipping estimates.
+- **Quotation pricing** — Volume discounts with illustrative tax and shipping estimates. An administrator edits the rates, validity and default tiers; every quote reads them.
 - **Order management** — Quotation conversion, status transitions and order history.
-- **CSV import API** — Product import, sample template and import statistics on backend endpoints.
-- **Admin tools** — Company verification, quotation management and transaction analytics.
+- **CSV import and export** — Row-level validation on import, and export in the same format with spreadsheet formula injection neutralised.
+- **Admin tools** — Company verification, quotation management, transaction analytics and system settings.
 - **Backend security controls** — JWT sessions, bcrypt password hashing, Helmet headers, input validation and rate limits.
 
 ---
@@ -177,6 +177,8 @@ All endpoints are served under `/api/v1`.
 | A page guard alone cannot enforce API permissions.                   | [RBAC middleware](backend/src/middleware/rbac.ts) and its [tests](backend/src/middleware/__tests__/rbac.test.ts) cover backend permissions. [Role-gating E2E tests](e2e/specs/role-gating.spec.ts) exercise frontend access with real API sessions.                                   |
 | Pricing uses estimates; CNPJ lookup depends on an external provider. | [Pricing tests](backend/src/services/__tests__/quoteService.test.ts) cover tiers and calculations. [CNPJ service tests](backend/src/services/__tests__/cnpjService.test.ts) cover validation and provider failures. Shipping and tax remain estimates.                                |
 | Closing the registration UI must also close the API.                 | The [registration gate](backend/src/middleware/registrationGate.ts) defaults production sign-up to closed unless explicitly enabled. [Real-router tests](backend/src/__tests__/integration/registrationGate.test.ts) verify the refusal before database work.                         |
+| Two administrators saving settings at once must not overwrite each other. | [Settings service](backend/src/services/systemSettingsService.ts) writes with one conditional UPDATE on the version the admin read and answers 409 when it moved. The route checks the `manage_system_config` permission against the stored account, not the token's role. [Integration tests](backend/src/__tests__/integration/systemSettingsContracts.test.ts) cover the conflict, validation by field path and the effect on quotes, validity and delivery dates. |
+| Dashboard figures must not depend on the order list's page size. | [Supplier summary](backend/src/services/supplierDashboardService.ts) aggregates counts and order volume in SQL over every order and excludes cancelled ones. The dashboard used to sum the first page of orders in the browser. |
 
 ### Automated Checks
 
@@ -286,8 +288,8 @@ Acesse [crescebr.com.br](https://crescebr.com.br/) e escolha uma conta na [pági
 
 - **Visitante:** pesquise no catálogo, aplique filtros e abra um produto para consultar especificações e pedido mínimo.
 - **Comprador:** adicione um produto à cotação e envie a solicitação. Em **Minhas Cotações**, converta uma cotação **processada** em pedido e consulte **Meus Pedidos**. A demonstração inicial inclui uma cotação processada; novas solicitações precisam primeiro ser processadas pelo fornecedor ou administrador.
-- **Fornecedor:** consulte o painel, gerencie produtos e responda a cotações que contenham seus produtos. Para marcar um pedido como enviado, informe um rastreio e uma chave de acesso NF-e de 44 dígitos com dígito verificador válido, usando dados fictícios de teste.
-- **Administrador:** analise a fila de empresas, processe cotações e consulte as transações. Os dados iniciais incluem empresas pendentes e rejeitadas.
+- **Fornecedor:** consulte o painel, gerencie produtos (inclusive exportando e importando o catálogo em CSV) e responda a cotações que contenham seus produtos. Para marcar um pedido como enviado, informe um rastreio e uma chave de acesso NF-e de 44 dígitos com dígito verificador válido, usando dados fictícios de teste.
+- **Administrador:** analise a fila de empresas, processe cotações e consulte as transações. Em **Configurações**, altere a alíquota de imposto, a validade das cotações, a tabela de frete ou os descontos padrão por volume e peça uma cotação como comprador para ver o efeito. Os dados iniciais incluem empresas pendentes e rejeitadas.
 
 ### Limites da demonstração
 
@@ -297,13 +299,13 @@ A validação de CNPJ no site apenas altera um indicador local, sem consultar a 
 
 Os registros ficam no localStorage deste navegador e não são compartilhados entre visitantes ou dispositivos. `resetCresceBRDemo()` no console restaura os registros iniciais, mas mantém o carrinho e a sessão. Limpar os dados deste site no navegador também remove a sessão e as seleções salvas.
 
-A precificação aplica descontos por volume, imposto fixo de 18% e frete estimado com peso presumido por unidade e distância padrão. São cálculos ilustrativos. O código da demonstração é uma adaptação separada do serviço de backend; o [risco de divergência permanece registrado na issue #18](https://github.com/oguarni/crescebr-b2b-marketplace/issues/18). A página de detalhe da cotação mostra uma estimativa com os preços, faixas de volume e estimativas atuais do catálogo, tanto na demonstração quanto no ambiente completo. As cotações não guardam um registro histórico de preços, então o total registrado de um pedido pode diferir da estimativa atual da cotação. Os totais dos pedidos iniciais são ilustrativos. A importação CSV existe na API. Os controles de importar e exportar da interface são placeholders: não importam nem exportam o catálogo, e a demonstração não tem handler para importação CSV.
+A precificação aplica descontos por volume, imposto estimado e frete estimado com peso presumido por unidade e distância padrão. O administrador define a alíquota (18% por padrão), a tabela de frete, a validade das cotações e as faixas padrão em **Configurações**; na demonstração, essas configurações ficam no localStorage como os demais registros. São cálculos ilustrativos. O código da demonstração é uma adaptação separada do serviço de backend; o [risco de divergência permanece registrado na issue #18](https://github.com/oguarni/crescebr-b2b-marketplace/issues/18). A página de detalhe da cotação mostra uma estimativa com os preços, faixas de volume e estimativas atuais do catálogo, tanto na demonstração quanto no ambiente completo. As cotações não guardam um registro histórico de preços, então o total registrado de um pedido pode diferir da estimativa atual da cotação. Os totais dos pedidos iniciais são ilustrativos. A exportação CSV do fornecedor usa o mesmo formato de colunas da importação, então um catálogo exportado pode ser editado e importado de volta. A importação usa o endpoint do backend; na demonstração, o navegador lê o arquivo e aplica as mesmas regras por linha.
 
 ### Arquitetura e evidências
 
 No site publicado, o caminho é React → adapter axios → dados iniciais e localStorage. No ambiente completo, rotas e middleware encaminham para controllers, serviços e models Sequelize com PostgreSQL. Os serviços normalmente acessam os models diretamente; o serviço de cotações também usa helpers de consulta, sem uma camada obrigatória de repositórios. Os tipos compartilhados ficam em `shared/`.
 
-A seção [Engineering Decisions and Evidence](#engineering-decisions-and-evidence) liga cada decisão ao código e aos testes: conversão concorrente de cotações, formato das respostas da demonstração, permissões, precificação, falhas do provedor de CNPJ e bloqueio do cadastro na API.
+A seção [Engineering Decisions and Evidence](#engineering-decisions-and-evidence) liga cada decisão ao código e aos testes: conversão concorrente de cotações, formato das respostas da demonstração, permissões, precificação, falhas do provedor de CNPJ, bloqueio do cadastro na API, edição concorrente das configurações e números do painel do fornecedor calculados sobre todos os pedidos.
 
 O [CI](https://github.com/oguarni/crescebr-b2b-marketplace/actions/workflows/ci.yml) executa lint, build, checagem de tipos e testes Jest e Vitest; a maioria dos testes de backend usa SQLite em memória. O job End-to-End executa Playwright com a API real, PostgreSQL 15 e Redis 7, em projetos desktop e mobile. Relatórios de cobertura e Playwright ficam nos artefatos de cada execução, conforme o prazo de retenção. Um push em `main` publica o frontend após os checks e a confirmação de que o commit ainda é a ponta da branch. Depois, o Live Grade verifica os headers HTTP publicados; essa verificação não comprova permissões nem regras de negócio.
 
