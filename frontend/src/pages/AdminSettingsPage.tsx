@@ -95,6 +95,16 @@ const AdminSettingsPage: React.FC = () => {
         <Typography variant='body2' color='text.secondary' sx={{ mt: 1 }}>
           {lastUpdated}
         </Typography>
+        {/* Rarely needed, so kept out of the sticky bar, which must stay one row on a phone. */}
+        <Button
+          id='settings-restore-defaults'
+          startIcon={<RestartAlt />}
+          onClick={handleRestoreDefaults}
+          disabled={saving}
+          sx={{ mt: 1, ml: -1 }}
+        >
+          {t('adminSettings.actions.restoreDefaults')}
+        </Button>
       </Box>
 
       {conflict && (
@@ -193,7 +203,13 @@ const AdminSettingsPage: React.FC = () => {
             variant='body2'
             role='status'
             color={hasErrors ? 'error' : 'text.secondary'}
-            sx={{ flex: '1 1 100%', mb: { xs: 0.5, sm: 0 }, minWidth: 0 }}
+            sx={{
+              flex: '1 1 auto',
+              minWidth: 0,
+              // Phones keep the bar to one row unless there is something to say.
+              display: { xs: hasErrors || dirty ? 'block' : 'none', sm: 'block' },
+              flexBasis: { xs: '100%', sm: 'auto' },
+            }}
           >
             {hasErrors
               ? t('adminSettings.invalidSummary')
@@ -202,20 +218,11 @@ const AdminSettingsPage: React.FC = () => {
                 : t('adminSettings.upToDate')}
           </Typography>
           <Button
-            id='settings-restore-defaults'
-            startIcon={<RestartAlt />}
-            onClick={handleRestoreDefaults}
-            disabled={saving}
-            sx={{ minHeight: 44, mr: 'auto' }}
-          >
-            {t('adminSettings.actions.restoreDefaults')}
-          </Button>
-          <Button
             id='settings-discard'
             variant='outlined'
+            sx={{ minHeight: 44, ml: 'auto' }}
             onClick={discardChanges}
             disabled={!dirty || saving}
-            sx={{ minHeight: 44 }}
           >
             {t('adminSettings.actions.discard')}
           </Button>
