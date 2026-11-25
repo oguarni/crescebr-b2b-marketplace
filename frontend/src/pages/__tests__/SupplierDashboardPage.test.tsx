@@ -1,15 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import type { Company, Order, Product, Quotation } from '@shared/types';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import type { Company, Order, Product, Quotation, SupplierDashboardSummary } from '@shared/types';
 import SupplierDashboardPage from '../SupplierDashboardPage';
 import { ordersService } from '../../services/ordersService';
 import { quotationsService } from '../../services/quotationsService';
 
-// Mock services
 vi.mock('../../services/ordersService', () => ({
   ordersService: {
     getUserOrders: vi.fn(),
+    getSupplierSummary: vi.fn(),
   },
 }));
 
@@ -19,29 +20,17 @@ vi.mock('../../services/quotationsService', () => ({
   },
 }));
 
-// Mock AuthContext
-vi.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({
-    user: { id: 1, role: 'supplier', companyName: 'Test Supplier' },
-  }),
+const mockUser = vi.hoisted(() => ({
+  current: { id: 1, role: 'supplier', status: 'approved', companyName: 'Test Supplier' } as {
+    id: number;
+    role: string;
+    status: string;
+    companyName: string;
+  },
 }));
 
-// Mock react-router-dom navigate
-const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
-// Mock toast
-vi.mock('react-hot-toast', () => ({
-  default: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
+vi.mock('../../contexts/AuthContext', () => ({
+  useAuth: () => ({ user: mockUser.current }),
 }));
 
 const makeProduct = (id: number, name: string, price: number): Product => ({
@@ -167,101 +156,121 @@ const mockQuotations: Quotation[] = [
   },
 ];
 
-const renderPage = async () => {
-  let renderResult;
-  await act(async () => {
-    renderResult = render(
-      <BrowserRouter>
-        <SupplierDashboardPage />
-      </BrowserRouter>
-    );
-  });
-  return renderResult!;
-};
+const summary = (overrides: Partial<SupplierDashboardSummary> = {}): SupplierDashboardSummary => ({
+  pendingQuotations: 12,
+  activeOrders: 2,
+  billableOrders: 31,
+  orderVolume: 1234567.89,
+  ...overrides,
+});
+
+const renderPage = () =>
+  render(
+    <MemoryRouter>
+      <SupplierDashboardPage />
+    </MemoryRouter>
+  );
 
 describe('SupplierDashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUser.current = {
+      id: 1,
+      role: 'supplier',
+      status: 'approved',
+      companyName: 'Test Supplier',
+    };
+    vi.mocked(ordersService.getSupplierSummary).mockResolvedValue(summary());
     vi.mocked(ordersService.getUserOrders).mockResolvedValue({
       orders: mockOrders,
-      pagination: { total: 2, page: 1, limit: 10, totalPages: 1 },
+      pagination: { total: 2, page: 1, limit: 20, totalPages: 1 },
     });
     vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue(mockQuotations);
   });
 
-  it('renders dashboard header with supplier branding', async () => {
-    await renderPage();
-
-    await waitFor(() => {
-      // The "BR" in the title is rendered as an inline BrazilFlag SVG (aria-label
-      // "Brazil"), so the heading reads "Cresce <flag> Fornecedor" across elements.
-      expect(screen.getByRole('heading', { name: /Cresce.*Fornecedor/i })).toBeInTheDocument();
-    });
+  it('has one page heading under the app header, with the company name', async () => {
+    renderPage();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Painel do fornecedor' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Test Supplier')).toBeInTheDocument();
+    expect(await screen.findByText('Buyer Corp')).toBeInTheDocument();
+    // The old in-page app bar, drawer and bottom bar are gone.
+    expect(screen.queryByRole('button', { name: /menu de navegação/i })).not.toBeInTheDocument();
   });
 
-  it('displays metrics cards after loading', async () => {
-    await renderPage();
+  it('shows the API aggregate, not figures summed from one page of orders', async () => {
+    renderPage();
 
-    await waitFor(() => {
-      expect(screen.getByText('Pendentes')).toBeInTheDocument();
-      expect(screen.getByText('Ativos')).toBeInTheDocument();
-      expect(screen.getByText('Receita')).toBeInTheDocument();
-    });
+    const pending = await screen.findByTestId('metric-pending');
+    expect(pending).toHaveTextContent('12');
+    expect(pending).toHaveAttribute('href', '/supplier/quotations');
+    expect(screen.getByTestId('metric-active')).toHaveTextContent('2');
+    const volume = screen.getByTestId('metric-volume');
+    expect(volume).toHaveTextContent(/R\$\s1\.234\.567,89/);
+    expect(volume).toHaveTextContent('31 pedidos não cancelados');
+    expect(volume).toHaveAttribute('href', '/supplier/orders');
   });
 
-  it('renders recent orders from the service', async () => {
-    await renderPage();
+  it('uses the singular for one order and one item', async () => {
+    vi.mocked(ordersService.getSupplierSummary).mockResolvedValue(summary({ billableOrders: 1 }));
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([
+      { ...mockQuotations[0], items: mockQuotations[0].items.slice(0, 1) },
+    ]);
+    renderPage();
 
-    await waitFor(() => {
-      expect(ordersService.getUserOrders).toHaveBeenCalledTimes(1);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('Pedidos Recentes')).toBeInTheDocument();
-      expect(screen.getByText('Pedido #ORD-001')).toBeInTheDocument();
-      expect(screen.getByText('Pedido #ORD-002')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('1 pedido não cancelado')).toBeInTheDocument();
+    expect(screen.getByText(/^1 item •/)).toBeInTheDocument();
   });
 
-  it('renders quotation queue from the service', async () => {
-    await renderPage();
+  it('links each queued quotation to its detail page', async () => {
+    renderPage();
 
-    await waitFor(() => {
-      expect(quotationsService.getSupplierQuotations).toHaveBeenCalledTimes(1);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('Fila de Cotações')).toBeInTheDocument();
-      expect(screen.getByText('#QT-1')).toBeInTheDocument();
-      expect(screen.getByText('#QT-2')).toBeInTheDocument();
-    });
-  });
-
-  it('shows user avatar initials from companyName', async () => {
-    await renderPage();
-
-    await waitFor(() => {
-      expect(screen.getByText('TE')).toBeInTheDocument();
-    });
-  });
-
-  it('handles error when loading dashboard data', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.mocked(ordersService.getUserOrders).mockRejectedValue(new Error('Network error'));
-    vi.mocked(quotationsService.getSupplierQuotations).mockRejectedValue(
-      new Error('Network error')
+    const link = await screen.findByRole('link', { name: /Abrir cotação #QT-1 de Buyer Corp/ });
+    expect(link).toHaveAttribute('href', '/supplier/quotations/1');
+    expect(screen.getByRole('link', { name: 'Ver todas' })).toHaveAttribute(
+      'href',
+      '/supplier/quotations'
     );
+  });
 
-    await renderPage();
+  it('lists orders to prepare with short order numbers', async () => {
+    renderPage();
 
-    await waitFor(
-      () => {
-        expect(ordersService.getUserOrders).toHaveBeenCalled();
-        expect(quotationsService.getSupplierQuotations).toHaveBeenCalled();
-      },
-      { timeout: 10000 }
-    );
+    const section = await screen.findByRole('region', { name: 'Pedidos a preparar' });
+    expect(within(section).getByText('Pedido #ORD-001')).toBeInTheDocument();
+    expect(within(section).getAllByRole('link')[0]).toHaveAttribute('href', '/supplier/orders');
+  });
 
-    consoleSpy.mockRestore();
-  }, 15000);
+  it('shows empty states instead of blank cards', async () => {
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([]);
+    vi.mocked(ordersService.getUserOrders).mockResolvedValue({
+      orders: [],
+      pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
+    });
+    renderPage();
+
+    expect(await screen.findByText('Nenhuma cotação aguardando resposta.')).toBeInTheDocument();
+    expect(screen.getByText('Nenhum pedido a preparar.')).toBeInTheDocument();
+  });
+
+  it('offers a retry instead of zeros when loading fails', async () => {
+    vi.mocked(ordersService.getSupplierSummary)
+      .mockRejectedValueOnce(new Error('Network down'))
+      .mockResolvedValueOnce(summary({ pendingQuotations: 3 }));
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByText('Não foi possível carregar o painel.')).toBeInTheDocument();
+    expect(screen.queryByTestId('metric-pending')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Tentar novamente' }));
+    expect(await screen.findByTestId('metric-pending')).toHaveTextContent('3');
+  });
+
+  it('tells a supplier awaiting approval why their lists are empty', async () => {
+    mockUser.current = { ...mockUser.current, status: 'pending' };
+    renderPage();
+    expect(await screen.findByText(/pendente de aprovação/)).toBeInTheDocument();
+  });
 });

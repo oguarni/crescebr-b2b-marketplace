@@ -13,6 +13,10 @@ vi.mock('./CartDrawer', () => ({
   default: () => <div data-testid='cart-drawer'>CartDrawer</div>,
 }));
 
+vi.mock('./navigation/MobileBottomNav', () => ({
+  MobileBottomNav: () => <nav data-testid='bottom-nav'>BottomNav</nav>,
+}));
+
 describe('Layout', () => {
   const renderWithRouter = (outlet?: React.ReactNode) => {
     return render(

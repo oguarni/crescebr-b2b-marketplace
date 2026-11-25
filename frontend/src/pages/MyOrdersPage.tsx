@@ -56,6 +56,7 @@ import { useOrders } from '../hooks';
 import toast from 'react-hot-toast';
 import { useT } from '../contexts/LanguageContext';
 import { orderTimelineDescription } from '../utils/orderStatus';
+import { formatOrderNumber } from '../utils/orderNumber';
 
 interface OrderHistory {
   order: Order;
@@ -250,7 +251,7 @@ const MyOrdersPage: React.FC = () => {
                       <TableRow key={order.id} hover>
                         <TableCell>
                           <Typography variant='body2' fontWeight='medium'>
-                            #{order.id.slice(0, 8)}
+                            {formatOrderNumber(order.id)}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -336,7 +337,7 @@ const MyOrdersPage: React.FC = () => {
         <DialogTitle>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant='h6'>
-              Timeline do Pedido #{selectedOrder?.id.slice(0, 8)}
+              Timeline do Pedido {selectedOrder ? formatOrderNumber(selectedOrder.id) : ''}
             </Typography>
             <IconButton onClick={handleCloseTimeline}>
               <Close />

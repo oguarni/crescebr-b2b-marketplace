@@ -27,7 +27,8 @@ import {
 } from '@mui/icons-material';
 import { ordersService } from '../services/ordersService';
 import { useAuth } from '../contexts/AuthContext';
-import { useT } from '../contexts/LanguageContext';
+import { useLanguage, useT } from '../contexts/LanguageContext';
+import { formatPercent } from '../utils/currency';
 import { useQuotation, useQuoteCalculation } from '../hooks';
 import toast from 'react-hot-toast';
 
@@ -37,6 +38,7 @@ const QuotationDetailPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const t = useT();
+  const { language } = useLanguage();
   const { quotation, loading, error } = useQuotation(parseInt(id ?? '0'));
   const {
     calculation,
@@ -497,7 +499,11 @@ const QuotationDetailPage: React.FC = () => {
                   )}
                   <TableRow>
                     <TableCell sx={{ color: 'text.secondary' }}>
-                      {t('quotationDetail.tax')}
+                      {itemPricing
+                        ? t('quotationDetail.taxWithRate', {
+                            rate: formatPercent(itemPricing.taxRate, language),
+                          })
+                        : t('quotationDetail.tax')}
                     </TableCell>
                     <TableCell
                       align='right'

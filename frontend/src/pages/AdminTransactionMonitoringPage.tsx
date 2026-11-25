@@ -52,6 +52,7 @@ import {
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
 import { useT } from '../contexts/LanguageContext';
+import { formatOrderNumber } from '../utils/orderNumber';
 
 interface TransactionData {
   orders: OrderDetail[];
@@ -579,7 +580,7 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                   <TableRow key={order.id} hover>
                     <TableCell>
                       <Typography variant='body2' fontFamily='monospace'>
-                        #{order.id.slice(0, 8)}
+                        {formatOrderNumber(order.id)}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -644,7 +645,9 @@ const AdminTransactionMonitoringPage: React.FC = () => {
         maxWidth='md'
         fullWidth
       >
-        <DialogTitle>Detalhes do Pedido #{selectedOrder?.id.slice(0, 8)}</DialogTitle>
+        <DialogTitle>
+          Detalhes do Pedido {selectedOrder ? formatOrderNumber(selectedOrder.id) : ''}
+        </DialogTitle>
         <DialogContent>
           {selectedOrder && (
             <Box sx={{ mt: 1 }}>

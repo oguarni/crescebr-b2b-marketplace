@@ -147,11 +147,11 @@ describe('MyOrdersPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('#abc12345')).toBeInTheDocument();
+      expect(screen.getByText('#ABC12345')).toBeInTheDocument();
     });
 
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
-    expect(screen.getByText('#def67890')).toBeInTheDocument();
+    expect(screen.getByText('#DEF67890')).toBeInTheDocument();
     expect(screen.getByText('BR123456789')).toBeInTheDocument();
     expect(screen.getByText('Sem rastreamento')).toBeInTheDocument();
   });
@@ -186,7 +186,7 @@ describe('MyOrdersPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('#abc12345')).toBeInTheDocument();
+      expect(screen.getByText('#ABC12345')).toBeInTheDocument();
     });
 
     const statusSelect = screen.getByRole('combobox');
@@ -216,7 +216,7 @@ describe('MyOrdersPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('#abc12345')).toBeInTheDocument();
+      expect(screen.getByText('#ABC12345')).toBeInTheDocument();
     });
 
     const timelineButtons = screen.getAllByLabelText('Ver Timeline');
@@ -271,7 +271,7 @@ describe('MyOrdersPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('#abc12345')).toBeInTheDocument();
+      expect(screen.getByText('#ABC12345')).toBeInTheDocument();
     });
 
     const timelineButtons = screen.getAllByLabelText('Ver Timeline');
@@ -292,7 +292,7 @@ describe('MyOrdersPage', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('#abc12345')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('#ABC12345')).toBeInTheDocument());
 
     // Set a filter first
     const statusSelect = screen.getByRole('combobox');
@@ -383,7 +383,7 @@ describe('MyOrdersPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('#abc12345')).toBeInTheDocument();
+      expect(screen.getByText('#ABC12345')).toBeInTheDocument();
     });
 
     const timelineButtons = screen.getAllByLabelText('Ver Timeline');

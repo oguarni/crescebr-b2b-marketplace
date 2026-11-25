@@ -12,16 +12,7 @@ import {
   Badge,
   Pagination,
 } from '@mui/material';
-import {
-  Search,
-  Tune,
-  ShoppingBagOutlined,
-  GridViewOutlined,
-  RequestQuoteOutlined,
-  LocalShippingOutlined,
-  PersonOutlined,
-  AdminPanelSettings,
-} from '@mui/icons-material';
+import { Search, Tune, ShoppingBagOutlined, AdminPanelSettings } from '@mui/icons-material';
 
 import { Product } from '@shared/types';
 import { productsService } from '../services/productsService';
@@ -276,7 +267,7 @@ const HomePage: React.FC = () => {
       sx={{
         minHeight: '100vh',
         bgcolor: 'background.default',
-        pb: 10,
+        pb: 2,
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -531,98 +522,6 @@ const HomePage: React.FC = () => {
             )}
           </>
         )}
-      </Box>
-
-      {/* Bottom Navigation */}
-      <Box
-        sx={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          bgcolor: 'background.paper',
-          borderTop: 1,
-          borderColor: 'divider',
-          zIndex: 50,
-          boxShadow: '0 -4px 6px -1px rgba(0,0,0,0.05)',
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            px: 3,
-            py: 1,
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 0.5,
-              color: 'primary.main',
-              cursor: 'pointer',
-            }}
-          >
-            <GridViewOutlined fontSize='small' />
-            <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              {t('home.catalog')}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 0.5,
-              color: 'text.secondary',
-              cursor: 'pointer',
-              '&:hover': { color: 'primary.main' },
-            }}
-            onClick={() => navigate('/my-quotations')}
-          >
-            <RequestQuoteOutlined fontSize='small' />
-            <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              {t('home.quotes')}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 0.5,
-              color: 'text.secondary',
-              cursor: 'pointer',
-              '&:hover': { color: 'primary.main' },
-            }}
-            onClick={() => navigate('/my-orders')}
-          >
-            <LocalShippingOutlined fontSize='small' />
-            <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              {t('home.orders')}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 0.5,
-              color: 'text.secondary',
-              cursor: 'pointer',
-              '&:hover': { color: 'primary.main' },
-            }}
-            onClick={() => navigate('/login')}
-          >
-            <PersonOutlined fontSize='small' />
-            <Typography variant='caption' sx={{ fontSize: '0.625rem', fontWeight: 500 }}>
-              {t('home.account')}
-            </Typography>
-          </Box>
-        </Box>
       </Box>
     </Box>
   );
