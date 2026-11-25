@@ -276,6 +276,19 @@ const load = (): DemoState => {
 
 let state: DemoState = load();
 
+/**
+ * Every tab of the demo works on its own copy of the state, so a write in one
+ * tab must replace the copy in the others: otherwise two tabs behave like two
+ * databases, and a stale tab's save silently overwrites a newer one instead
+ * of hitting the settings version check. The `storage` event fires only in
+ * the tabs that did not write.
+ */
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', event => {
+    if (event.key === STORAGE_KEY) state = load();
+  });
+}
+
 export const getState = (): DemoState => state;
 
 export const persist = (): void => {

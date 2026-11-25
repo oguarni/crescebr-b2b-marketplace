@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { handleDemoRequest } from '../handlers';
 import { getState, resetState, SEED_ORDER_IDS } from '../store';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../utils/systemSettingsRules';
 
 const [FIRST_ORDER, SECOND_ORDER] = SEED_ORDER_IDS;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -719,3 +720,139 @@ describe('demo API — persistence', () => {
     expect(getState().products).toHaveLength(20);
   });
 });
+
+describe('demo API — system settings', () => {
+  const KEY = 'crescebr_demo_state';
+
+  it('serves the defaults at version 0 to an admin only', () => {
+    const { status, body } = call<{ version: number; settings: { taxRate: number } }>(
+      'GET',
+      '/admin/settings',
+      {},
+      asAdmin()
+    );
+    expect(status).toBe(200);
+    expect(body.data).toMatchObject({ version: 0, settings: { taxRate: 0.18 }, updatedBy: null });
+    expect(call('GET', '/admin/settings', {}, asSupplier()).status).toBe(403);
+    expect(call('GET', '/admin/settings', {}, asBuyer()).status).toBe(403);
+  });
+
+  it('saves a valid document, names the editor and prices with it', () => {
+    const admin = asAdmin();
+    const settings = { ...DEFAULTS(), taxRate: 0.1, quotationValidityDays: 3 };
+
+    const saved = call<{ version: number; updatedBy: { email: string } }>(
+      'PUT',
+      '/admin/settings',
+      { settings, version: 0 },
+      admin
+    );
+    expect(saved.status).toBe(200);
+    expect(saved.body.data).toMatchObject({
+      version: 1,
+      updatedBy: { email: 'admin@crescebr.com' },
+    });
+
+    const buyer = asBuyer();
+    const quote = call<{
+      calculations: { taxRate: number; totalTax: number; totalSubtotal: number };
+    }>('POST', '/quotations/calculate', { items: [{ productId: 2, quantity: 1 }] }, buyer);
+    expect(quote.body.data?.calculations.taxRate).toBe(0.1);
+    expect(quote.body.data?.calculations.totalTax).toBeCloseTo(
+      (quote.body.data?.calculations.totalSubtotal ?? 0) * 0.1
+    );
+
+    const created = call<{ validUntil: string }>(
+      'POST',
+      '/quotations',
+      { items: [{ productId: 2, quantity: 1 }] },
+      buyer
+    );
+    const days = (new Date(created.body.data!.validUntil).getTime() - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(2.99);
+    expect(days).toBeLessThan(3.01);
+
+    expect(call<{ taxRate: number }>('GET', '/settings/pricing').body.data?.taxRate).toBe(0.1);
+  });
+
+  it('answers a stale version with 409 and an invalid document with field details', () => {
+    const admin = asAdmin();
+    expect(call('PUT', '/admin/settings', { settings: DEFAULTS(), version: 0 }, admin).status).toBe(
+      200
+    );
+    expect(call('PUT', '/admin/settings', { settings: DEFAULTS(), version: 0 }, admin).status).toBe(
+      409
+    );
+
+    const invalid = call<unknown>(
+      'PUT',
+      '/admin/settings',
+      { settings: { ...DEFAULTS(), taxRate: 18 }, version: 1 },
+      admin
+    );
+    expect(invalid.status).toBe(400);
+    expect((invalid.body as { details: Array<{ path: string; code: string }> }).details).toEqual([
+      expect.objectContaining({ path: 'settings.taxRate', code: 'range' }),
+    ]);
+
+    const envelope = call<unknown>('PUT', '/admin/settings', { version: -1 }, admin);
+    expect(envelope.status).toBe(400);
+    expect(
+      (envelope.body as { details: Array<{ path: string }> }).details.map(detail => detail.path)
+    ).toEqual(['version', 'settings']);
+  });
+
+  it("adopts another tab's write, so a stale tab hits the version check", () => {
+    const admin = asAdmin();
+    const { body } = call<{ version: number; settings: unknown }>(
+      'GET',
+      '/admin/settings',
+      {},
+      admin
+    );
+
+    // Another tab saves: it writes the shared storage and this tab is told.
+    const otherTab = JSON.parse(JSON.stringify(getState()));
+    otherTab.settings = {
+      ...otherTab.settings,
+      version: 4,
+      values: { ...DEFAULTS(), taxRate: 0.2 },
+    };
+    window.localStorage.setItem(KEY, JSON.stringify(otherTab));
+    window.dispatchEvent(new window.StorageEvent('storage', { key: KEY }));
+
+    const save = call(
+      'PUT',
+      '/admin/settings',
+      { settings: body.data?.settings, version: 0 },
+      admin
+    );
+    expect(save.status).toBe(409);
+    expect(getState().settings.values.taxRate).toBe(0.2);
+  });
+});
+
+describe('demo API — supplier summary', () => {
+  it('counts only quotations awaiting the supplier and excludes cancelled orders', () => {
+    const supplier = asSupplier();
+    const { status, body } = call<{
+      pendingQuotations: number;
+      activeOrders: number;
+      billableOrders: number;
+      orderVolume: number;
+    }>('GET', '/orders/supplier/summary', {}, supplier);
+
+    const supplierId = getState().companies.find(c => c.email === 'supplier@example.com')!.id;
+    const mine = getState().quotations.filter(q =>
+      q.items.some(item => item.product?.supplierId === supplierId)
+    );
+    expect(status).toBe(200);
+    expect(body.data?.pendingQuotations).toBe(mine.filter(q => q.status === 'pending').length);
+    expect(body.data?.billableOrders).toBe(2);
+    expect(call('GET', '/orders/supplier/summary', {}, asBuyer()).status).toBe(403);
+  });
+});
+
+function DEFAULTS() {
+  return JSON.parse(JSON.stringify(DEFAULT_SYSTEM_SETTINGS));
+}

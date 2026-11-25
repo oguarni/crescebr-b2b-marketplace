@@ -177,7 +177,8 @@ const AdminSettingsPage: React.FC = () => {
           variant='outlined'
           sx={{
             position: 'sticky',
-            bottom: 0,
+            // Below md the role's bottom navigation is fixed over the last 64px.
+            bottom: { xs: 'calc(64px + env(safe-area-inset-bottom))', md: 0 },
             zIndex: 2,
             p: 1.5,
             borderRadius: 2,
@@ -201,6 +202,7 @@ const AdminSettingsPage: React.FC = () => {
                 : t('adminSettings.upToDate')}
           </Typography>
           <Button
+            id='settings-restore-defaults'
             startIcon={<RestartAlt />}
             onClick={handleRestoreDefaults}
             disabled={saving}
@@ -209,6 +211,7 @@ const AdminSettingsPage: React.FC = () => {
             {t('adminSettings.actions.restoreDefaults')}
           </Button>
           <Button
+            id='settings-discard'
             variant='outlined'
             onClick={discardChanges}
             disabled={!dirty || saving}
@@ -217,6 +220,7 @@ const AdminSettingsPage: React.FC = () => {
             {t('adminSettings.actions.discard')}
           </Button>
           <Button
+            id='settings-save'
             type='submit'
             variant='contained'
             disabled={!dirty || hasErrors || saving || conflict}

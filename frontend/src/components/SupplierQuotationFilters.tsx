@@ -83,7 +83,8 @@ export const SupplierQuotationFilters: React.FC<SupplierQuotationFiltersProps> =
     <Card sx={{ mb: 3 }}>
       <CardContent>
         <Grid container spacing={2} alignItems='center'>
-          <Grid size={{ xs: 12, sm: 3 }}>
+          {/* Full row on tablets, so each filter below gets a third of it and its label fits. */}
+          <Grid size={{ xs: 12, md: 3 }}>
             <TextField
               fullWidth
               placeholder={t('supplierQuotations.filters.searchPlaceholder')}
@@ -101,7 +102,7 @@ export const SupplierQuotationFilters: React.FC<SupplierQuotationFiltersProps> =
             />
           </Grid>
           {SELECT_FILTERS.map(spec => (
-            <Grid size={{ xs: 12, sm: 2 }} key={spec.field}>
+            <Grid size={{ xs: 12, sm: 4, md: 2 }} key={spec.field}>
               <FormControl fullWidth>
                 <InputLabel>{t(spec.labelKey)}</InputLabel>
                 <Select

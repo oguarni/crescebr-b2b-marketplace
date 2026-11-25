@@ -4,8 +4,11 @@ import Quotation from '../models/Quotation';
 import { quotationRepository } from '../repositories';
 import type { SupplierDashboardSummary } from '../types';
 
-/** Quotations still waiting on the supplier: new requests and calculated ones. */
-const OPEN_QUOTATION_STATUSES = ['pending', 'processed'];
+/**
+ * Quotations waiting on the supplier's response. A `processed` one has been
+ * answered and waits on the buyer, so it is not the supplier's to-do.
+ */
+const OPEN_QUOTATION_STATUSES = ['pending'];
 /** Orders the supplier still has to prepare or dispatch. */
 const ACTIVE_ORDER_STATUSES = ['pending', 'processing'];
 

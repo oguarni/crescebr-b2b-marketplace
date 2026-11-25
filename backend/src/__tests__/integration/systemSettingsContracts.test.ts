@@ -377,10 +377,11 @@ describe('GET /api/v1/orders/supplier/summary', () => {
 
     const response = await request(app).get('/api/v1/orders/supplier/summary').set(supplier);
 
-    // Fixture order (pending, R$ 100) + 22 non-cancelled at R$ 10.50; quotation 1 is processed.
+    // Fixture order (pending, R$ 100) + 22 non-cancelled at R$ 10.50. Quotation 1 is
+    // processed (answered, waiting on the buyer), so only quotation 2 awaits the supplier.
     expect(response.status).toBe(200);
     expect(response.body.data).toEqual({
-      pendingQuotations: 2,
+      pendingQuotations: 1,
       activeOrders: 6,
       billableOrders: 23,
       orderVolume: 331,

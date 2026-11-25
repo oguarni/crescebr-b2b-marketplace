@@ -117,7 +117,7 @@ export const SupplierQuoteQueue: React.FC<SupplierQuoteQueueProps> = ({
                           size='small'
                           sx={{
                             height: 20,
-                            fontSize: '0.6875rem',
+                            fontSize: '0.75rem',
                             fontWeight: 700,
                             textTransform: 'uppercase',
                             bgcolor: chip.bgcolor,

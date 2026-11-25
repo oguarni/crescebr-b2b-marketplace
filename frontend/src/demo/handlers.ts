@@ -1061,7 +1061,8 @@ const getPricingPolicy = (): DemoResponse => ok(currentSettings());
 
 // --- supplier dashboard ------------------------------------------------------
 
-const OPEN_QUOTATION_STATUSES: Quotation['status'][] = ['pending', 'processed'];
+// Awaiting the supplier's response; `processed` ones wait on the buyer.
+const OPEN_QUOTATION_STATUSES: Quotation['status'][] = ['pending'];
 const ACTIVE_ORDER_STATUSES: Order['status'][] = ['pending', 'processing'];
 
 /** Mirrors GET /orders/supplier/summary: figures over every order, not one page. */

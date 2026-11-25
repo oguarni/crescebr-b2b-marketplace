@@ -11,7 +11,8 @@ import type { Order, Quotation } from '@shared/types';
 export const MAX_PENDING_QUOTES = 4;
 export const MAX_RECENT_ORDERS = 3;
 
-const PENDING_QUOTE_STATUSES = ['pending', 'processed'];
+// Awaiting the supplier's response; a `processed` quotation waits on the buyer.
+const PENDING_QUOTE_STATUSES = ['pending'];
 const ACTIVE_ORDER_STATUSES = ['pending', 'processing'];
 
 export const isPendingQuote = (quote: Quotation): boolean =>
