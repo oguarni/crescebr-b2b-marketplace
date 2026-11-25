@@ -146,12 +146,12 @@ export const SupplierQuotationResponseDialog: React.FC<SupplierQuotationResponse
               </Box>
             </Box>
 
-            {mixedSuppliers && (
-              <Alert severity='warning'>{t('supplierQuotations.response.mixedSuppliers')}</Alert>
-            )}
-
-            <Alert severity='info'>
-              {t('supplierQuotations.response.pricingNote')}
+            {/* With other suppliers' lines the supplier cannot send, so the note
+                about what sending does would contradict the disabled button. */}
+            <Alert severity={mixedSuppliers ? 'warning' : 'info'}>
+              {mixedSuppliers
+                ? t('supplierQuotations.response.mixedSuppliers')
+                : t('supplierQuotations.response.pricingNote')}
               {quotation.validUntil &&
                 ` ${t('supplierQuotations.response.validUntilNote', {
                   date: formatDate.date(quotation.validUntil),
