@@ -1,6 +1,9 @@
 import { quotationRepository, productRepository } from '../repositories';
 import QuotationItem from '../models/QuotationItem';
 import sequelize from '../config/database';
+import { systemSettingsService } from './systemSettingsService';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface CreateQuotationInput {
   items: { productId: number; quantity: number }[];
@@ -34,12 +37,18 @@ class QuotationService {
       }
     }
 
+    // A quotation is valid for the configured number of days. orderService
+    // refuses to turn an expired one into an order.
+    const { quotationValidityDays } = await systemSettingsService.getSettings();
+    const validUntil = new Date(Date.now() + quotationValidityDays * DAY_MS);
+
     return sequelize.transaction(async transaction => {
       const quotation = await quotationRepository.create(
         {
           companyId: input.companyId,
           status: 'pending',
           adminNotes: null,
+          validUntil,
         },
         { transaction }
       );

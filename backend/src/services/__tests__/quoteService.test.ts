@@ -7,6 +7,8 @@ import QuotationItem from '../../models/QuotationItem';
 jest.mock('../../models/Product');
 jest.mock('../../models/Quotation');
 jest.mock('../../models/QuotationItem');
+// No settings row: pricing falls back to DEFAULT_SYSTEM_SETTINGS.
+jest.mock('../../models/SystemSettings');
 jest.mock('../../models/User', () => ({
   __esModule: true,
   default: { findAll: jest.fn(), findByPk: jest.fn() },
@@ -391,6 +393,7 @@ describe('QuoteService', () => {
         totalSubtotal: 1000,
         totalShipping: 100,
         totalTax: 180,
+        taxRate: 0.18,
         grandTotal: 1280,
         totalSavings: 200,
       };
@@ -411,6 +414,7 @@ describe('QuoteService', () => {
         totalSubtotal: 1000,
         totalShipping: 100,
         totalTax: 180,
+        taxRate: 0.18,
         grandTotal: 1280,
         totalSavings: 200,
       };
@@ -434,6 +438,7 @@ describe('QuoteService', () => {
             subtotal: 950,
             shippingCost: 62.5,
             tax: 171,
+            taxRate: 0.18,
             total: 1183.5,
             savings: 50,
             appliedTier: { minQuantity: 11, maxQuantity: 50, discount: 0.05 },
@@ -442,6 +447,7 @@ describe('QuoteService', () => {
         totalSubtotal: 950,
         totalShipping: 62.5,
         totalTax: 171,
+        taxRate: 0.18,
         grandTotal: 1183.5,
         totalSavings: 50,
       };
@@ -479,6 +485,7 @@ describe('QuoteService', () => {
             subtotal: 80000,
             shippingCost: 1000,
             tax: 14400,
+            taxRate: 0.18,
             total: 95400,
             savings: 20000,
             appliedTier: { minQuantity: 501, maxQuantity: null, discount: 0.2 },
@@ -487,6 +494,7 @@ describe('QuoteService', () => {
         totalSubtotal: 80000,
         totalShipping: 1000,
         totalTax: 14400,
+        taxRate: 0.18,
         grandTotal: 95400,
         totalSavings: 20000,
       };
@@ -508,6 +516,7 @@ describe('QuoteService', () => {
             subtotal: 1000,
             shippingCost: 62.5,
             tax: 180,
+            taxRate: 0.18,
             total: 1242.5,
             savings: 0,
             appliedTier: null,
@@ -516,6 +525,7 @@ describe('QuoteService', () => {
         totalSubtotal: 1000,
         totalShipping: 62.5,
         totalTax: 180,
+        taxRate: 0.18,
         grandTotal: 1242.5,
         totalSavings: 0,
       };
@@ -537,6 +547,7 @@ describe('QuoteService', () => {
             subtotal: 250,
             shippingCost: 30,
             tax: 45,
+            taxRate: 0.18,
             total: 325,
             savings: 0,
             appliedTier: { minQuantity: 1, maxQuantity: 10, discount: 0 },
@@ -550,6 +561,7 @@ describe('QuoteService', () => {
             subtotal: 18000,
             shippingCost: 500,
             tax: 3240,
+            taxRate: 0.18,
             total: 21740,
             savings: 2000,
             appliedTier: { minQuantity: 51, maxQuantity: 100, discount: 0.1 },
@@ -558,6 +570,7 @@ describe('QuoteService', () => {
         totalSubtotal: 18250,
         totalShipping: 530,
         totalTax: 3285,
+        taxRate: 0.18,
         grandTotal: 22065,
         totalSavings: 2000,
       };
@@ -673,6 +686,22 @@ describe('QuoteService', () => {
       const result = await QuoteService.calculateQuoteForItem(input);
       expect(result.tierDiscount).toBe(0.1);
       expect(result.appliedTier).toEqual(customTiers[0]);
+    });
+
+    it('prices a product without tiers of its own with the default tiers', async () => {
+      const mockProduct = {
+        ...createMockProduct({ id: 1, price: 100 }),
+        unitPrice: 100,
+        minimumOrderQuantity: 1,
+        tierPricing: [],
+      };
+      MockProduct.findByPk.mockResolvedValue(mockProduct as any);
+
+      const result = await QuoteService.calculateQuoteForItem({ productId: 1, quantity: 20 });
+
+      expect(result.appliedTier).toEqual({ minQuantity: 11, maxQuantity: 50, discount: 0.05 });
+      expect(result.subtotal).toBe(1900);
+      expect(result.taxRate).toBe(0.18);
     });
 
     it('should handle product with no minimumOrderQuantity', async () => {

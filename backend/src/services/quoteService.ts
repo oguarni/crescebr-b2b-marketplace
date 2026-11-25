@@ -1,19 +1,16 @@
 import Product from '../models/Product';
 import QuotationItem from '../models/QuotationItem';
 import Quotation from '../models/Quotation';
-
-interface PricingTier {
-  minQuantity: number;
-  maxQuantity: number | null;
-  discount: number;
-}
+import type { PricingTier, ShippingMethod, SystemSettings } from '../types';
+import { DEFAULT_SYSTEM_SETTINGS } from './systemSettingsRules';
+import { systemSettingsService } from './systemSettingsService';
 
 interface QuoteCalculationInput {
   productId: number;
   quantity: number;
   buyerLocation?: string;
   supplierLocation?: string;
-  shippingMethod?: 'standard' | 'express' | 'economy';
+  shippingMethod?: ShippingMethod;
 }
 
 interface QuoteCalculationResult {
@@ -25,6 +22,8 @@ interface QuoteCalculationResult {
   subtotal: number;
   shippingCost: number;
   tax: number;
+  /** The rate `tax` was computed with, so a client can label it without guessing. */
+  taxRate: number;
   total: number;
   savings: number;
   appliedTier: PricingTier | null;
@@ -35,27 +34,15 @@ interface QuoteComparisonResult {
   totalSubtotal: number;
   totalShipping: number;
   totalTax: number;
+  taxRate: number;
   grandTotal: number;
   totalSavings: number;
 }
 
+// Tax, freight and the default volume discounts come from the admin-editable
+// system settings (`systemSettingsService`); DEFAULT_SYSTEM_SETTINGS holds the
+// values they replaced and is what the pure helpers below fall back to.
 export class QuoteService {
-  private static readonly DEFAULT_PRICING_TIERS: PricingTier[] = [
-    { minQuantity: 1, maxQuantity: 10, discount: 0 },
-    { minQuantity: 11, maxQuantity: 50, discount: 0.05 },
-    { minQuantity: 51, maxQuantity: 100, discount: 0.1 },
-    { minQuantity: 101, maxQuantity: 500, discount: 0.15 },
-    { minQuantity: 501, maxQuantity: null, discount: 0.2 },
-  ];
-
-  private static readonly SHIPPING_RATES = {
-    standard: { baseRate: 50, perKgRate: 2.5, deliveryDays: 5 },
-    express: { baseRate: 100, perKgRate: 5.0, deliveryDays: 2 },
-    economy: { baseRate: 25, perKgRate: 1.5, deliveryDays: 10 },
-  };
-
-  private static readonly TAX_RATE = 0.18;
-
   /**
    * Determines the appropriate pricing tier based on the quantity of items being purchased.
    * Applies volume discounts for bulk purchases according to predefined or custom tiers.
@@ -64,8 +51,12 @@ export class QuoteService {
    * @param customTiers - Optional custom pricing tiers to use instead of defaults
    * @returns The matching pricing tier object or null if no tier matches
    */
-  static getPricingTier(quantity: number, customTiers?: PricingTier[]): PricingTier | null {
-    const tiers = customTiers || this.DEFAULT_PRICING_TIERS;
+  static getPricingTier(
+    quantity: number,
+    customTiers?: PricingTier[],
+    defaultTiers: PricingTier[] = DEFAULT_SYSTEM_SETTINGS.pricingTiers
+  ): PricingTier | null {
+    const tiers = customTiers || defaultTiers;
 
     for (const tier of tiers) {
       if (
@@ -86,14 +77,16 @@ export class QuoteService {
    * @param quantity - The number of items to be shipped
    * @param shippingMethod - The shipping method ('standard', 'express', or 'economy')
    * @param distance - The distance in kilometers between origin and destination
+   * @param shippingMethods - The freight table; defaults to the original rates
    * @returns The calculated shipping cost in the local currency
    */
   static calculateShippingCost(
     quantity: number,
-    shippingMethod: 'standard' | 'express' | 'economy' = 'standard',
-    distance: number = 100
+    shippingMethod: ShippingMethod = 'standard',
+    distance: number = 100,
+    shippingMethods: SystemSettings['shippingMethods'] = DEFAULT_SYSTEM_SETTINGS.shippingMethods
   ): number {
-    const rates = this.SHIPPING_RATES[shippingMethod];
+    const rates = shippingMethods[shippingMethod];
     const estimatedWeight = quantity * 0.5;
     const distanceMultiplier = Math.max(1, distance / 100);
 
@@ -127,12 +120,15 @@ export class QuoteService {
    * shipping costs, taxes, and total savings. This is the core pricing calculation method.
    *
    * @param input - The quote calculation input containing product details and preferences
+   * @param settings - Pricing parameters; read from the system settings when omitted
    * @returns A complete quote calculation result with all cost breakdowns
    * @throws Error if the product is not found in the database
    */
   static async calculateQuoteForItem(
-    input: QuoteCalculationInput
+    input: QuoteCalculationInput,
+    settings?: SystemSettings
   ): Promise<QuoteCalculationResult> {
+    const pricing = settings ?? (await systemSettingsService.getSettings());
     const product = await Product.findByPk(input.productId);
     if (!product) {
       throw Object.assign(new Error('Product not found'), { statusCode: 404 });
@@ -151,9 +147,13 @@ export class QuoteService {
       ? parseFloat(product.unitPrice.toString())
       : parseFloat(product.price.toString());
 
-    // Use product's custom tier pricing if available, otherwise use defaults
-    const customTiers = product.tierPricing ? (product.tierPricing as PricingTier[]) : undefined;
-    const appliedTier = this.getPricingTier(input.quantity, customTiers);
+    // A product's own tiers win. An empty list -- the column's default, and what
+    // a product created without tiers stores -- means it has none, so the
+    // platform's default tiers apply. (A bare truthiness check used to treat []
+    // as "custom tiers that match nothing", so the defaults never applied.)
+    const ownTiers = product.tierPricing as PricingTier[] | null | undefined;
+    const customTiers = ownTiers && ownTiers.length > 0 ? ownTiers : undefined;
+    const appliedTier = this.getPricingTier(input.quantity, customTiers, pricing.pricingTiers);
     const tierDiscount = appliedTier ? appliedTier.discount : 0;
     const unitPriceAfterDiscount = basePrice * (1 - tierDiscount);
     const subtotal = unitPriceAfterDiscount * input.quantity;
@@ -162,9 +162,14 @@ export class QuoteService {
       input.buyerLocation,
       input.supplierLocation
     );
-    const shippingCost = this.calculateShippingCost(input.quantity, input.shippingMethod, distance);
+    const shippingCost = this.calculateShippingCost(
+      input.quantity,
+      input.shippingMethod,
+      distance,
+      pricing.shippingMethods
+    );
 
-    const tax = subtotal * this.TAX_RATE;
+    const tax = subtotal * pricing.taxRate;
     const total = subtotal + shippingCost + tax;
     const savings = basePrice * input.quantity - subtotal;
 
@@ -177,6 +182,7 @@ export class QuoteService {
       subtotal,
       shippingCost,
       tax,
+      taxRate: pricing.taxRate,
       total,
       savings,
       appliedTier,
@@ -196,17 +202,23 @@ export class QuoteService {
     options: {
       buyerLocation?: string;
       supplierLocation?: string;
-      shippingMethod?: 'standard' | 'express' | 'economy';
+      shippingMethod?: ShippingMethod;
     } = {}
   ): Promise<QuoteComparisonResult> {
+    // Read once, so every line of one quote is priced with the same settings
+    // even if an administrator saves new ones mid-calculation.
+    const settings = await systemSettingsService.getSettings();
     const calculatedItems = await Promise.all(
       items.map(item =>
-        this.calculateQuoteForItem({
-          ...item,
-          buyerLocation: options.buyerLocation,
-          supplierLocation: options.supplierLocation,
-          shippingMethod: options.shippingMethod,
-        })
+        this.calculateQuoteForItem(
+          {
+            ...item,
+            buyerLocation: options.buyerLocation,
+            supplierLocation: options.supplierLocation,
+            shippingMethod: options.shippingMethod,
+          },
+          settings
+        )
       )
     );
 
@@ -221,6 +233,7 @@ export class QuoteService {
       totalSubtotal,
       totalShipping,
       totalTax,
+      taxRate: settings.taxRate,
       grandTotal,
       totalSavings,
     };
@@ -362,7 +375,7 @@ export class QuoteService {
     quantity: number,
     buyerLocation?: string,
     supplierIds?: number[],
-    shippingMethod?: 'standard' | 'express' | 'economy'
+    shippingMethod?: ShippingMethod
   ): Promise<
     Array<{
       supplier: {
@@ -416,16 +429,20 @@ export class QuoteService {
       }
     }
 
+    const settings = await systemSettingsService.getSettings();
     const quotes = await Promise.all(
       suppliers.map(async supplier => {
         try {
-          const quote = await this.calculateQuoteForItem({
-            productId,
-            quantity,
-            buyerLocation,
-            supplierLocation: supplier.address,
-            shippingMethod,
-          });
+          const quote = await this.calculateQuoteForItem(
+            {
+              productId,
+              quantity,
+              buyerLocation,
+              supplierLocation: supplier.address,
+              shippingMethod,
+            },
+            settings
+          );
 
           return {
             supplier: {

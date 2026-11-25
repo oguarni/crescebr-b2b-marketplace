@@ -203,6 +203,50 @@ export interface OrderStatusHistory {
   createdAt?: Date;
 }
 
+export type ShippingMethod = 'standard' | 'express' | 'economy';
+
+/** Freight rule for one shipping method: a flat fee plus a per-kilogram rate. */
+export interface ShippingMethodSettings {
+  baseRate: number;
+  perKgRate: number;
+  /** Calendar days from dispatch to delivery; a weekend arrival moves to Monday. */
+  deliveryDays: number;
+}
+
+/**
+ * The commercial parameters every quote is priced with. An administrator edits
+ * them in the admin panel; the backend reads them on each calculation.
+ */
+export interface SystemSettings {
+  /** Estimated tax as a fraction of the subtotal: 0.18 is 18%. */
+  taxRate: number;
+  /** How long a new quotation stays valid for conversion into an order. */
+  quotationValidityDays: number;
+  shippingMethods: Record<ShippingMethod, ShippingMethodSettings>;
+  /** Volume discounts for products that do not define their own tiers. */
+  pricingTiers: PricingTier[];
+}
+
+/** What GET/PUT /admin/settings return. */
+export interface SystemSettingsRecord {
+  settings: SystemSettings;
+  defaults: SystemSettings;
+  /** Optimistic-concurrency token; send it back unchanged with an update. */
+  version: number;
+  updatedAt: string | null;
+  updatedBy: { id: number; email: string; companyName?: string } | null;
+}
+
+/** Headline figures for the supplier dashboard, aggregated over every order. */
+export interface SupplierDashboardSummary {
+  pendingQuotations: number;
+  activeOrders: number;
+  /** Orders that were not cancelled. */
+  billableOrders: number;
+  /** Sum of the totals of those orders. */
+  orderVolume: number;
+}
+
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;

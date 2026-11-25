@@ -23,8 +23,15 @@ jest.mock('../../models/QuotationItem', () => ({
   create: jest.fn(),
 }));
 
+// No settings row unless a test provides one: validity falls back to 30 days.
+jest.mock('../../models/SystemSettings');
+
 import { quotationRepository, productRepository } from '../../repositories';
 import QuotationItem from '../../models/QuotationItem';
+import SystemSettings from '../../models/SystemSettings';
+import { DEFAULT_SYSTEM_SETTINGS } from '../systemSettingsRules';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const mockQuotationRepo = quotationRepository as jest.Mocked<typeof quotationRepository>;
 const mockProductRepo = productRepository as jest.Mocked<typeof productRepository>;
@@ -69,6 +76,7 @@ describe('QuotationService', () => {
           companyId: 1,
           status: 'pending',
           adminNotes: null,
+          validUntil: expect.any(Date),
         },
         { transaction }
       );
@@ -80,6 +88,47 @@ describe('QuotationService', () => {
       expect(result).toBeDefined();
     });
 
+    it('stamps validUntil with the configured quotation validity', async () => {
+      (SystemSettings.findByPk as jest.Mock).mockResolvedValueOnce({
+        ...DEFAULT_SYSTEM_SETTINGS,
+        quotationValidityDays: 7,
+        version: 2,
+        updatedBy: null,
+      });
+      mockProductRepo.findByIds.mockResolvedValue([{ id: 1, minimumOrderQuantity: 1 }] as any);
+      mockQuotationRepo.create.mockResolvedValue({ id: 9, companyId: 1 } as any);
+      mockQuotationItem.create.mockResolvedValue({} as any);
+      mockQuotationRepo.findByIdWithItems.mockResolvedValue({ id: 9, items: [] } as any);
+
+      const before = Date.now();
+      await quotationService.validateAndCreate({
+        items: [{ productId: 1, quantity: 1 }],
+        companyId: 1,
+      });
+
+      const { validUntil } = mockQuotationRepo.create.mock.calls[0][0];
+      const offset = (validUntil as Date).getTime() - before;
+      expect(offset).toBeGreaterThanOrEqual(7 * DAY_MS);
+      expect(offset).toBeLessThan(7 * DAY_MS + 60 * 1000);
+    });
+
+    it('defaults validUntil to 30 days when no settings row exists', async () => {
+      mockProductRepo.findByIds.mockResolvedValue([{ id: 1, minimumOrderQuantity: 1 }] as any);
+      mockQuotationRepo.create.mockResolvedValue({ id: 10, companyId: 1 } as any);
+      mockQuotationItem.create.mockResolvedValue({} as any);
+      mockQuotationRepo.findByIdWithItems.mockResolvedValue({ id: 10, items: [] } as any);
+
+      const before = Date.now();
+      await quotationService.validateAndCreate({
+        items: [{ productId: 1, quantity: 1 }],
+        companyId: 1,
+      });
+
+      const { validUntil } = mockQuotationRepo.create.mock.calls[0][0];
+      const offset = (validUntil as Date).getTime() - before;
+      expect(offset).toBeGreaterThanOrEqual(30 * DAY_MS);
+      expect(offset).toBeLessThan(30 * DAY_MS + 60 * 1000);
+    });
     it('should throw when products are not found', async () => {
       mockProductRepo.findByIds.mockResolvedValue([{ id: 1 }] as any);
 
