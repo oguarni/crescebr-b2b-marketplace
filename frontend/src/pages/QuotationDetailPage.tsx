@@ -348,7 +348,7 @@ const QuotationDetailPage: React.FC = () => {
                   size='small'
                   sx={{
                     height: 20,
-                    fontSize: '0.625rem',
+                    fontSize: '0.75rem',
                     bgcolor: '#d1fae5',
                     color: '#065f46',
                     fontWeight: 500,

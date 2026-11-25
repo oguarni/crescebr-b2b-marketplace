@@ -205,12 +205,24 @@ const QuotationRequestPage: React.FC = () => {
                 const step = getOrderStep(item.product);
                 return (
                   <React.Fragment key={item.id}>
-                    <Box sx={{ display: 'flex', py: 2, alignItems: 'center' }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                        py: 2,
+                        alignItems: { xs: 'flex-start', sm: 'center' },
+                        gap: { xs: 1.5, sm: 0 },
+                      }}
+                    >
                       <Avatar
                         src={item.product.imageUrl}
                         alt={item.product.name}
                         variant='rounded'
-                        sx={{ width: 80, height: 80, mr: 2 }}
+                        sx={{
+                          width: { xs: 64, sm: 80 },
+                          height: { xs: 64, sm: 80 },
+                          mr: { sm: 2 },
+                        }}
                         imgProps={{
                           onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
                             e.currentTarget.src =
@@ -219,8 +231,15 @@ const QuotationRequestPage: React.FC = () => {
                         }}
                       />
 
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant='h6' gutterBottom>
+                      <Box sx={{ flex: { xs: '1 1 0', sm: '1 1 auto' }, minWidth: 0 }}>
+                        <Typography
+                          variant='h6'
+                          gutterBottom
+                          sx={{
+                            fontSize: { xs: '1rem', sm: '1.125rem' },
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
                           {item.product.name}
                         </Typography>
                         <Typography variant='body2' color='text.secondary' gutterBottom>
@@ -282,7 +301,7 @@ const QuotationRequestPage: React.FC = () => {
                                     color='success.main'
                                     sx={{ fontWeight: 'medium' }}
                                   >
-                                    Subtotal:{' '}
+                                    {t('quotationRequest.subtotalLabel')}{' '}
                                     {new Intl.NumberFormat('pt-BR', {
                                       style: 'currency',
                                       currency: 'BRL',
@@ -290,7 +309,7 @@ const QuotationRequestPage: React.FC = () => {
                                   </Typography>
                                   {calculation.savings > 0 && (
                                     <Typography variant='caption' color='success.main'>
-                                      Economia:{' '}
+                                      {t('quotationRequest.savingsLabel')}{' '}
                                       {new Intl.NumberFormat('pt-BR', {
                                         style: 'currency',
                                         currency: 'BRL',
@@ -317,16 +336,22 @@ const QuotationRequestPage: React.FC = () => {
                       <Box
                         sx={{
                           display: 'flex',
-                          flexDirection: 'column',
+                          flexDirection: { xs: 'row', sm: 'column' },
+                          flexWrap: 'wrap',
                           alignItems: 'center',
-                          ml: 2,
+                          justifyContent: { xs: 'space-between', sm: 'center' },
+                          width: { xs: '100%', sm: 'auto' },
+                          columnGap: 1,
+                          ml: { sm: 2 },
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: { sm: 1 } }}>
                           <IconButton
                             size='small'
                             onClick={() => handleQuantityChange(item.id, item.quantity - step)}
-                            aria-label='remove'
+                            aria-label={t('quotationRequest.decreaseAria', {
+                              product: item.product.name,
+                            })}
                           >
                             <Remove />
                           </IconButton>
@@ -337,13 +362,23 @@ const QuotationRequestPage: React.FC = () => {
                               const qty = parseInt(e.target.value) || 0;
                               handleQuantityChange(item.id, qty);
                             }}
-                            sx={{ width: 80, mx: 1 }}
-                            inputProps={{ min: step, step, style: { textAlign: 'center' } }}
+                            sx={{ width: 72, mx: 1 }}
+                            inputProps={{
+                              min: step,
+                              step,
+                              inputMode: 'numeric',
+                              'aria-label': t('quotationRequest.quantityAria', {
+                                product: item.product.name,
+                              }),
+                              style: { textAlign: 'center' },
+                            }}
                           />
                           <IconButton
                             size='small'
                             onClick={() => handleQuantityChange(item.id, item.quantity + step)}
-                            aria-label='add'
+                            aria-label={t('quotationRequest.increaseAria', {
+                              product: item.product.name,
+                            })}
                           >
                             <Add />
                           </IconButton>
@@ -352,12 +387,26 @@ const QuotationRequestPage: React.FC = () => {
                         <Typography
                           variant='body2'
                           color='text.secondary'
-                          sx={{ mb: step > 1 ? 0.5 : 2 }}
+                          sx={{
+                            mb: { sm: step > 1 ? 0.5 : 2 },
+                            order: { xs: 3, sm: 0 },
+                            flexBasis: { xs: '100%', sm: 'auto' },
+                          }}
                         >
-                          {item.quantity} unidade{item.quantity !== 1 ? 's' : ''}
+                          {item.quantity === 1
+                            ? t('quotationRequest.unitsOne')
+                            : t('quotationRequest.unitsOther', { count: item.quantity })}
                         </Typography>
                         {step > 1 && (
-                          <Typography variant='caption' color='text.secondary' sx={{ mb: 2 }}>
+                          <Typography
+                            variant='caption'
+                            color='text.secondary'
+                            sx={{
+                              mb: { sm: 2 },
+                              order: { xs: 4, sm: 0 },
+                              flexBasis: { xs: '100%', sm: 'auto' },
+                            }}
+                          >
                             {t('quotationRequest.minimumOrder', { step })}
                           </Typography>
                         )}
@@ -365,7 +414,9 @@ const QuotationRequestPage: React.FC = () => {
                         <IconButton
                           color='error'
                           onClick={() => removeItem(item.id)}
-                          aria-label='delete'
+                          aria-label={t('quotationRequest.removeAria', {
+                            product: item.product.name,
+                          })}
                         >
                           <Delete />
                         </IconButton>
@@ -378,9 +429,9 @@ const QuotationRequestPage: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+          <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             <Button variant='outlined' component={Link} to='/' startIcon={<ArrowBack />}>
-              Continuar Navegando
+              {t('quotationRequest.continueBrowsing')}
             </Button>
             <Button variant='outlined' color='error' onClick={clearRequest} startIcon={<Delete />}>
               {t('quotationRequest.clearRequest')}
@@ -408,19 +459,21 @@ const QuotationRequestPage: React.FC = () => {
                             </Typography>
                           </TableCell>
                           <TableCell align='right'>
-                            <Typography variant='caption'>Valores</Typography>
+                            <Typography variant='caption'>
+                              {t('quotationRequest.values')}
+                            </Typography>
                           </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         <TableRow>
-                          <TableCell>Total de itens</TableCell>
+                          <TableCell>{t('quotationRequest.totalItems')}</TableCell>
                           <TableCell align='right'>
                             <strong>{totalItems}</strong>
                           </TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell>Subtotal</TableCell>
+                          <TableCell>{t('quotationRequest.subtotal')}</TableCell>
                           <TableCell align='right'>
                             {new Intl.NumberFormat('pt-BR', {
                               style: 'currency',
@@ -433,7 +486,7 @@ const QuotationRequestPage: React.FC = () => {
                             <TableCell>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                 <TrendingDown color='success' fontSize='small' />
-                                Economia Total
+                                {t('quotationRequest.totalSavings')}
                               </Box>
                             </TableCell>
                             <TableCell align='right'>
@@ -448,7 +501,7 @@ const QuotationRequestPage: React.FC = () => {
                         )}
                         <TableRow>
                           <TableCell>
-                            <strong>Total Estimado</strong>
+                            <strong>{t('quotationRequest.estimatedTotal')}</strong>
                           </TableCell>
                           <TableCell align='right'>
                             <Typography variant='h6' color='primary.main'>

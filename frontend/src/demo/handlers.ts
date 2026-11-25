@@ -18,6 +18,7 @@ import type {
 } from '@shared/types';
 import { DEMO_PASSWORDS } from './data';
 import { getState, newOrderId, persist } from './store';
+import { parseCsv } from '../utils/csvParse';
 import {
   DEFAULT_SYSTEM_SETTINGS,
   describeSettingsIssue,
@@ -278,6 +279,111 @@ const createProduct = (req: DemoRequest): DemoResponse => {
   state.products.push(product);
   persist();
   return created(product);
+};
+
+/** Mirrors CSVImporter.validateProductRow in backend/src/utils/csvImporter.ts. */
+const csvRowErrors = (row: Record<string, string>): string[] => {
+  const errors: string[] = [];
+  const price = parseFloat(row.price);
+  if (!row.name?.trim()) errors.push('Product name is required');
+  if (!row.description?.trim()) errors.push('Product description is required');
+  if (!row.price || Number.isNaN(price) || price <= 0) {
+    errors.push('Valid price is required (must be a positive number)');
+  }
+  if (!row.imageUrl?.trim()) {
+    errors.push('Image URL is required');
+  } else {
+    try {
+      new URL(row.imageUrl);
+    } catch {
+      errors.push('Invalid image URL format');
+    }
+  }
+  if (!row.category?.trim()) errors.push('Category is required');
+  if (row.tierPricing) {
+    try {
+      const tiers = JSON.parse(row.tierPricing);
+      const invalidTier = (tier: { minQuantity?: unknown; discount?: unknown }) =>
+        typeof tier?.minQuantity !== 'number' ||
+        typeof tier?.discount !== 'number' ||
+        tier.minQuantity <= 0 ||
+        tier.discount < 0 ||
+        tier.discount > 1;
+      if (!Array.isArray(tiers)) errors.push('Tier pricing must be a valid JSON array');
+      else if (tiers.some(invalidTier)) {
+        errors.push(
+          'Invalid tier pricing format - each tier must have valid minQuantity and discount (0-1)'
+        );
+      }
+    } catch {
+      errors.push('Tier pricing must be valid JSON');
+    }
+  }
+  return errors;
+};
+
+/**
+ * Mirrors POST /products/import/csv. The adapter reads the uploaded file and
+ * hands its text over as `csvText`, because handlers are synchronous. Products
+ * are always created under the importing supplier, whatever the file says.
+ */
+const importProductsCsv = (req: DemoRequest): DemoResponse => {
+  const supplier = requireRole(req, 'supplier');
+  if (supplier.status !== 'approved') throw new DemoHttpError(403, 'Supplier not approved');
+  if (typeof req.body.csvText !== 'string') {
+    throw new DemoHttpError(400, 'No CSV file provided');
+  }
+
+  const state = getState();
+  const errors: Array<{ row: number; error: string }> = [];
+  let imported = 0;
+
+  parseCsv(req.body.csvText).forEach((row, index) => {
+    const rowErrors = csvRowErrors(row);
+    if (rowErrors.length > 0) {
+      errors.push({ row: index + 2, error: rowErrors.join(', ') });
+      return;
+    }
+    const price = parseFloat(row.price);
+    state.products.push({
+      id: state.nextProductId++,
+      name: row.name.trim(),
+      description: row.description.trim(),
+      price,
+      unitPrice: price,
+      imageUrl: row.imageUrl.trim(),
+      category: row.category.trim(),
+      supplierId: supplier.id,
+      supplier: {
+        id: supplier.id,
+        companyName: supplier.companyName,
+        corporateName: supplier.corporateName,
+      },
+      tierPricing: row.tierPricing ? JSON.parse(row.tierPricing) : [],
+      specifications: {},
+      minimumOrderQuantity: 1,
+      leadTime: 7,
+      availability: 'in_stock',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as Product);
+    imported += 1;
+  });
+
+  persist();
+  return {
+    status: 200,
+    body: {
+      success: imported > 0 || errors.length === 0,
+      message: `Import completed. ${imported} products imported, ${errors.length} failed.`,
+      data: {
+        imported,
+        failed: errors.length,
+        errors: errors.slice(0, 10),
+        totalErrors: errors.length,
+      },
+    },
+  };
 };
 
 const assertProductOwnership = (actor: Company, product: Product): void => {
@@ -1002,6 +1108,7 @@ export const ROUTES: Route[] = [
   route('GET', '/products/specifications', listSpecifications),
   route('GET', '/products', listProducts),
   route('POST', '/products', createProduct),
+  route('POST', '/products/import/csv', importProductsCsv),
   route('GET', '/products/:id', req => ok(productById(Number(req.params.id)))),
   route('PUT', '/products/:id', updateProduct),
   route('DELETE', '/products/:id', deleteProduct),

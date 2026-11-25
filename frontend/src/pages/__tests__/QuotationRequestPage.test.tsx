@@ -224,7 +224,7 @@ describe('QuotationRequestPage', () => {
       const user = userEvent.setup();
       renderQuotationRequestPage();
 
-      const plusButtons = screen.getAllByLabelText(/add/i);
+      const plusButtons = screen.getAllByLabelText(/^Aumentar a quantidade/);
       await user.click(plusButtons[0]);
 
       expect(mockQuotationContext.updateQuantity).toHaveBeenCalledWith(1, 11);
@@ -234,7 +234,7 @@ describe('QuotationRequestPage', () => {
       const user = userEvent.setup();
       renderQuotationRequestPage();
 
-      const minusButtons = screen.getAllByLabelText(/remove/i);
+      const minusButtons = screen.getAllByLabelText(/^Diminuir a quantidade/);
       await user.click(minusButtons[0]);
 
       expect(mockQuotationContext.updateQuantity).toHaveBeenCalledWith(1, 9);
@@ -267,7 +267,7 @@ describe('QuotationRequestPage', () => {
       const user = userEvent.setup();
       renderQuotationRequestPage();
 
-      const deleteButtons = screen.getAllByLabelText(/delete/i);
+      const deleteButtons = screen.getAllByLabelText(/^Remover .* da solicitação/);
       await user.click(deleteButtons[0]);
 
       expect(mockQuotationContext.removeItem).toHaveBeenCalledWith(1);
@@ -312,7 +312,7 @@ describe('QuotationRequestPage', () => {
       const user = userEvent.setup();
       renderQuotationRequestPage();
 
-      const plusButtons = screen.getAllByLabelText(/add/i);
+      const plusButtons = screen.getAllByLabelText(/^Aumentar a quantidade/);
       await user.click(plusButtons[0]);
 
       expect(mockQuotationContext.updateQuantity).toHaveBeenCalledWith(1, 30);
@@ -322,7 +322,7 @@ describe('QuotationRequestPage', () => {
       const user = userEvent.setup();
       renderQuotationRequestPage();
 
-      const minusButtons = screen.getAllByLabelText(/remove/i);
+      const minusButtons = screen.getAllByLabelText(/^Diminuir a quantidade/);
       await user.click(minusButtons[0]);
 
       expect(mockQuotationContext.updateQuantity).toHaveBeenCalledWith(1, 10);
@@ -645,7 +645,7 @@ describe('QuotationRequestPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Subtotal')).toBeInTheDocument();
-        expect(screen.getByText('Total Estimado')).toBeInTheDocument();
+        expect(screen.getByText('Total estimado')).toBeInTheDocument();
       });
     });
 
@@ -674,7 +674,7 @@ describe('QuotationRequestPage', () => {
       renderQuotationRequestPage();
 
       await waitFor(() => {
-        expect(screen.getByText('Economia Total')).toBeInTheDocument();
+        expect(screen.getByText('Economia total')).toBeInTheDocument();
         expect(screen.getByText(/Preços com desconto por volume aplicado/i)).toBeInTheDocument();
       });
     });

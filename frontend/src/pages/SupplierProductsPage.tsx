@@ -30,6 +30,7 @@ import {
   type ProductFilters,
   type ProductFormData,
 } from '../utils/supplierProducts';
+import { downloadCsv, toProductsCsv } from '../utils/productCsv';
 
 /**
  * The supplier's catalogue: filterable, viewable as cards or a table, grouped by
@@ -40,7 +41,8 @@ import {
  */
 const SupplierProductsPage: React.FC = () => {
   const t = useT();
-  const { products, categories, loading, saveProduct, deleteProduct } = useSupplierProductCatalog();
+  const { products, categories, loading, saveProduct, deleteProduct, importProducts } =
+    useSupplierProductCatalog();
 
   const [viewMode, setViewMode] = useState<ProductViewMode>('grid');
   const [selectedTab, setSelectedTab] = useState(0);
@@ -60,6 +62,11 @@ const SupplierProductsPage: React.FC = () => {
 
   const handleFormChange = <K extends keyof ProductFormData>(field: K, value: ProductFormData[K]) =>
     setForm(previous => ({ ...previous, [field]: value }));
+
+  const handleExport = () => {
+    downloadCsv(toProductsCsv(products), 'produtos-crescebr.csv');
+    toast.success(t('supplierProducts.toast.exported', { count: products.length }));
+  };
 
   const handleCreate = () => {
     setEditingProduct(null);
@@ -83,30 +90,53 @@ const SupplierProductsPage: React.FC = () => {
     deleteProduct(productId);
   };
 
-  // CSV import/export are not implemented yet; the handlers exist so the
-  // controls can stay visible and announce that rather than silently no-op.
+  // The export writes the importer's own format, so a catalogue can be
+  // exported, edited in a spreadsheet and imported back.
   const handleCsvImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files?.[0]) return;
-    toast(t('supplierProducts.toast.importSoon'));
+    const file = event.target.files?.[0];
+    // Cleared so choosing the same file again still fires onChange.
     event.target.value = '';
+    if (file) importProducts(file);
   };
 
   return (
     <Container maxWidth='xl' sx={{ mt: 4, mb: 4 }}>
-      <Box display='flex' justifyContent='space-between' alignItems='center' mb={4}>
-        <Box>
-          <Typography variant='h4' component='h1' gutterBottom>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', md: 'center' },
+          gap: 2,
+          mb: 4,
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            variant='h4'
+            component='h1'
+            gutterBottom
+            sx={{ fontSize: { xs: '1.6rem', sm: '2.125rem' } }}
+          >
             {t('supplierProducts.title')}
           </Typography>
           <Typography variant='subtitle1' color='text.secondary'>
             {t('supplierProducts.subtitle')}
           </Typography>
         </Box>
-        <Box display='flex' gap={2}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, auto)' },
+            gap: 1.5,
+            '& > :last-child': { gridColumn: { xs: '1 / -1', sm: 'auto' } },
+          }}
+        >
           <Button
             variant='outlined'
             startIcon={<FileDownload />}
-            onClick={() => toast(t('supplierProducts.toast.exportSoon'))}
+            onClick={handleExport}
+            disabled={products.length === 0}
           >
             {t('supplierProducts.exportCsv')}
           </Button>
@@ -117,8 +147,8 @@ const SupplierProductsPage: React.FC = () => {
             style={{ display: 'none' }}
             id='csv-import'
           />
-          <label htmlFor='csv-import'>
-            <Button variant='outlined' component='span' startIcon={<FileUpload />}>
+          <label htmlFor='csv-import' style={{ display: 'flex' }}>
+            <Button variant='outlined' component='span' startIcon={<FileUpload />} fullWidth>
               {t('supplierProducts.importCsv')}
             </Button>
           </label>
@@ -148,6 +178,8 @@ const SupplierProductsPage: React.FC = () => {
           <Tabs
             value={selectedTab}
             onChange={(_, newValue) => setSelectedTab(newValue)}
+            variant='scrollable'
+            allowScrollButtonsMobile
             sx={{ mb: 2 }}
           >
             {PRODUCT_TAB_KEYS.map(key => (
@@ -187,7 +219,12 @@ const SupplierProductsPage: React.FC = () => {
       <Fab
         color='primary'
         aria-label={t('supplierProducts.addProductAria')}
-        sx={{ position: 'fixed', bottom: 16, right: 16 }}
+        sx={{
+          position: 'fixed',
+          right: 16,
+          // Clear of the phone bottom navigation.
+          bottom: { xs: 'calc(80px + env(safe-area-inset-bottom))', md: 16 },
+        }}
         onClick={handleCreate}
       >
         <Add />

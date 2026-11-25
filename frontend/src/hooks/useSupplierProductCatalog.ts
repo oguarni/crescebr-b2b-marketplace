@@ -6,6 +6,7 @@ import { useProducts } from './useProducts';
 import { useAuth } from '../contexts/AuthContext';
 import { useT } from '../contexts/LanguageContext';
 import { browserLogger } from '../utils/browserLogger';
+import { getErrorMessage } from '../utils/errorHandler';
 import type { ProductFormData } from '../utils/supplierProducts';
 
 interface UseSupplierProductCatalogResult {
@@ -14,6 +15,8 @@ interface UseSupplierProductCatalogResult {
   loading: boolean;
   saveProduct: (form: ProductFormData, editingProduct: Product | null) => Promise<boolean>;
   deleteProduct: (productId: number) => Promise<void>;
+  /** Imports a CSV file and reloads the catalogue; reports the outcome itself. */
+  importProducts: (file: File) => Promise<void>;
 }
 
 /**
@@ -89,5 +92,32 @@ export const useSupplierProductCatalog = (): UseSupplierProductCatalogResult => 
     [refetch, t]
   );
 
-  return { products, categories, loading, saveProduct, deleteProduct };
+  const importProducts = useCallback(
+    async (file: File): Promise<void> => {
+      try {
+        const result = await productsService.importProductsCsv(file);
+        if (result.failed === 0) {
+          toast.success(t('supplierProducts.toast.imported', { count: result.imported }));
+        } else {
+          const [first] = result.errors;
+          toast.error(
+            t('supplierProducts.toast.importedWithErrors', {
+              imported: result.imported,
+              failed: result.failed,
+              row: first?.row ?? '-',
+              error: first?.error ?? '',
+            }),
+            { duration: 10000 }
+          );
+        }
+        if (result.imported > 0) await refetch();
+      } catch (error) {
+        browserLogger.error('CSV import failed', { error });
+        toast.error(t('supplierProducts.toast.importError', { reason: getErrorMessage(error) }));
+      }
+    },
+    [refetch, t]
+  );
+
+  return { products, categories, loading, saveProduct, deleteProduct, importProducts };
 };

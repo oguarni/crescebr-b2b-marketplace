@@ -345,7 +345,7 @@ const HomePage: React.FC = () => {
             <Badge
               badgeContent={activeFilters.length}
               color='primary'
-              sx={{ '& .MuiBadge-badge': { fontSize: '0.625rem', height: 16, minWidth: 16 } }}
+              sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem', height: 18, minWidth: 18 } }}
             >
               <Tune
                 sx={{
@@ -363,7 +363,7 @@ const HomePage: React.FC = () => {
             <Badge
               badgeContent={cartItems.length}
               color='error'
-              sx={{ '& .MuiBadge-badge': { fontSize: '0.625rem', height: 16, minWidth: 16 } }}
+              sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem', height: 18, minWidth: 18 } }}
             >
               <ShoppingBagOutlined sx={{ fontSize: 20, color: 'text.secondary' }} />
             </Badge>
