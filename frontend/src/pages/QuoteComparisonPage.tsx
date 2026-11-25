@@ -134,7 +134,11 @@ const QuoteComparisonPage: React.FC = () => {
       if (response.quotes.length === 0) {
         toast('Nenhum fornecedor encontrado para este produto');
       } else {
-        toast.success(t('quoteComparison.toast.found', { count: response.quotes.length }));
+        toast.success(
+          response.quotes.length === 1
+            ? t('quoteComparison.toast.foundOne')
+            : t('quoteComparison.toast.found', { count: response.quotes.length })
+        );
       }
     } catch (_error) {
       toast.error(t('quoteComparison.toast.loadError'));

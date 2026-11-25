@@ -44,6 +44,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -538,19 +539,19 @@ const AdminTransactionMonitoringPage: React.FC = () => {
               <Box sx={{ height: 300 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                   <PieChart>
-                    <Pie
-                      data={statusPieData}
-                      cx='50%'
-                      cy='50%'
-                      outerRadius={80}
-                      dataKey='value'
-                      label={entry => `${entry.name ?? ''}: ${entry.value ?? 0}`}
-                    >
+                    {/* Counts go in the legend: labels drawn outside the slices
+                        were clipped at the card's edge ("nviado: 1"). */}
+                    <Pie data={statusPieData} cx='50%' cy='45%' outerRadius={80} dataKey='value'>
                       {statusPieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
                     </Pie>
                     <Tooltip />
+                    <Legend
+                      formatter={(value, entry) =>
+                        `${value}: ${(entry.payload as { value?: number } | undefined)?.value ?? 0}`
+                      }
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </Box>

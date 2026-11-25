@@ -243,6 +243,7 @@ export const en: typeof pt = {
     toast: {
       minQuantity: 'Minimum quantity is {{quantity}} units',
       found: '{{count}} quotes found',
+      foundOne: '1 quote found',
       loadError: 'Failed to fetch quotes',
     },
   },

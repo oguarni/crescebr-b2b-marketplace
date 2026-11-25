@@ -245,6 +245,7 @@ export const pt = {
     toast: {
       minQuantity: 'Quantidade mínima é {{quantity}} unidades',
       found: '{{count}} cotações encontradas',
+      foundOne: '1 cotação encontrada',
       loadError: 'Erro ao buscar cotações',
     },
   },
