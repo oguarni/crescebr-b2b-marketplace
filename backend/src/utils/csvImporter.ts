@@ -31,6 +31,16 @@ interface ValidationResult {
   errors: string[];
 }
 
+/**
+ * Header handling for csv-parser. A UTF-8 byte-order mark, which Excel and the
+ * supplier screen's own export write so accented text opens correctly, would
+ * otherwise stay glued to the first header ("\uFEFFname"), and every row would
+ * then fail the required-name check.
+ */
+export const CSV_PARSER_OPTIONS = {
+  mapHeaders: ({ header }: { header: string }): string => header.replace(/^\uFEFF/, '').trim(),
+};
+
 export class CSVImporter {
   private static validateProductRow(row: ProductCSVRow, _rowNumber: number): ValidationResult {
     const errors: string[] = [];
@@ -166,7 +176,7 @@ export class CSVImporter {
     try {
       await new Promise<void>((resolve, reject) => {
         fs.createReadStream(filePath)
-          .pipe(csv())
+          .pipe(csv(CSV_PARSER_OPTIONS))
           .on('data', (data: ProductCSVRow) => {
             if (supplierId) {
               data.supplierId = supplierId.toString();
