@@ -1,4 +1,4 @@
-import { Order, ApiResponse } from '@shared/types';
+import { Order, ApiResponse, SupplierDashboardSummary } from '@shared/types';
 import { apiService } from './api';
 
 interface PaginationInfo {
@@ -81,6 +81,19 @@ class OrdersService {
 
     if (!response.success || !response.data) {
       throw new Error(response.error || 'Failed to fetch orders');
+    }
+
+    return response.data;
+  }
+
+  /** Supplier dashboard figures, aggregated by the API over every order. */
+  async getSupplierSummary(): Promise<SupplierDashboardSummary> {
+    const response = await apiService.get<ApiResponse<SupplierDashboardSummary>>(
+      '/orders/supplier/summary'
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to fetch the supplier summary');
     }
 
     return response.data;

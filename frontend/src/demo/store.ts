@@ -7,11 +7,33 @@
  * puts a visitor back to a clean marketplace.
  */
 
-import type { Company, Order, Product, Quotation } from '@shared/types';
+import type { Company, Order, Product, Quotation, SystemSettings } from '@shared/types';
 import { SEED_COMPANIES, SEED_PRODUCTS } from './data';
+import { DEFAULT_SYSTEM_SETTINGS } from '../utils/systemSettingsRules';
 
 /** Bump when the shape below changes so stale saved state is discarded. */
-const STATE_VERSION = 1;
+const STATE_VERSION = 2;
+
+/**
+ * Seeded orders carry UUIDs like the backend's, so screens that show a short
+ * order number (its first eight characters) can tell them apart.
+ */
+export const SEED_ORDER_IDS = [
+  'b7e3c2a9-4f1d-4c8e-9a2b-1d5e6f7a8b9c',
+  'e1a94d27-8c3b-4f6e-b5d0-2a7c9e4f1b38',
+] as const;
+
+/** A random v4 UUID, as Postgres' `UUIDV4` default would assign. */
+export const newOrderId = (): string => globalThis.crypto.randomUUID();
+
+/** The admin-editable pricing parameters, versioned like the backend row. */
+export interface DemoSettingsRow {
+  values: SystemSettings;
+  /** 0 until the first save, matching the backend without a settings row. */
+  version: number;
+  updatedAt: string | null;
+  updatedBy: number | null;
+}
 const STORAGE_KEY = 'crescebr_demo_state';
 
 export interface DemoState {
@@ -20,6 +42,7 @@ export interface DemoState {
   products: Product[];
   quotations: Quotation[];
   orders: Order[];
+  settings: DemoSettingsRow;
   nextCompanyId: number;
   nextProductId: number;
   nextQuotationId: number;
@@ -181,7 +204,7 @@ const buildHistory = (
     const created = daysAgo(30 - index * 8);
 
     return {
-      id: `demo-order-${index + 1}`,
+      id: SEED_ORDER_IDS[index],
       companyId: quotation.companyId,
       quotationId: quotation.id,
       quotation,
@@ -224,6 +247,7 @@ const buildInitialState = (): DemoState => {
     products,
     quotations,
     orders,
+    settings: { values: DEFAULT_SYSTEM_SETTINGS, version: 0, updatedAt: null, updatedBy: null },
     nextCompanyId: 200,
     nextProductId: products.length + 1,
     nextQuotationId: quotations.length + 1,

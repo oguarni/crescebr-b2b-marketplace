@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { handleDemoRequest } from '../handlers';
-import { getState, resetState } from '../store';
+import { getState, resetState, SEED_ORDER_IDS } from '../store';
+
+const [FIRST_ORDER, SECOND_ORDER] = SEED_ORDER_IDS;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 interface Envelope<T = unknown> {
   success: boolean;
@@ -391,7 +394,9 @@ describe('demo API — orders', () => {
     expect(body.data?.status).toBe('pending');
     const quotation = getState().quotations.find(q => q.id === 3);
     expect(body.data?.totalAmount).toBeGreaterThan(quotation?.totalAmount ?? 0);
-    expect(body.data?.items[0].orderId).toBe(Number(body.data?.id.replace('demo-order-', '')));
+    // UUIDs like the backend's, so short order numbers stay distinguishable.
+    expect(body.data?.id).toMatch(UUID);
+    expect(body.data?.items[0].orderId).toEqual(expect.any(Number));
     expect(quotation?.status).toBe('completed');
   });
 
@@ -461,13 +466,13 @@ describe('demo API — orders', () => {
   });
 
   it('reads one order, its history, and blocks a company that does not own it', () => {
-    expect(call<{ id: string }>('GET', '/orders/demo-order-1', {}, asBuyer()).body.data?.id).toBe(
-      'demo-order-1'
+    expect(call<{ id: string }>('GET', `/orders/${FIRST_ORDER}`, {}, asBuyer()).body.data?.id).toBe(
+      FIRST_ORDER
     );
 
     const history = call<{ timeline: Array<{ status: string; canTransitionTo: string[] }> }>(
       'GET',
-      '/orders/demo-order-1/history',
+      `/orders/${FIRST_ORDER}/history`,
       {},
       asBuyer()
     ).body.data;
@@ -476,31 +481,31 @@ describe('demo API — orders', () => {
     expect(timeline[timeline.length - 1]?.status).toBe('delivered');
 
     const outsider = signIn('supplier4@example.com', 'supplier123');
-    expect(call('GET', '/orders/demo-order-1', {}, outsider).status).toBe(403);
-    expect(call('GET', '/orders/demo-order-1/history', {}, outsider).status).toBe(403);
+    expect(call('GET', `/orders/${FIRST_ORDER}`, {}, outsider).status).toBe(403);
+    expect(call('GET', `/orders/${FIRST_ORDER}/history`, {}, outsider).status).toBe(403);
     expect(call('GET', '/orders/nope', {}, asBuyer()).status).toBe(404);
   });
 
   it('enforces the status transition rules', () => {
     const admin = asAdmin();
 
-    // demo-order-2 is shipped; delivered is legal, pending is not.
-    expect(call('PUT', '/orders/demo-order-2/status', { status: 'pending' }, admin).status).toBe(
+    // The second seeded order is shipped; delivered is legal, pending is not.
+    expect(call('PUT', `/orders/${SECOND_ORDER}/status`, { status: 'pending' }, admin).status).toBe(
       400
     );
 
     const delivered = call<{ status: string; trackingNumber: string }>(
       'PUT',
-      '/orders/demo-order-2/status',
+      `/orders/${SECOND_ORDER}/status`,
       { status: 'delivered', trackingNumber: 'BR1', notes: 'Left at dock' },
       admin
     );
     expect(delivered.body.data?.status).toBe('delivered');
 
     // A delivered order is terminal.
-    expect(call('PUT', '/orders/demo-order-2/status', { status: 'cancelled' }, admin).status).toBe(
-      400
-    );
+    expect(
+      call('PUT', `/orders/${SECOND_ORDER}/status`, { status: 'cancelled' }, admin).status
+    ).toBe(400);
   });
 
   it('requires valid shipping metadata for processing-to-shipped transitions', () => {
@@ -546,7 +551,7 @@ describe('demo API — orders', () => {
 
   it('keeps status updates away from buyers', () => {
     expect(
-      call('PUT', '/orders/demo-order-1/status', { status: 'cancelled' }, asBuyer()).status
+      call('PUT', `/orders/${FIRST_ORDER}/status`, { status: 'cancelled' }, asBuyer()).status
     ).toBe(403);
   });
 
