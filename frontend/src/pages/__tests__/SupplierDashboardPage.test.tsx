@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import type { Company, Order, Product, Quotation, SupplierDashboardSummary } from '@shared/types';
@@ -202,8 +202,9 @@ describe('SupplierDashboardPage', () => {
   it('shows the API aggregate, not figures summed from one page of orders', async () => {
     renderPage();
 
+    // The cards render as skeletons first, so wait for the figures themselves.
     const pending = await screen.findByTestId('metric-pending');
-    expect(pending).toHaveTextContent('12');
+    await waitFor(() => expect(pending).toHaveTextContent('12'));
     expect(pending).toHaveAttribute('href', '/supplier/quotations');
     expect(screen.getByTestId('metric-active')).toHaveTextContent('2');
     const volume = screen.getByTestId('metric-volume');
@@ -241,7 +242,8 @@ describe('SupplierDashboardPage', () => {
     renderPage();
 
     const section = await screen.findByRole('region', { name: 'Pedidos a preparar' });
-    expect(within(section).getByText('Pedido #ORD-001')).toBeInTheDocument();
+    // The section renders a skeleton first; wait for the rows, not just the heading.
+    expect(await within(section).findByText('Pedido #ORD-001')).toBeInTheDocument();
     expect(within(section).getAllByRole('link')[0]).toHaveAttribute('href', '/supplier/orders');
   });
 
@@ -268,7 +270,8 @@ describe('SupplierDashboardPage', () => {
     expect(screen.queryByTestId('metric-pending')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Tentar novamente' }));
-    expect(await screen.findByTestId('metric-pending')).toHaveTextContent('3');
+    const pending = await screen.findByTestId('metric-pending');
+    await waitFor(() => expect(pending).toHaveTextContent('3'));
   });
 
   it('tells a supplier awaiting approval why their lists are empty', async () => {
