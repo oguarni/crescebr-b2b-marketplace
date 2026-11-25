@@ -1,231 +1,170 @@
 import React from 'react';
 import {
+  Alert,
   Box,
   Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Grid,
-  MenuItem,
-  Paper,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
+  Divider,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Quotation } from '@shared/types';
+import { useAuth } from '../contexts/AuthContext';
 import { useT } from '../contexts/LanguageContext';
+import { useDateFormat } from '../hooks/useDateFormat';
 import type { TranslationKey } from '../locales';
 import { formatBRL } from '../utils/currency';
-import type {
-  QuotationResponseDraft,
-  QuotationResponseTextField,
-} from '../utils/quotationResponse';
-
-const AVAILABILITY_OPTIONS = ['in_stock', 'limited', 'out_of_stock', 'custom_order'] as const;
-
-const ITEM_COLUMN_KEYS: TranslationKey[] = [
-  'supplierQuotations.response.colProduct',
-  'supplierQuotations.response.colQty',
-  'supplierQuotations.response.colUnitPrice',
-  'supplierQuotations.response.colTotal',
-  'supplierQuotations.response.colAvailability',
-  'supplierQuotations.response.colLeadTime',
-];
+import { responseLines } from '../utils/quotationResponse';
 
 interface SupplierQuotationResponseDialogProps {
   open: boolean;
   quotation: Quotation | null;
-  draft: QuotationResponseDraft;
+  notes: string;
+  onNotesChange: (notes: string) => void;
   onClose: () => void;
   onSubmit: () => void;
-  onItemPriceChange: (index: number, unitPrice: number) => void;
-  onItemAvailabilityChange: (index: number, availability: string) => void;
-  onTextFieldChange: (field: QuotationResponseTextField, value: string) => void;
 }
 
 /**
- * Full-width dialog where a supplier prices each line and sets the quote terms.
+ * The supplier's review of a quotation request: their own lines at catalogue
+ * price, the validity the platform set, and notes for the buyer. Sending it
+ * marks the quotation processed, so the buyer can turn it into an order.
+ *
+ * Full-screen on phones, where a multi-column table would not fit.
  *
  * @example
- * <SupplierQuotationResponseDialog
- *   open={dialog.open}
- *   quotation={dialog.quotation}
- *   draft={dialog.draft}
- *   onClose={closeDialog}
- *   onSubmit={submitResponse}
- *   onItemPriceChange={setItemPrice}
- *   onItemAvailabilityChange={setItemAvailability}
- *   onTextFieldChange={setDraftField}
- * />
+ * <SupplierQuotationResponseDialog open quotation={q} notes={notes}
+ *   onNotesChange={setNotes} onClose={close} onSubmit={send} />
  */
 export const SupplierQuotationResponseDialog: React.FC<SupplierQuotationResponseDialogProps> = ({
   open,
   quotation,
-  draft,
+  notes,
+  onNotesChange,
   onClose,
   onSubmit,
-  onItemPriceChange,
-  onItemAvailabilityChange,
-  onTextFieldChange,
 }) => {
   const t = useT();
+  const { user } = useAuth();
+  const formatDate = useDateFormat();
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const lines = quotation && user ? responseLines(quotation, user.id) : [];
+  const total = lines.reduce((sum, line) => sum + line.lineTotal, 0);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth='lg' fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth='md' fullWidth fullScreen={fullScreen}>
       <DialogTitle>
         {t('supplierQuotations.response.title', { id: quotation?.id ?? '' })}
       </DialogTitle>
-      <DialogContent>
+      <DialogContent dividers>
         {quotation && (
-          <Box>
-            <Box mb={3}>
-              <Typography variant='h6' gutterBottom>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <Box>
+              <Typography variant='subtitle1' component='h3' sx={{ fontWeight: 700 }}>
                 {t('supplierQuotations.customerInfo')}
               </Typography>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant='body2' color='text.secondary'>
-                    {t('supplierQuotations.response.company', {
-                      name: quotation.company?.companyName ?? '',
-                    })}
-                  </Typography>
-                  <Typography variant='body2' color='text.secondary'>
-                    {t('supplierQuotations.response.email', {
-                      email: quotation.company?.email ?? '',
-                    })}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant='body2' color='text.secondary'>
-                    {t('supplierQuotations.requestedDelivery', {
-                      date: quotation.requestedDeliveryDate
-                        ? new Date(quotation.requestedDeliveryDate).toLocaleDateString()
-                        : t('supplierQuotations.response.notSpecified'),
-                    })}
-                  </Typography>
-                </Grid>
-              </Grid>
+              <Typography variant='body2' color='text.secondary'>
+                {t('supplierQuotations.response.company', {
+                  name: quotation.company?.companyName ?? '',
+                })}
+              </Typography>
+              <Typography variant='body2' color='text.secondary' sx={{ overflowWrap: 'anywhere' }}>
+                {t('supplierQuotations.response.email', { email: quotation.company?.email ?? '' })}
+              </Typography>
+              <Typography variant='body2' color='text.secondary'>
+                {t('supplierQuotations.requestedDelivery', {
+                  date: quotation.requestedDeliveryDate
+                    ? formatDate.date(quotation.requestedDeliveryDate)
+                    : t('supplierQuotations.response.notSpecified'),
+                })}
+              </Typography>
             </Box>
 
-            <Typography variant='h6' gutterBottom>
-              {t('supplierQuotations.response.quoteItems')}
-            </Typography>
-            <TableContainer component={Paper} sx={{ mb: 3 }}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    {ITEM_COLUMN_KEYS.map(key => (
-                      <TableCell key={key}>{t(key)}</TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {draft.items.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        {quotation.items?.[index]?.product?.name ||
-                          t('supplierQuotations.productFallback')}
-                      </TableCell>
-                      <TableCell>{item.quantity}</TableCell>
-                      <TableCell>
-                        <TextField
-                          type='number'
-                          size='small'
-                          value={item.unitPrice}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            onItemPriceChange(index, Number(e.target.value))
-                          }
-                          inputProps={{ min: 0, step: 0.01 }}
-                        />
-                      </TableCell>
-                      <TableCell>{formatBRL(item.totalPrice)}</TableCell>
-                      <TableCell>
-                        <Select
-                          size='small'
-                          value={item.availability}
-                          onChange={e => onItemAvailabilityChange(index, e.target.value)}
-                        >
-                          {AVAILABILITY_OPTIONS.map(option => (
-                            <MenuItem value={option} key={option}>
-                              {t(`supplierQuotations.availability.${option}`)}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        {t('supplierQuotations.response.days', { count: item.leadTime })}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Box>
+              <Typography variant='subtitle1' component='h3' sx={{ fontWeight: 700, mb: 1 }}>
+                {t('supplierQuotations.response.yourItems')}
+              </Typography>
+              <Box component='ul' sx={{ listStyle: 'none', m: 0, p: 0 }}>
+                {lines.map((line, index) => (
+                  <Box component='li' key={line.productId}>
+                    {index > 0 && <Divider sx={{ my: 1.25 }} />}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 2,
+                        alignItems: 'baseline',
+                      }}
+                    >
+                      <Typography
+                        variant='body2'
+                        sx={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}
+                      >
+                        {line.name}
+                      </Typography>
+                      <Typography
+                        variant='body2'
+                        sx={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}
+                      >
+                        {formatBRL(line.lineTotal)}
+                      </Typography>
+                    </Box>
+                    <Typography variant='caption' color='text.secondary' sx={{ display: 'block' }}>
+                      {t('supplierQuotations.response.lineDetail', {
+                        quantity: line.quantity,
+                        price: formatBRL(line.unitPrice),
+                      })}
+                      {line.leadTime !== undefined &&
+                        ` • ${t('supplierQuotations.response.days', { count: line.leadTime })}`}
+                      {line.availability &&
+                        ` • ${t(`supplierQuotations.availability.${line.availability}` as TranslationKey)}`}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+              <Divider sx={{ my: 1.25 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                <Typography variant='body2' sx={{ fontWeight: 700 }}>
+                  {t('supplierQuotations.response.catalogTotal')}
+                </Typography>
+                <Typography
+                  variant='body2'
+                  sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {formatBRL(total)}
+                </Typography>
+              </Box>
+            </Box>
 
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField
-                  fullWidth
-                  label={t('supplierQuotations.response.totalAmount')}
-                  value={formatBRL(draft.totalAmount)}
-                  InputProps={{ readOnly: true }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField
-                  fullWidth
-                  type='date'
-                  label={t('supplierQuotations.response.validUntil')}
-                  value={draft.validUntil}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    onTextFieldChange('validUntil', e.target.value)
-                  }
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField
-                  fullWidth
-                  label={t('supplierQuotations.response.paymentTerms')}
-                  value={draft.paymentTerms}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    onTextFieldChange('paymentTerms', e.target.value)
-                  }
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  fullWidth
-                  label={t('supplierQuotations.response.deliveryTerms')}
-                  value={draft.deliveryTerms}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    onTextFieldChange('deliveryTerms', e.target.value)
-                  }
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={2}
-                  label={t('supplierQuotations.response.additionalNotes')}
-                  value={draft.notes}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    onTextFieldChange('notes', e.target.value)
-                  }
-                />
-              </Grid>
-            </Grid>
+            <Alert severity='info'>
+              {t('supplierQuotations.response.pricingNote')}
+              {quotation.validUntil &&
+                ` ${t('supplierQuotations.response.validUntilNote', {
+                  date: formatDate.date(quotation.validUntil),
+                })}`}
+            </Alert>
+
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              label={t('supplierQuotations.response.additionalNotes')}
+              helperText={t('supplierQuotations.response.notesHelp')}
+              value={notes}
+              onChange={event => onNotesChange(event.target.value)}
+              slotProps={{ htmlInput: { maxLength: 1000 } }}
+            />
           </Box>
         )}
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ px: 3, py: 1.5 }}>
         <Button onClick={onClose}>{t('supplierQuotations.response.cancel')}</Button>
         <Button onClick={onSubmit} variant='contained'>
           {t('supplierQuotations.response.submit')}

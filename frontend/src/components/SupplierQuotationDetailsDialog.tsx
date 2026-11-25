@@ -20,6 +20,7 @@ import {
 import { Business, Email, Phone } from '@mui/icons-material';
 import { Quotation } from '@shared/types';
 import { useT } from '../contexts/LanguageContext';
+import { useDateFormat } from '../hooks/useDateFormat';
 import { getStatusColor, translateStatus } from '../utils/quotationStatus';
 
 interface SupplierQuotationDetailsDialogProps {
@@ -70,6 +71,7 @@ export const SupplierQuotationDetailsDialog: React.FC<SupplierQuotationDetailsDi
   onClose,
 }) => {
   const t = useT();
+  const formatDate = useDateFormat();
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth='md' fullWidth>
@@ -105,7 +107,7 @@ export const SupplierQuotationDetailsDialog: React.FC<SupplierQuotationDetailsDi
                 </Typography>
                 <Typography variant='body2' color='text.secondary'>
                   {t('supplierQuotations.detailsDialog.created', {
-                    date: new Date(quotation.createdAt!).toLocaleString(),
+                    date: formatDate.dateTime(quotation.createdAt!),
                   })}
                 </Typography>
                 {/* component='div': a Chip renders a <div>, which is invalid inside Typography's default <p>. */}
@@ -120,7 +122,7 @@ export const SupplierQuotationDetailsDialog: React.FC<SupplierQuotationDetailsDi
                 {quotation.requestedDeliveryDate && (
                   <Typography variant='body2' color='text.secondary'>
                     {t('supplierQuotations.requestedDelivery', {
-                      date: new Date(quotation.requestedDeliveryDate).toLocaleDateString(),
+                      date: formatDate.date(quotation.requestedDeliveryDate),
                     })}
                   </Typography>
                 )}

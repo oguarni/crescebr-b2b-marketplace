@@ -11,6 +11,7 @@ import {
 } from '@mui/icons-material';
 import { Quotation } from '@shared/types';
 import { useT } from '../contexts/LanguageContext';
+import { useDateFormat } from '../hooks/useDateFormat';
 import { formatBRL } from '../utils/currency';
 import {
   getPriorityColor,
@@ -70,6 +71,7 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
   onReject,
 }) => {
   const t = useT();
+  const formatDate = useDateFormat();
   const itemCount = quotation.items?.length || 0;
 
   return (
@@ -84,7 +86,7 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
               {quotation.company?.companyName}
             </Typography>
             <Typography variant='body2' color='text.secondary'>
-              {new Date(quotation.createdAt!).toLocaleDateString()}
+              {formatDate.date(quotation.createdAt!)}
             </Typography>
           </Box>
           <Box display='flex' gap={1} flexDirection='column' alignItems='flex-end'>
@@ -119,7 +121,7 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({
           {quotation.requestedDeliveryDate && (
             <Typography variant='body2' color='text.secondary'>
               {t('supplierQuotations.requestedDelivery', {
-                date: new Date(quotation.requestedDeliveryDate).toLocaleDateString(),
+                date: formatDate.date(quotation.requestedDeliveryDate),
               })}
             </Typography>
           )}

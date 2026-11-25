@@ -269,7 +269,9 @@ const MyQuotationsPage: React.FC = () => {
                       onClick={() => handleCreateOrder(quotation.id)}
                       disabled={creatingOrder !== null}
                     >
-                      {creatingOrder === quotation.id ? 'Creating...' : 'Create Order'}
+                      {creatingOrder === quotation.id
+                        ? t('quotationDetail.creatingOrder')
+                        : t('quotationDetail.createOrder')}
                     </Button>
                   )}
                 </Box>

@@ -199,10 +199,10 @@ describe('MyQuotationsPage', () => {
     await renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Create Order')).toBeInTheDocument();
+      expect(screen.getByText('Criar Pedido')).toBeInTheDocument();
     });
 
-    const createOrderButton = screen.getByText('Create Order');
+    const createOrderButton = screen.getByText('Criar Pedido');
     await act(async () => {
       fireEvent.click(createOrderButton);
     });
@@ -234,11 +234,11 @@ describe('MyQuotationsPage', () => {
     await renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Create Order')).toBeInTheDocument();
+      expect(screen.getByText('Criar Pedido')).toBeInTheDocument();
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Create Order'));
+      fireEvent.click(screen.getByText('Criar Pedido'));
     });
 
     await waitFor(() => {
@@ -360,11 +360,11 @@ describe('MyQuotationsPage', () => {
     await renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Create Order')).toBeInTheDocument();
+      expect(screen.getByText('Criar Pedido')).toBeInTheDocument();
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Create Order'));
+      fireEvent.click(screen.getByText('Criar Pedido'));
     });
 
     await waitFor(() => {

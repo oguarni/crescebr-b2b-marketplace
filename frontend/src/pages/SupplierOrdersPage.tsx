@@ -58,6 +58,7 @@ import toast from 'react-hot-toast';
 import { formatBRL } from '../utils/currency';
 import { browserLogger } from '../utils/browserLogger';
 import { useT } from '../contexts/LanguageContext';
+import { useDateFormat } from '../hooks/useDateFormat';
 import type { TranslationKey } from '../locales';
 import { orderStatusLabel, orderTimelineDescription } from '../utils/orderStatus';
 
@@ -164,6 +165,7 @@ interface OrderCardProps {
  */
 const OrderCard: React.FC<OrderCardProps> = ({ order, onViewDetails, onOpenStatusDialog }) => {
   const t = useT();
+  const formatDate = useDateFormat();
   const nextStatus = getNextStatus(order.status);
 
   return (
@@ -176,7 +178,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onViewDetails, onOpenStatu
               {order.company?.companyName}
             </Typography>
             <Typography variant='body2' color='text.secondary'>
-              {new Date(order.createdAt!).toLocaleDateString()}
+              {formatDate.date(order.createdAt!)}
             </Typography>
           </Box>
           <Chip
@@ -201,7 +203,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onViewDetails, onOpenStatu
           {order.estimatedDeliveryDate && (
             <Typography variant='body2' color='text.secondary'>
               {t('supplierOrders.estimatedDelivery', {
-                date: new Date(order.estimatedDeliveryDate).toLocaleDateString(),
+                date: formatDate.date(order.estimatedDeliveryDate),
               })}
             </Typography>
           )}
@@ -254,6 +256,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onViewDetails, onOpenStatu
 
 const SupplierOrdersPage: React.FC = () => {
   const t = useT();
+  const formatDate = useDateFormat();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState(0);
@@ -717,7 +720,7 @@ const SupplierOrdersPage: React.FC = () => {
                   </Typography>
                   <Typography variant='body2' color='text.secondary'>
                     {t('supplierOrders.detailsDialog.created', {
-                      date: new Date(selectedOrder.createdAt!).toLocaleString(),
+                      date: formatDate.dateTime(selectedOrder.createdAt!),
                     })}
                   </Typography>
                   <Typography component='div' variant='body2' color='text.secondary'>
@@ -795,7 +798,7 @@ const SupplierOrdersPage: React.FC = () => {
                       secondary={
                         <Box>
                           <Typography variant='body2' color='text.secondary'>
-                            {new Date(entry.date).toLocaleString()}
+                            {formatDate.dateTime(entry.date)}
                           </Typography>
                           {entry.description && (
                             <Typography variant='body2' color='text.secondary'>

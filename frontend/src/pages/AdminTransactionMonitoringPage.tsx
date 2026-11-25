@@ -442,7 +442,9 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                     </Typography>
                     <Typography variant='h4'>{metrics.totalOrders}</Typography>
                     <Typography variant='body2' color='text.secondary' sx={{ mt: 1 }}>
-                      {metrics.pendingOrders} pendentes
+                      {metrics.pendingOrders === 1
+                        ? t('transactionMonitoring.pendingOne')
+                        : t('transactionMonitoring.pendingOther', { count: metrics.pendingOrders })}
                     </Typography>
                   </Box>
                   <ShoppingCart sx={{ fontSize: 40, color: 'info.main' }} />
@@ -567,11 +569,15 @@ const AdminTransactionMonitoringPage: React.FC = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>ID do Pedido</TableCell>
-                  <TableCell>Empresa</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align='right'>Valor</TableCell>
-                  <TableCell>Data</TableCell>
+                  <TableCell>{t('transactionMonitoring.csv.orderId')}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    {t('transactionMonitoring.csv.company')}
+                  </TableCell>
+                  <TableCell>{t('transactionMonitoring.csv.status')}</TableCell>
+                  <TableCell align='right'>{t('transactionMonitoring.value')}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    {t('transactionMonitoring.date')}
+                  </TableCell>
                   <TableCell align='center'>{t('common.actions')}</TableCell>
                 </TableRow>
               </TableHead>
@@ -583,7 +589,7 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                         {formatOrderNumber(order.id)}
                       </Typography>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                       <Box>
                         <Typography variant='subtitle2'>{order.user.companyName}</Typography>
                         <Typography variant='caption' color='text.secondary'>
@@ -603,7 +609,7 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                         {formatCurrency(order.totalAmount)}
                       </Typography>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                       <Typography variant='body2'>{formatDate(order.createdAt)}</Typography>
                     </TableCell>
                     <TableCell align='center'>
@@ -613,7 +619,10 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                           setSelectedOrder(order);
                           setOrderDetailDialog(true);
                         }}
-                        title='Ver detalhes'
+                        title={t('transactionMonitoring.viewDetails')}
+                        aria-label={t('transactionMonitoring.viewDetailsAria', {
+                          order: formatOrderNumber(order.id),
+                        })}
                       >
                         <Visibility />
                       </IconButton>
@@ -646,7 +655,9 @@ const AdminTransactionMonitoringPage: React.FC = () => {
         fullWidth
       >
         <DialogTitle>
-          Detalhes do Pedido {selectedOrder ? formatOrderNumber(selectedOrder.id) : ''}
+          {t('transactionMonitoring.orderDetailsTitle', {
+            order: selectedOrder ? formatOrderNumber(selectedOrder.id) : '',
+          })}
         </DialogTitle>
         <DialogContent>
           {selectedOrder && (
