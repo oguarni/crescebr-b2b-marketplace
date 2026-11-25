@@ -1,6 +1,9 @@
 import { quotationRepository, productRepository } from '../repositories';
 import QuotationItem from '../models/QuotationItem';
 import sequelize from '../config/database';
+import { systemSettingsService } from './systemSettingsService';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface CreateQuotationInput {
   items: { productId: number; quantity: number }[];
@@ -34,12 +37,18 @@ class QuotationService {
       }
     }
 
+    // A quotation is valid for the configured number of days. orderService
+    // refuses to turn an expired one into an order.
+    const { quotationValidityDays } = await systemSettingsService.getSettings();
+    const validUntil = new Date(Date.now() + quotationValidityDays * DAY_MS);
+
     return sequelize.transaction(async transaction => {
       const quotation = await quotationRepository.create(
         {
           companyId: input.companyId,
           status: 'pending',
           adminNotes: null,
+          validUntil,
         },
         { transaction }
       );
@@ -132,12 +141,31 @@ class QuotationService {
       throw Object.assign(new Error('Access denied'), { statusCode: 403 });
     }
 
+    // The status belongs to the whole quotation. If a supplier could set it on a
+    // request that also lists another supplier's products, their response would
+    // release (or refuse) products they do not sell. Such a request is
+    // processed by an administrator instead.
+    if (!this.containsOnlySupplierProducts(quotation, supplierId)) {
+      throw Object.assign(
+        new Error(
+          "This quotation also includes other suppliers' products, so an administrator processes it"
+        ),
+        { statusCode: 409 }
+      );
+    }
+
     await quotationRepository.update(quotation, {
       status: data.status || quotation.status,
       adminNotes: data.adminNotes !== undefined ? data.adminNotes : quotation.adminNotes,
     });
 
     return quotationRepository.findByIdWithItemsAndUser(id);
+  }
+
+  private containsOnlySupplierProducts(quotation: unknown, supplierId: number): boolean {
+    const items =
+      (quotation as { items?: Array<{ product?: { supplierId?: number } }> }).items ?? [];
+    return items.every(item => item.product?.supplierId === supplierId);
   }
 
   // Checks whether a quotation (loaded with its items and products) contains at

@@ -6,9 +6,10 @@
  * numbers a real deployment would; change this file only to track that service.
  */
 
-import type { PricingTier, Product } from '@shared/types';
+import type { PricingTier, Product, ShippingMethod, SystemSettings } from '@shared/types';
+import { DEFAULT_SYSTEM_SETTINGS } from '../utils/systemSettingsRules';
 
-export type ShippingMethod = 'standard' | 'express' | 'economy';
+export type { ShippingMethod };
 
 export interface QuoteCalculationResult {
   productId: number;
@@ -19,6 +20,7 @@ export interface QuoteCalculationResult {
   subtotal: number;
   shippingCost: number;
   tax: number;
+  taxRate: number;
   total: number;
   savings: number;
   appliedTier: PricingTier | null;
@@ -29,25 +31,13 @@ export interface QuoteComparisonResult {
   totalSubtotal: number;
   totalShipping: number;
   totalTax: number;
+  taxRate: number;
   grandTotal: number;
   totalSavings: number;
 }
 
-const DEFAULT_PRICING_TIERS: PricingTier[] = [
-  { minQuantity: 1, maxQuantity: 10, discount: 0 },
-  { minQuantity: 11, maxQuantity: 50, discount: 0.05 },
-  { minQuantity: 51, maxQuantity: 100, discount: 0.1 },
-  { minQuantity: 101, maxQuantity: 500, discount: 0.15 },
-  { minQuantity: 501, maxQuantity: null, discount: 0.2 },
-];
-
-const SHIPPING_RATES: Record<ShippingMethod, { baseRate: number; perKgRate: number }> = {
-  standard: { baseRate: 50, perKgRate: 2.5 },
-  express: { baseRate: 100, perKgRate: 5.0 },
-  economy: { baseRate: 25, perKgRate: 1.5 },
-};
-
-const TAX_RATE = 0.18;
+// Tax, freight and default tiers come from the demo's system settings, which the
+// admin settings page edits; DEFAULT_SYSTEM_SETTINGS holds the original values.
 
 const CITY_DISTANCES: Record<string, Record<string, number>> = {
   Curitiba: { Londrina: 380, Maringá: 430, Cascavel: 500, 'Foz do Iguaçu': 640 },
@@ -59,9 +49,10 @@ const CITY_DISTANCES: Record<string, Record<string, number>> = {
 
 export const getPricingTier = (
   quantity: number,
-  customTiers?: PricingTier[]
+  customTiers?: PricingTier[],
+  defaultTiers: PricingTier[] = DEFAULT_SYSTEM_SETTINGS.pricingTiers
 ): PricingTier | null => {
-  const tiers = customTiers || DEFAULT_PRICING_TIERS;
+  const tiers = customTiers || defaultTiers;
 
   for (const tier of tiers) {
     if (quantity >= tier.minQuantity && (tier.maxQuantity === null || quantity <= tier.maxQuantity))
@@ -74,9 +65,10 @@ export const getPricingTier = (
 export const calculateShippingCost = (
   quantity: number,
   shippingMethod: ShippingMethod = 'standard',
-  distance = 100
+  distance = 100,
+  shippingMethods: SystemSettings['shippingMethods'] = DEFAULT_SYSTEM_SETTINGS.shippingMethods
 ): number => {
-  const rates = SHIPPING_RATES[shippingMethod];
+  const rates = shippingMethods[shippingMethod];
   const estimatedWeight = quantity * 0.5;
   const distanceMultiplier = Math.max(1, distance / 100);
 
@@ -99,7 +91,8 @@ export const calculateQuoteForItem = (
     buyerLocation?: string;
     supplierLocation?: string;
     shippingMethod?: ShippingMethod;
-  } = {}
+  } = {},
+  settings: SystemSettings = DEFAULT_SYSTEM_SETTINGS
 ): QuoteCalculationResult => {
   if (product.minimumOrderQuantity && quantity < product.minimumOrderQuantity) {
     throw new Error(`Minimum order quantity is ${product.minimumOrderQuantity} units`);
@@ -107,18 +100,24 @@ export const calculateQuoteForItem = (
 
   const basePrice = product.unitPrice ? Number(product.unitPrice) : Number(product.price);
 
-  // An empty tierPricing array is truthy, so it suppresses the defaults and
-  // yields no discount — the backend behaves the same way.
-  const customTiers = product.tierPricing ? product.tierPricing : undefined;
-  const appliedTier = getPricingTier(quantity, customTiers);
+  // A product's own tiers win; an empty list means it has none, so the
+  // platform's default tiers apply -- the backend behaves the same way.
+  const customTiers =
+    product.tierPricing && product.tierPricing.length > 0 ? product.tierPricing : undefined;
+  const appliedTier = getPricingTier(quantity, customTiers, settings.pricingTiers);
   const tierDiscount = appliedTier ? appliedTier.discount : 0;
   const unitPriceAfterDiscount = basePrice * (1 - tierDiscount);
   const subtotal = unitPriceAfterDiscount * quantity;
 
   const distance = calculateDistanceBetweenCities(options.buyerLocation, options.supplierLocation);
-  const shippingCost = calculateShippingCost(quantity, options.shippingMethod, distance);
+  const shippingCost = calculateShippingCost(
+    quantity,
+    options.shippingMethod,
+    distance,
+    settings.shippingMethods
+  );
 
-  const tax = subtotal * TAX_RATE;
+  const tax = subtotal * settings.taxRate;
 
   return {
     productId: product.id,
@@ -129,6 +128,7 @@ export const calculateQuoteForItem = (
     subtotal,
     shippingCost,
     tax,
+    taxRate: settings.taxRate,
     total: subtotal + shippingCost + tax,
     savings: basePrice * quantity - subtotal,
     appliedTier,
@@ -136,7 +136,8 @@ export const calculateQuoteForItem = (
 };
 
 export const calculateQuoteComparison = (
-  items: QuoteCalculationResult[]
+  items: QuoteCalculationResult[],
+  taxRate: number = DEFAULT_SYSTEM_SETTINGS.taxRate
 ): QuoteComparisonResult => {
   const sum = (pick: (item: QuoteCalculationResult) => number): number =>
     items.reduce((acc, item) => acc + pick(item), 0);
@@ -146,6 +147,7 @@ export const calculateQuoteComparison = (
     totalSubtotal: sum(i => i.subtotal),
     totalShipping: sum(i => i.shippingCost),
     totalTax: sum(i => i.tax),
+    taxRate,
     grandTotal: sum(i => i.total),
     totalSavings: sum(i => i.savings),
   };

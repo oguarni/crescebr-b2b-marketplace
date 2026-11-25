@@ -73,6 +73,8 @@ interface QuoteCalculationResult {
   subtotal: number;
   shippingCost: number;
   tax: number;
+  /** The rate `tax` was computed with, from the admin-editable settings. */
+  taxRate: number;
   total: number;
   savings: number;
   appliedTier: {
@@ -87,6 +89,7 @@ interface QuoteComparisonResult {
   totalSubtotal: number;
   totalShipping: number;
   totalTax: number;
+  taxRate: number;
   grandTotal: number;
   totalSavings: number;
 }

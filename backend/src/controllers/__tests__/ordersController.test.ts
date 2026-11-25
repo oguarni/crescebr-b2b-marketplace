@@ -97,6 +97,7 @@ describe('Orders Controller', () => {
         totalSubtotal: 1000,
         totalShipping: 100,
         totalTax: 180,
+        taxRate: 0.18,
         grandTotal: 1280,
         totalSavings: 0,
       };
@@ -530,6 +531,7 @@ describe('Orders Controller', () => {
         totalSubtotal: 500,
         totalShipping: 50,
         totalTax: 90,
+        taxRate: 0.18,
         grandTotal: 640,
         totalSavings: 0,
       };

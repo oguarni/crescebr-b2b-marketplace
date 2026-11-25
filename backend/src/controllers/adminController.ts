@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 import { adminService } from '../services/adminService';
+import { systemSettingsService } from '../services/systemSettingsService';
 
 export const getAllPendingCompanies = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
@@ -111,5 +112,18 @@ export const getDashboardAnalytics = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const data = await adminService.getDashboardAnalytics();
     res.status(200).json({ success: true, data });
+  }
+);
+
+export const getSystemSettings = asyncHandler(async (_req: AuthenticatedRequest, res: Response) => {
+  const data = await systemSettingsService.getRecord();
+  res.status(200).json({ success: true, data });
+});
+
+export const updateSystemSettings = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { settings, version } = req.body;
+    const data = await systemSettingsService.update(settings, version, req.user!.id);
+    res.status(200).json({ success: true, data, message: 'System settings updated' });
   }
 );

@@ -6,6 +6,9 @@ import QuotationItem from '../models/QuotationItem';
 import Product from '../models/Product';
 import { logger } from '../utils/structuredLogger';
 import { assertOrderAccess } from './orderAuthorization';
+import { DEFAULT_SYSTEM_SETTINGS } from './systemSettingsRules';
+import { systemSettingsService } from './systemSettingsService';
+import type { ShippingMethod, SystemSettings } from '../types';
 
 export interface NfeUpdateData {
   nfeAccessKey?: string;
@@ -67,18 +70,17 @@ export class OrderStatusService {
     return descriptions[status];
   }
 
+  /**
+   * Delivery estimate for a shipment: the method's delivery days from the
+   * settings, moved to Monday when it would land on a weekend.
+   */
   static calculateEstimatedDelivery(
-    shippingMethod: 'standard' | 'express' | 'economy' = 'standard',
-    shippedDate: Date = new Date()
+    shippingMethod: ShippingMethod = 'standard',
+    shippedDate: Date = new Date(),
+    shippingMethods: SystemSettings['shippingMethods'] = DEFAULT_SYSTEM_SETTINGS.shippingMethods
   ): Date {
-    const deliveryDays = {
-      standard: 5,
-      express: 2,
-      economy: 10,
-    };
-
     const estimatedDate = new Date(shippedDate);
-    estimatedDate.setDate(estimatedDate.getDate() + deliveryDays[shippingMethod]);
+    estimatedDate.setDate(estimatedDate.getDate() + shippingMethods[shippingMethod].deliveryDays);
 
     if (estimatedDate.getDay() === 0) {
       estimatedDate.setDate(estimatedDate.getDate() + 1);
@@ -173,7 +175,14 @@ export class OrderStatusService {
     if (updateData.estimatedDeliveryDate) {
       updateFields.estimatedDeliveryDate = updateData.estimatedDeliveryDate;
     } else if (newStatus === 'shipped') {
-      updateFields.estimatedDeliveryDate = this.calculateEstimatedDelivery();
+      // Orders do not record a shipping method yet, so every shipment is
+      // estimated with the standard method's configured delivery time.
+      const { shippingMethods } = await systemSettingsService.getSettings();
+      updateFields.estimatedDeliveryDate = this.calculateEstimatedDelivery(
+        'standard',
+        new Date(),
+        shippingMethods
+      );
     }
 
     await order.update(updateFields);

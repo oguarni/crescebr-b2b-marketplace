@@ -236,9 +236,13 @@ const AdminProductsPage: React.FC = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Imagem</TableCell>
-                    <TableCell>Nome</TableCell>
-                    <TableCell>Categoria</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
+                      {t('adminProducts.imageColumn')}
+                    </TableCell>
+                    <TableCell>{t('adminProducts.nameColumn')}</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
+                      {t('adminProducts.categoryColumn')}
+                    </TableCell>
                     <TableCell>{t('adminProducts.priceColumn')}</TableCell>
                     <TableCell>{t('common.actions')}</TableCell>
                   </TableRow>
@@ -246,7 +250,7 @@ const AdminProductsPage: React.FC = () => {
                 <TableBody>
                   {products.map(product => (
                     <TableRow key={product.id}>
-                      <TableCell>
+                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                         <Avatar
                           src={product.imageUrl}
                           alt={product.name}
@@ -256,13 +260,18 @@ const AdminProductsPage: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant='subtitle2'>{product.name}</Typography>
-                        <Typography variant='body2' color='text.secondary' noWrap>
+                        <Typography
+                          variant='body2'
+                          color='text.secondary'
+                          sx={{ display: { xs: 'none', sm: 'block' } }}
+                          noWrap
+                        >
                           {product.description.length > 50
                             ? `${product.description.substring(0, 50)}...`
                             : product.description}
                         </Typography>
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                         <Chip label={categoryLabel(t, product.category)} size='small' />
                       </TableCell>
                       <TableCell>
@@ -275,7 +284,8 @@ const AdminProductsPage: React.FC = () => {
                           <IconButton
                             size='small'
                             onClick={() => handleOpenDialog(product)}
-                            title='Editar'
+                            title={t('adminProducts.edit')}
+                            aria-label={t('adminProducts.editAria', { name: product.name })}
                           >
                             <Edit />
                           </IconButton>
@@ -283,7 +293,8 @@ const AdminProductsPage: React.FC = () => {
                             size='small'
                             color='error'
                             onClick={() => handleDeleteProduct(product)}
-                            title='Excluir'
+                            title={t('adminProducts.delete')}
+                            aria-label={t('adminProducts.deleteAria', { name: product.name })}
                           >
                             <Delete />
                           </IconButton>

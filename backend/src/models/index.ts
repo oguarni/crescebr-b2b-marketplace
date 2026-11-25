@@ -6,6 +6,7 @@ import QuotationItem from './QuotationItem';
 import Order from './Order';
 import OrderStatusHistory from './OrderStatusHistory';
 import Rating from './Rating';
+import SystemSettings from './SystemSettings';
 import { logger } from '../utils/structuredLogger';
 
 // Set up associations
@@ -52,6 +53,7 @@ const models = {
   Order,
   OrderStatusHistory,
   Rating,
+  SystemSettings,
   sequelize,
 };
 

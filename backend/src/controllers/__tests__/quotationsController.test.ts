@@ -34,6 +34,8 @@ jest.mock('../../models/Product');
 jest.mock('../../models/Quotation');
 jest.mock('../../models/QuotationItem');
 jest.mock('../../models/User');
+// No settings row: pricing falls back to DEFAULT_SYSTEM_SETTINGS.
+jest.mock('../../models/SystemSettings');
 jest.mock('../../services/quoteService');
 jest.mock('../../middleware/auth', () => ({
   authenticateJWT: jest.fn(),
@@ -951,6 +953,7 @@ describe('Quotations Controller', () => {
             subtotal: 475,
             shippingCost: 25,
             tax: 47.5,
+            taxRate: 0.18,
             total: 547.5,
             savings: 25,
             appliedTier: { minQuantity: 1, maxQuantity: 10, discount: 0.05 },
@@ -964,6 +967,7 @@ describe('Quotations Controller', () => {
             subtotal: 600,
             shippingCost: 25,
             tax: 60,
+            taxRate: 0.18,
             total: 685,
             savings: 0,
             appliedTier: null,
@@ -972,6 +976,7 @@ describe('Quotations Controller', () => {
         totalSubtotal: 1075,
         totalShipping: 50,
         totalTax: 107.5,
+        taxRate: 0.18,
         grandTotal: 1232.5,
         totalSavings: 25,
       };
@@ -1112,6 +1117,7 @@ describe('Quotations Controller', () => {
           totalSubtotal: 1000,
           totalShipping: 50,
           totalTax: 100,
+          taxRate: 0.18,
           grandTotal: 1150,
           totalSavings: 0,
         },
@@ -1172,6 +1178,7 @@ describe('Quotations Controller', () => {
           totalSubtotal: 0,
           totalShipping: 0,
           totalTax: 0,
+          taxRate: 0.18,
           grandTotal: 0,
           totalSavings: 0,
         },
@@ -1269,6 +1276,7 @@ describe('Quotations Controller', () => {
           totalSubtotal: 1000,
           totalShipping: 50,
           totalTax: 100,
+          taxRate: 0.18,
           grandTotal: 1150,
           totalSavings: 0,
         },
@@ -1489,6 +1497,7 @@ describe('Quotations Controller', () => {
             subtotal: 1000,
             shippingCost: 50,
             tax: 180,
+            taxRate: 0.18,
             total: 1000,
             savings: 0,
             appliedTier: null,
@@ -1505,6 +1514,7 @@ describe('Quotations Controller', () => {
             subtotal: 900,
             shippingCost: 50,
             tax: 162,
+            taxRate: 0.18,
             total: 900,
             savings: 0,
             appliedTier: null,

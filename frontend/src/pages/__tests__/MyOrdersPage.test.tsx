@@ -147,11 +147,11 @@ describe('MyOrdersPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('#abc12345')).toBeInTheDocument();
+      expect(screen.getByText('#ABC12345')).toBeInTheDocument();
     });
 
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
-    expect(screen.getByText('#def67890')).toBeInTheDocument();
+    expect(screen.getByText('#DEF67890')).toBeInTheDocument();
     expect(screen.getByText('BR123456789')).toBeInTheDocument();
     expect(screen.getByText('Sem rastreamento')).toBeInTheDocument();
   });
@@ -163,7 +163,7 @@ describe('MyOrdersPage', () => {
       expect(screen.getByText('Nenhum pedido encontrado')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Explorar Produtos')).toBeInTheDocument();
+    expect(screen.getByText('Explorar produtos')).toBeInTheDocument();
   });
 
   it('shows error toast when loading orders fails', async () => {
@@ -186,7 +186,7 @@ describe('MyOrdersPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('#abc12345')).toBeInTheDocument();
+      expect(screen.getByText('#ABC12345')).toBeInTheDocument();
     });
 
     const statusSelect = screen.getByRole('combobox');
@@ -216,14 +216,14 @@ describe('MyOrdersPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('#abc12345')).toBeInTheDocument();
+      expect(screen.getByText('#ABC12345')).toBeInTheDocument();
     });
 
-    const timelineButtons = screen.getAllByLabelText('Ver Timeline');
+    const timelineButtons = screen.getAllByLabelText(/^Ver andamento do pedido/);
     fireEvent.click(timelineButtons[0]);
 
     await waitFor(() => {
-      expect(screen.getByText(/Timeline do Pedido/)).toBeInTheDocument();
+      expect(screen.getByText(/Andamento do pedido/)).toBeInTheDocument();
     });
 
     expect(ordersService.getOrderHistory).toHaveBeenCalledWith(mockOrders[0].id);
@@ -271,16 +271,16 @@ describe('MyOrdersPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('#abc12345')).toBeInTheDocument();
+      expect(screen.getByText('#ABC12345')).toBeInTheDocument();
     });
 
-    const timelineButtons = screen.getAllByLabelText('Ver Timeline');
+    const timelineButtons = screen.getAllByLabelText(/^Ver andamento do pedido/);
     fireEvent.click(timelineButtons[0]);
 
     await waitFor(() => {
       expect(screen.getByText('Código de Rastreamento')).toBeInTheDocument();
       expect(screen.getAllByText('TRACK001').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('Entrega Estimada').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Entrega estimada').length).toBeGreaterThan(0);
     });
   });
 
@@ -292,7 +292,7 @@ describe('MyOrdersPage', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('#abc12345')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('#ABC12345')).toBeInTheDocument());
 
     // Set a filter first
     const statusSelect = screen.getByRole('combobox');
@@ -305,7 +305,7 @@ describe('MyOrdersPage', () => {
     });
 
     // Now click "Limpar Filtros"
-    const clearButton = screen.getByRole('button', { name: 'Limpar Filtros' });
+    const clearButton = screen.getByRole('button', { name: 'Limpar filtros' });
     await act(async () => {
       fireEvent.click(clearButton);
     });
@@ -339,9 +339,9 @@ describe('MyOrdersPage', () => {
   it('navigates to home when Explorar Produtos button is clicked in empty state', async () => {
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('Explorar Produtos')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Explorar produtos')).toBeInTheDocument());
 
-    const exploreButton = screen.getByRole('button', { name: 'Explorar Produtos' });
+    const exploreButton = screen.getByRole('button', { name: 'Explorar produtos' });
     fireEvent.click(exploreButton);
     // navigate('/') is called — no error thrown is sufficient coverage
   });
@@ -383,24 +383,24 @@ describe('MyOrdersPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('#abc12345')).toBeInTheDocument();
+      expect(screen.getByText('#ABC12345')).toBeInTheDocument();
     });
 
-    const timelineButtons = screen.getAllByLabelText('Ver Timeline');
+    const timelineButtons = screen.getAllByLabelText(/^Ver andamento do pedido/);
     fireEvent.click(timelineButtons[0]);
 
     await waitFor(() => {
-      expect(screen.getByText(/Timeline do Pedido/)).toBeInTheDocument();
+      expect(screen.getByText(/Andamento do pedido/)).toBeInTheDocument();
     });
 
     // Click Fechar to trigger handleCloseTimeline
-    const closeButton = screen.getByRole('button', { name: 'Fechar' });
+    const [closeButton] = screen.getAllByRole('button', { name: 'Fechar' }).slice(-1);
     await act(async () => {
       fireEvent.click(closeButton);
     });
 
     await waitFor(() => {
-      expect(screen.queryByText(/Timeline do Pedido/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Andamento do pedido/)).not.toBeInTheDocument();
     });
   });
 

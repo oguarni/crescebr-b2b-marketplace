@@ -1,5 +1,14 @@
 import { createTheme } from '@mui/material/styles';
 
+/**
+ * Below the `md` breakpoint (phones and small tablets, where input is touch),
+ * every control is at least 44x44 CSS px, the WCAG 2.5.5 target size. Desktop
+ * keeps MUI's denser defaults. A literal media query, because the theme's
+ * breakpoint helpers do not exist yet while the theme is being declared.
+ */
+const TOUCH_SCREEN = '@media (max-width: 899.95px)';
+const TOUCH_TARGET = { minWidth: 44, minHeight: 44 } as const;
+
 const theme = createTheme({
   palette: {
     primary: {
@@ -102,6 +111,7 @@ const theme = createTheme({
           fontWeight: 500,
           fontSize: '0.875rem',
           padding: '8px 16px',
+          [TOUCH_SCREEN]: { minHeight: 44 },
         },
         contained: {
           boxShadow: 'none',
@@ -109,6 +119,21 @@ const theme = createTheme({
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
           },
         },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: { [TOUCH_SCREEN]: TOUCH_TARGET },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        clickable: { [TOUCH_SCREEN]: { minHeight: 44 } },
+      },
+    },
+    MuiPaginationItem: {
+      styleOverrides: {
+        root: { [TOUCH_SCREEN]: TOUCH_TARGET },
       },
     },
     MuiCard: {

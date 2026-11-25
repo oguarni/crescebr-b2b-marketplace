@@ -1,68 +1,70 @@
 import { useCallback, useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
-import type { Order, Quotation } from '@shared/types';
+import type { Order, Quotation, SupplierDashboardSummary } from '@shared/types';
 import { quotationsService } from '../services/quotationsService';
 import { ordersService } from '../services/ordersService';
-import { useT } from '../contexts/LanguageContext';
 import { browserLogger } from '../utils/browserLogger';
+import { getErrorMessage } from '../utils/errorHandler';
 import {
-  buildDashboardMetrics,
-  EMPTY_DASHBOARD_METRICS,
   isActiveOrder,
   isPendingQuote,
   MAX_PENDING_QUOTES,
   MAX_RECENT_ORDERS,
-  type DashboardMetrics,
 } from '../utils/supplierDashboard';
 
 interface UseSupplierDashboardResult {
-  metrics: DashboardMetrics;
+  /** Null until the first load succeeds. */
+  summary: SupplierDashboardSummary | null;
   pendingQuotes: Quotation[];
   recentOrders: Order[];
   loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
 }
 
 /**
- * Loads the supplier dashboard's two feeds in parallel and derives its metrics.
+ * Loads the supplier dashboard: headline figures from the API's aggregate, and
+ * short previews of the quotation queue and of the orders still in progress.
  *
- * The counts come from the full result sets while the lists are truncated for
- * display, so the badge can read "12 pending" beside only four rows.
+ * The figures come from `GET /orders/supplier/summary`, computed over every
+ * order. They used to be summed from the first page of the order list, so they
+ * were wrong past one page and counted cancelled orders as revenue.
  *
  * @example
- * const { metrics, pendingQuotes, recentOrders } = useSupplierDashboard();
+ * const { summary, pendingQuotes, recentOrders, error, reload } = useSupplierDashboard();
  */
 export const useSupplierDashboard = (): UseSupplierDashboardResult => {
-  const t = useT();
-  const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY_DASHBOARD_METRICS);
+  const [summary, setSummary] = useState<SupplierDashboardSummary | null>(null);
   const [pendingQuotes, setPendingQuotes] = useState<Quotation[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const reload = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Supplier-scoped endpoint: the quotations endpoint already returns only
-      // quotations that include this supplier's products (filtered server-side).
-      const [quotes, ordersResult] = await Promise.all([
+      // Supplier-scoped endpoints: each returns only what includes this
+      // supplier's products, filtered server-side.
+      const [totals, quotes, ordersResult] = await Promise.all([
+        ordersService.getSupplierSummary(),
         quotationsService.getSupplierQuotations(),
         ordersService.getUserOrders(),
       ]);
 
-      const pending = quotes.filter(isPendingQuote);
-      setPendingQuotes(pending.slice(0, MAX_PENDING_QUOTES));
+      setSummary(totals);
+      setPendingQuotes(quotes.filter(isPendingQuote).slice(0, MAX_PENDING_QUOTES));
       setRecentOrders(ordersResult.orders.filter(isActiveOrder).slice(0, MAX_RECENT_ORDERS));
-      setMetrics(buildDashboardMetrics(ordersResult.orders, pending));
-    } catch (error) {
-      browserLogger.error('Failed to load dashboard data', { error });
-      toast.error(t('supplierDashboard.loadError'));
+    } catch (loadError) {
+      browserLogger.error('Failed to load dashboard data', { error: loadError });
+      setError(getErrorMessage(loadError));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    reload();
+  }, [reload]);
 
-  return { metrics, pendingQuotes, recentOrders, loading };
+  return { summary, pendingQuotes, recentOrders, loading, error, reload };
 };

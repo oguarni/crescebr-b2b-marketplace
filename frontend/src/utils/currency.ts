@@ -29,3 +29,13 @@ export const formatBRLWhole = (value: number): string =>
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(Number.isFinite(value) ? value : 0);
+
+/**
+ * A rate (0.125) as a percentage in the interface language: "12,5%" in
+ * Portuguese, "12.5%" in English.
+ */
+export const formatPercent = (rate: number, language: string): string =>
+  new Intl.NumberFormat(language === 'pt' ? 'pt-BR' : 'en-US', {
+    style: 'percent',
+    maximumFractionDigits: 2,
+  }).format(rate);

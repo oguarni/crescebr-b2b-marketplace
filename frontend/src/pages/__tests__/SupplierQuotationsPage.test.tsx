@@ -519,45 +519,6 @@ describe('SupplierQuotationsPage', () => {
     });
   });
 
-  it('fills all response dialog fields', async () => {
-    await renderPage();
-    const user = userEvent.setup();
-
-    await waitFor(() => {
-      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByText('Respond'));
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Delivery Terms')).toBeInTheDocument();
-    });
-
-    // validUntil field (date input - not accessible via getByLabelText in jsdom)
-    const dateInput = document.querySelector('input[type="date"]');
-    if (dateInput) {
-      fireEvent.change(dateInput, { target: { value: '2026-12-31' } });
-    }
-
-    // paymentTerms starts as 'Net 30'
-    const paymentField = screen.getByLabelText('Payment Terms');
-    await user.clear(paymentField);
-    await user.type(paymentField, 'Net 60');
-
-    // deliveryTerms starts as 'FOB Origin'
-    const deliveryField = screen.getByLabelText('Delivery Terms');
-    await user.clear(deliveryField);
-    await user.type(deliveryField, 'CIF');
-
-    // notes starts as ''
-    const notesField = screen.getByLabelText('Additional Notes');
-    await user.type(notesField, 'In stock');
-
-    expect(screen.getByLabelText('Delivery Terms')).toHaveValue('CIF');
-    expect(screen.getByLabelText('Payment Terms')).toHaveValue('Net 60');
-    expect(screen.getByLabelText('Additional Notes')).toHaveValue('In stock');
-  });
-
   it('shows adminNotes in details dialog', async () => {
     const quotationWithNotes: Quotation = {
       ...mockQuotations[0],
@@ -831,65 +792,57 @@ describe('SupplierQuotationsPage', () => {
     expect(screen.queryByText('Quote Request #2')).not.toBeInTheDocument();
   });
 
-  it('updates item unit price in response dialog', async () => {
+  it('shows the supplier its lines at catalogue price, without editable terms, and sends the notes', async () => {
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([
+      { ...mockQuotations[0], validUntil: new Date('2026-12-31T12:00:00Z') },
+      ...mockQuotations.slice(1),
+    ]);
     await renderPage();
     const user = userEvent.setup();
-
-    await waitFor(() => {
-      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.getByText('Quote Request #1')).toBeInTheDocument());
 
     await user.click(screen.getByText('Respond'));
+    const dialog = await screen.findByRole('dialog');
 
-    await waitFor(() => {
-      expect(screen.getByText('Respond to Quote Request #1')).toBeInTheDocument();
-    });
+    expect(within(dialog).getByText('Your items in this request')).toBeInTheDocument();
+    expect(within(dialog).getByText(/Valid until 12\/31\/2026/)).toBeInTheDocument();
+    // Nothing on the dialog pretends to set a price or terms the API would drop.
+    expect(within(dialog).queryByRole('spinbutton')).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument();
 
-    // Find the unit price input (type="number" in the items table)
-    const priceInput = screen.getByDisplayValue('1500');
-    expect(priceInput).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText('Additional Notes'), 'Ships from Curitiba');
+    await user.click(within(dialog).getByText('Submit Quote'));
 
-    // Change the price
-    fireEvent.change(priceInput, { target: { value: '2000' } });
-
-    // Verify updated value
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('2000')).toBeInTheDocument();
-    });
-
-    // Total should be updated: 2000 * 10 = 20000 (pt-BR currency format)
-    expect(screen.getByText(/20\.000,00/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(quotationsService.updateSupplierQuotation).toHaveBeenCalledWith(1, {
+        status: 'processed',
+        adminNotes: 'Ships from Curitiba',
+      })
+    );
   });
 
-  it('updates item availability in response dialog', async () => {
+  it("hides another supplier's lines and leaves a shared quotation to the administrator", async () => {
+    const otherSupplierProduct = { ...mockQuotations[0].items[0].product!, supplierId: 99 };
+    vi.mocked(quotationsService.getSupplierQuotations).mockResolvedValue([
+      {
+        ...mockQuotations[0],
+        items: [
+          ...mockQuotations[0].items,
+          makeItem(99, 1, 4, { ...otherSupplierProduct, id: 99, name: 'Competitor Valve' }),
+        ],
+      },
+      ...mockQuotations.slice(1),
+    ]);
     await renderPage();
     const user = userEvent.setup();
-
-    await waitFor(() => {
-      expect(screen.getByText('Quote Request #1')).toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.getByText('Quote Request #1')).toBeInTheDocument());
 
     await user.click(screen.getByText('Respond'));
+    const dialog = await screen.findByRole('dialog');
 
-    await waitFor(() => {
-      expect(screen.getByText('Respond to Quote Request #1')).toBeInTheDocument();
-    });
-
-    // The availability select starts at 'in_stock' (shown as "In Stock")
-    // MUI Select renders as a combobox role; find the one displaying "In Stock"
-    const comboboxes = screen.getAllByRole('combobox');
-    const availabilitySelect = comboboxes.find(el => el.textContent === 'In Stock')!;
-    expect(availabilitySelect).toBeDefined();
-    fireEvent.mouseDown(availabilitySelect);
-
-    const limitedOption = await screen.findByRole('option', { name: 'Limited' });
-    fireEvent.click(limitedOption);
-
-    await waitFor(() => {
-      const updatedComboboxes = screen.getAllByRole('combobox');
-      const updated = updatedComboboxes.find(el => el.textContent === 'Limited');
-      expect(updated).toBeDefined();
-    });
+    expect(within(dialog).queryByText('Competitor Valve')).not.toBeInTheDocument();
+    expect(within(dialog).getByText(/an administrator releases it/)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Submit Quote' })).toBeDisabled();
   });
 
   describe('localization', () => {

@@ -7,29 +7,12 @@
 
 import type { Order, Quotation } from '@shared/types';
 
-export interface DashboardMetrics {
-  totalSales: number;
-  monthlyRevenue: number;
-  activeOrders: number;
-  averageRating: number;
-  totalProducts: number;
-  pendingQuotations: number;
-}
-
-export const EMPTY_DASHBOARD_METRICS: DashboardMetrics = {
-  totalSales: 0,
-  monthlyRevenue: 0,
-  activeOrders: 0,
-  averageRating: 0,
-  totalProducts: 0,
-  pendingQuotations: 0,
-};
-
 /** How many of each list the dashboard previews before "view all". */
 export const MAX_PENDING_QUOTES = 4;
 export const MAX_RECENT_ORDERS = 3;
 
-const PENDING_QUOTE_STATUSES = ['pending', 'processed'];
+// Awaiting the supplier's response; a `processed` quotation waits on the buyer.
+const PENDING_QUOTE_STATUSES = ['pending'];
 const ACTIVE_ORDER_STATUSES = ['pending', 'processing'];
 
 export const isPendingQuote = (quote: Quotation): boolean =>
@@ -37,27 +20,6 @@ export const isPendingQuote = (quote: Quotation): boolean =>
 
 export const isActiveOrder = (order: Order): boolean =>
   ACTIVE_ORDER_STATUSES.includes(order.status);
-
-/**
- * Metrics derived from real data so the dashboard reflects actual buyer
- * activity instead of placeholder numbers.
- *
- * averageRating and totalProducts stay at zero: no endpoint supplies them yet,
- * and inventing a value would be worse than showing none.
- *
- * @example
- * const metrics = buildDashboardMetrics(orders, pendingQuotes);
- */
-export const buildDashboardMetrics = (
-  orders: Order[],
-  pendingQuotes: Quotation[]
-): DashboardMetrics => ({
-  ...EMPTY_DASHBOARD_METRICS,
-  totalSales: orders.length,
-  monthlyRevenue: orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0),
-  activeOrders: orders.filter(isActiveOrder).length,
-  pendingQuotations: pendingQuotes.length,
-});
 
 /** A quote awaiting a first response versus one already sent back for review. */
 export type QuoteDisplayStatus = 'New' | 'Review';
@@ -78,9 +40,15 @@ export const QUOTE_STATUS_CHIP_STYLES: Record<QuoteDisplayStatus, ChipPalette> =
   Review: { bgcolor: '#fff3e0', color: '#e65100', borderColor: '#ffe0b2' },
 };
 
-/** Sums a quotation's lines at catalogue price, for the queue's value column. */
-export const quoteTotalValue = (quote: Quotation): number =>
-  quote.items.reduce((total, item) => total + item.product.price * item.quantity, 0);
+/**
+ * Sums, at catalogue price, the lines of a quotation that are this supplier's
+ * own products. A request can mix suppliers; the others' lines are not theirs
+ * to quote.
+ */
+export const quoteTotalValue = (quote: Quotation, supplierId: number): number =>
+  quote.items
+    .filter(item => item.product?.supplierId === supplierId)
+    .reduce((total, item) => total + Number(item.product.price) * item.quantity, 0);
 
 interface OrderProgressStyle {
   progress: number;

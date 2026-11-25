@@ -1,14 +1,5 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
-import { ACCOUNTS, Role } from '../fixtures/accounts';
-
-const apiUrl = `${process.env.E2E_API_URL ?? 'http://127.0.0.1:3001'}${process.env.API_PREFIX ?? '/api/v1'}`;
-
-async function sessionFor(request: APIRequestContext, role: Role) {
-  const response = await request.post(`${apiUrl}/auth/login-email`, { data: ACCOUNTS[role] });
-  expect(response.status()).toBe(200);
-  const body = (await response.json()) as { data: { accessToken: string; user: { id: number } } };
-  return { id: body.data.user.id, headers: { Authorization: `Bearer ${body.data.accessToken}` } };
-}
+import { test, expect } from '@playwright/test';
+import { apiUrl, sessionFor } from '../fixtures/api';
 
 test('malformed mutation IDs are validated before PostgreSQL queries', async ({ request }) => {
   const admin = await sessionFor(request, 'admin');

@@ -18,10 +18,7 @@ import {
 import {
   buildResponseDraft,
   EMPTY_QUOTATION_RESPONSE,
-  withItemAvailability,
-  withItemPrice,
   type QuotationResponseDraft,
-  type QuotationResponseTextField,
 } from '../utils/quotationResponse';
 
 interface ResponseDialogState {
@@ -72,14 +69,8 @@ const SupplierQuotationsPage: React.FC = () => {
   const handleRespond = (quotation: Quotation) =>
     setResponseDialog({ open: true, quotation, draft: buildResponseDraft(quotation) });
 
-  const updateDraft = (next: QuotationResponseDraft) =>
-    setResponseDialog(previous => ({ ...previous, draft: next }));
-
-  const handleTextFieldChange = (field: QuotationResponseTextField, value: string) =>
-    setResponseDialog(previous => ({
-      ...previous,
-      draft: { ...previous.draft, [field]: value },
-    }));
+  const handleNotesChange = (notes: string) =>
+    setResponseDialog(previous => ({ ...previous, draft: { ...previous.draft, notes } }));
 
   const handleSubmitResponse = async () => {
     const submitted = await submitResponse(
@@ -152,16 +143,10 @@ const SupplierQuotationsPage: React.FC = () => {
       <SupplierQuotationResponseDialog
         open={responseDialog.open}
         quotation={responseDialog.quotation}
-        draft={responseDialog.draft}
+        notes={responseDialog.draft.notes}
+        onNotesChange={handleNotesChange}
         onClose={() => setResponseDialog(CLOSED_RESPONSE_DIALOG)}
         onSubmit={handleSubmitResponse}
-        onItemPriceChange={(index, unitPrice) =>
-          updateDraft(withItemPrice(responseDialog.draft, index, unitPrice))
-        }
-        onItemAvailabilityChange={(index, availability) =>
-          updateDraft(withItemAvailability(responseDialog.draft, index, availability))
-        }
-        onTextFieldChange={handleTextFieldChange}
       />
 
       <SupplierQuotationDetailsDialog

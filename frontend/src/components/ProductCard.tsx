@@ -152,7 +152,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               px: 1,
               py: 0.5,
               borderRadius: 1,
-              fontSize: '0.625rem',
+              fontSize: '0.75rem',
               fontFamily: 'monospace',
               fontWeight: 700,
               color: 'text.secondary',
@@ -173,7 +173,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 px: 1,
                 py: 0.5,
                 borderBottomRightRadius: 4,
-                fontSize: '0.625rem',
+                fontSize: '0.75rem',
                 fontWeight: 700,
               }}
             >
@@ -261,7 +261,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               color: 'primary.main',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              fontSize: '0.625rem',
+              fontSize: '0.75rem',
             }}
           >
             {product.category ? categoryLabel(t, product.category) : t('home.uncategorized')}
@@ -324,7 +324,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         }}
       >
         <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: '1 1 auto' }}>
-          <Typography variant='caption' sx={{ fontSize: '0.625rem', color: 'text.secondary' }}>
+          <Typography variant='caption' sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
             {t('home.unitPrice')}
           </Typography>
           <Typography

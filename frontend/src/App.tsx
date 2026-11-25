@@ -1,7 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { CircularProgress, Box } from '@mui/material';
-import { LanguageProvider, useT } from './contexts/LanguageContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { QuotationRequestProvider } from './contexts/QuotationContext';
@@ -19,6 +19,7 @@ const AdminProductsPage = lazy(() => import('./pages/AdminProductsPage'));
 const AdminQuotationsPage = lazy(() => import('./pages/AdminQuotationsPage'));
 const AdminCompanyVerificationPage = lazy(() => import('./pages/AdminCompanyVerificationPage'));
 const AdminTransactionMonitoringPage = lazy(() => import('./pages/AdminTransactionMonitoringPage'));
+const AdminSettingsPage = lazy(() => import('./pages/AdminSettingsPage'));
 const QuotationDetailPage = lazy(() => import('./pages/QuotationDetailPage'));
 const QuoteComparisonPage = lazy(() => import('./pages/QuoteComparisonPage'));
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'));
@@ -32,12 +33,6 @@ const PageFallback = () => (
     <CircularProgress />
   </Box>
 );
-
-// Rendered inside LanguageProvider, so unlike App itself it can translate.
-const SettingsPlaceholder = () => {
-  const t = useT();
-  return <div>{t('nav.settingsPlaceholder')}</div>;
-};
 
 const App: React.FC = () => {
   return (
@@ -140,8 +135,7 @@ const App: React.FC = () => {
                     path='admin/settings'
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
-                        {/* Settings page would go here */}
-                        <SettingsPlaceholder />
+                        <AdminSettingsPage />
                       </ProtectedRoute>
                     }
                   />

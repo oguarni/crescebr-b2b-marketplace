@@ -48,10 +48,8 @@ export const quotationRepository = {
       order: [['createdAt', 'DESC']],
     }),
 
-  // Returns full quotations that contain at least one product owned by the supplier.
-  // The supplier ownership filter is applied server-side to avoid leaking other
-  // suppliers' / customers' quotation data to the client.
-  findAllForSupplier: async (supplierId: number) => {
+  // IDs of the quotations that contain at least one product owned by the supplier.
+  findIdsForSupplier: async (supplierId: number): Promise<number[]> => {
     const supplierItems = (await QuotationItem.findAll({
       attributes: ['quotationId'],
       include: [
@@ -66,7 +64,14 @@ export const quotationRepository = {
       raw: true,
     })) as unknown as Array<{ quotationId: number }>;
 
-    const quotationIds = [...new Set(supplierItems.map(item => item.quotationId))];
+    return [...new Set(supplierItems.map(item => item.quotationId))];
+  },
+
+  // Returns full quotations that contain at least one product owned by the supplier.
+  // The supplier ownership filter is applied server-side to avoid leaking other
+  // suppliers' / customers' quotation data to the client.
+  findAllForSupplier: async (supplierId: number) => {
+    const quotationIds = await quotationRepository.findIdsForSupplier(supplierId);
 
     if (quotationIds.length === 0) {
       return [];
@@ -84,6 +89,7 @@ export const quotationRepository = {
       companyId: number;
       status: 'pending' | 'processed' | 'completed' | 'rejected';
       adminNotes: string | null;
+      validUntil?: Date;
     },
     options?: { transaction?: Transaction }
   ) => (options ? Quotation.create(data, options) : Quotation.create(data)),

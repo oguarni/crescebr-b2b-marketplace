@@ -1,4 +1,14 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /**
+     * The caller reports this request's failures itself, in the interface
+     * language, so the generic toast of the raw API message is skipped.
+     */
+    handlesErrors?: boolean;
+  }
+}
 import toast from 'react-hot-toast';
 import { authService } from './authService';
 import { installDemoApi } from '../demo';
@@ -31,7 +41,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && authService.getToken()) {
       authService.logout();
       window.location.href = '/login';
-    } else if (error.response?.status !== 404) {
+    } else if (error.response?.status !== 404 && !error.config?.handlesErrors) {
       toast.error(message);
     }
 
@@ -46,18 +56,18 @@ class ApiService {
     this.axiosInstance = axiosInstance;
   }
 
-  async get<T>(url: string, options?: { params?: Record<string, string> }): Promise<T> {
+  async get<T>(url: string, options?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.axiosInstance.get(url, options);
     return response.data;
   }
 
-  async post<T>(url: string, data?: unknown): Promise<T> {
-    const response: AxiosResponse<T> = await this.axiosInstance.post(url, data);
+  async post<T>(url: string, data?: unknown, options?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.axiosInstance.post(url, data, options);
     return response.data;
   }
 
-  async put<T>(url: string, data?: unknown): Promise<T> {
-    const response: AxiosResponse<T> = await this.axiosInstance.put(url, data);
+  async put<T>(url: string, data?: unknown, options?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.axiosInstance.put(url, data, options);
     return response.data;
   }
 

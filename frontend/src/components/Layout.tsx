@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Box } from '@mui/material';
 import Navbar from './Navbar';
 import CartDrawer from './CartDrawer';
+import { MobileBottomNav } from './navigation/MobileBottomNav';
 import { useT } from '../contexts/LanguageContext';
 import type { TranslationKey } from '../locales';
 
@@ -46,6 +47,7 @@ const Layout: React.FC = () => {
       <Box component='main' sx={{ flexGrow: 1, py: 3 }}>
         <Outlet />
       </Box>
+      <MobileBottomNav />
       <CartDrawer />
     </Box>
   );

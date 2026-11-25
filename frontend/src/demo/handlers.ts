@@ -7,9 +7,23 @@
  * before their `:id` siblings.
  */
 
-import type { Company, Order, Product, Quotation, QuotationItem } from '@shared/types';
+import type {
+  Company,
+  Order,
+  Product,
+  Quotation,
+  QuotationItem,
+  SupplierDashboardSummary,
+  SystemSettingsRecord,
+} from '@shared/types';
 import { DEMO_PASSWORDS } from './data';
-import { getState, persist } from './store';
+import { getState, newOrderId, persist } from './store';
+import { parseCsv } from '../utils/csvParse';
+import {
+  DEFAULT_SYSTEM_SETTINGS,
+  describeSettingsIssue,
+  validateSystemSettings,
+} from '../utils/systemSettingsRules';
 import {
   calculateQuoteComparison,
   calculateQuoteForItem,
@@ -48,6 +62,11 @@ const ok = <T>(data: T, message?: string): DemoResponse => ({
 });
 
 const created = <T>(data: T): DemoResponse => ({ status: 201, body: { success: true, data } });
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The pricing parameters every calculation below is made with. */
+const currentSettings = () => getState().settings.values;
 
 // --- session -----------------------------------------------------------------
 
@@ -262,6 +281,111 @@ const createProduct = (req: DemoRequest): DemoResponse => {
   return created(product);
 };
 
+/** Mirrors CSVImporter.validateProductRow in backend/src/utils/csvImporter.ts. */
+const csvRowErrors = (row: Record<string, string>): string[] => {
+  const errors: string[] = [];
+  const price = parseFloat(row.price);
+  if (!row.name?.trim()) errors.push('Product name is required');
+  if (!row.description?.trim()) errors.push('Product description is required');
+  if (!row.price || Number.isNaN(price) || price <= 0) {
+    errors.push('Valid price is required (must be a positive number)');
+  }
+  if (!row.imageUrl?.trim()) {
+    errors.push('Image URL is required');
+  } else {
+    try {
+      new URL(row.imageUrl);
+    } catch {
+      errors.push('Invalid image URL format');
+    }
+  }
+  if (!row.category?.trim()) errors.push('Category is required');
+  if (row.tierPricing) {
+    try {
+      const tiers = JSON.parse(row.tierPricing);
+      const invalidTier = (tier: { minQuantity?: unknown; discount?: unknown }) =>
+        typeof tier?.minQuantity !== 'number' ||
+        typeof tier?.discount !== 'number' ||
+        tier.minQuantity <= 0 ||
+        tier.discount < 0 ||
+        tier.discount > 1;
+      if (!Array.isArray(tiers)) errors.push('Tier pricing must be a valid JSON array');
+      else if (tiers.some(invalidTier)) {
+        errors.push(
+          'Invalid tier pricing format - each tier must have valid minQuantity and discount (0-1)'
+        );
+      }
+    } catch {
+      errors.push('Tier pricing must be valid JSON');
+    }
+  }
+  return errors;
+};
+
+/**
+ * Mirrors POST /products/import/csv. The adapter reads the uploaded file and
+ * hands its text over as `csvText`, because handlers are synchronous. Products
+ * are always created under the importing supplier, whatever the file says.
+ */
+const importProductsCsv = (req: DemoRequest): DemoResponse => {
+  const supplier = requireRole(req, 'supplier');
+  if (supplier.status !== 'approved') throw new DemoHttpError(403, 'Supplier not approved');
+  if (typeof req.body.csvText !== 'string') {
+    throw new DemoHttpError(400, 'No CSV file provided');
+  }
+
+  const state = getState();
+  const errors: Array<{ row: number; error: string }> = [];
+  let imported = 0;
+
+  parseCsv(req.body.csvText).forEach((row, index) => {
+    const rowErrors = csvRowErrors(row);
+    if (rowErrors.length > 0) {
+      errors.push({ row: index + 2, error: rowErrors.join(', ') });
+      return;
+    }
+    const price = parseFloat(row.price);
+    state.products.push({
+      id: state.nextProductId++,
+      name: row.name.trim(),
+      description: row.description.trim(),
+      price,
+      unitPrice: price,
+      imageUrl: row.imageUrl.trim(),
+      category: row.category.trim(),
+      supplierId: supplier.id,
+      supplier: {
+        id: supplier.id,
+        companyName: supplier.companyName,
+        corporateName: supplier.corporateName,
+      },
+      tierPricing: row.tierPricing ? JSON.parse(row.tierPricing) : [],
+      specifications: {},
+      minimumOrderQuantity: 1,
+      leadTime: 7,
+      availability: 'in_stock',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as Product);
+    imported += 1;
+  });
+
+  persist();
+  return {
+    status: 200,
+    body: {
+      success: imported > 0 || errors.length === 0,
+      message: `Import completed. ${imported} products imported, ${errors.length} failed.`,
+      data: {
+        imported,
+        failed: errors.length,
+        errors: errors.slice(0, 10),
+        totalErrors: errors.length,
+      },
+    },
+  };
+};
+
 const assertProductOwnership = (actor: Company, product: Product): void => {
   if (actor.role === 'supplier' && product.supplierId !== actor.id) {
     throw new DemoHttpError(403, 'Access denied');
@@ -338,7 +462,7 @@ const createQuotation = (req: DemoRequest): DemoResponse => {
       (sum, item) => sum + Number(item.product.unitPrice) * item.quantity,
       0
     ),
-    validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    validUntil: new Date(Date.now() + currentSettings().quotationValidityDays * DAY_MS),
     createdAt: now,
     updatedAt: now,
   };
@@ -378,17 +502,22 @@ const calculateQuote = (req: DemoRequest): DemoResponse => {
   const calculated: QuoteCalculationResult[] = items.map(item => {
     const product = productById(Number(item.productId));
     try {
-      return calculateQuoteForItem(product, Number(item.quantity), {
-        buyerLocation: req.body.buyerLocation as string | undefined,
-        supplierLocation: req.body.supplierLocation as string | undefined,
-        shippingMethod,
-      });
+      return calculateQuoteForItem(
+        product,
+        Number(item.quantity),
+        {
+          buyerLocation: req.body.buyerLocation as string | undefined,
+          supplierLocation: req.body.supplierLocation as string | undefined,
+          shippingMethod,
+        },
+        currentSettings()
+      );
     } catch (error) {
       throw new DemoHttpError(400, (error as Error).message);
     }
   });
 
-  const calculations = calculateQuoteComparison(calculated);
+  const calculations = calculateQuoteComparison(calculated, currentSettings().taxRate);
   const money = (value: number): string => `R$ ${value.toFixed(2)}`;
 
   return ok({
@@ -430,6 +559,16 @@ const updateSupplierQuotation = (req: DemoRequest): DemoResponse => {
   if (actor.role === 'supplier' && !isSuppliersQuotation(quotation, actor.id)) {
     throw new DemoHttpError(403, 'Access denied');
   }
+  // Mirrors quotation.service: a request that mixes suppliers is processed by an admin.
+  if (
+    actor.role === 'supplier' &&
+    !quotation.items.every(item => item.product?.supplierId === actor.id)
+  ) {
+    throw new DemoHttpError(
+      409,
+      "This quotation also includes other suppliers' products, so an administrator processes it"
+    );
+  }
 
   return ok(applyQuotationUpdate(quotation, req.body));
 };
@@ -470,10 +609,15 @@ const compareSupplierQuotes = (req: DemoRequest): DemoResponse => {
     try {
       return {
         supplier: identity,
-        quote: calculateQuoteForItem(product, quantity, {
-          buyerLocation: req.body.buyerLocation as string | undefined,
-          shippingMethod,
-        }),
+        quote: calculateQuoteForItem(
+          product,
+          quantity,
+          {
+            buyerLocation: req.body.buyerLocation as string | undefined,
+            shippingMethod,
+          },
+          currentSettings()
+        ),
       };
     } catch (error) {
       return { supplier: identity, quote: null, error: (error as Error).message };
@@ -521,9 +665,10 @@ const isValidNfeAccessKey = (value: string): boolean => {
   return Number(value[43]) === expectedCheckDigit;
 };
 
+/** Orders record no shipping method, so shipments use the standard method's delivery time. */
 const defaultEstimatedDelivery = (): Date => {
   const estimated = new Date();
-  estimated.setDate(estimated.getDate() + 5);
+  estimated.setDate(estimated.getDate() + currentSettings().shippingMethods.standard.deliveryDays);
   if (estimated.getDay() === 0) estimated.setDate(estimated.getDate() + 1);
   if (estimated.getDay() === 6) estimated.setDate(estimated.getDate() + 2);
   return estimated;
@@ -550,13 +695,13 @@ const createOrder = (req: DemoRequest): DemoResponse => {
     );
   }
   const itemCalculations = quotation.items.map(item =>
-    calculateQuoteForItem(productById(item.productId), item.quantity)
+    calculateQuoteForItem(productById(item.productId), item.quantity, {}, currentSettings())
   );
-  const calculations = calculateQuoteComparison(itemCalculations);
+  const calculations = calculateQuoteComparison(itemCalculations, currentSettings().taxRate);
   const now = new Date();
   const orderSequence = state.nextOrderSeq++;
   const order: Order = {
-    id: `demo-order-${orderSequence}`,
+    id: newOrderId(),
     companyId: quotation.companyId,
     quotationId: quotation.id,
     quotation,
@@ -844,6 +989,112 @@ interface Route {
   handle: (req: DemoRequest) => DemoResponse;
 }
 
+// --- system settings ---------------------------------------------------------
+
+const settingsRecord = (): SystemSettingsRecord => {
+  const { values, version, updatedAt, updatedBy } = getState().settings;
+  const editor = updatedBy ? getState().companies.find(c => c.id === updatedBy) : undefined;
+  return {
+    settings: values,
+    defaults: DEFAULT_SYSTEM_SETTINGS,
+    version,
+    updatedAt,
+    updatedBy: editor
+      ? { id: editor.id, email: editor.email, companyName: editor.companyName }
+      : null,
+  };
+};
+
+const getAdminSettings = (req: DemoRequest): DemoResponse => {
+  requireRole(req, 'admin');
+  return ok(settingsRecord());
+};
+
+/** Mirrors PUT /admin/settings: envelope checks, the rules, then the version check. */
+const updateAdminSettings = (req: DemoRequest): DemoResponse => {
+  const admin = requireRole(req, 'admin');
+  const version = Number(req.body.version);
+  const envelopeIssues = [
+    ...(Number.isInteger(version) && version >= 0
+      ? []
+      : [{ path: 'version', msg: 'version must be a non-negative integer' }]),
+    ...(typeof req.body.settings === 'object' && req.body.settings !== null
+      ? []
+      : [{ path: 'settings', msg: 'settings must be an object' }]),
+  ];
+  if (envelopeIssues.length > 0) {
+    return {
+      status: 400,
+      body: {
+        success: false,
+        error: 'Validation failed',
+        details: envelopeIssues.map(issue => ({ type: 'field', location: 'body', ...issue })),
+      },
+    };
+  }
+
+  const result = validateSystemSettings(req.body.settings);
+  if (!result.valid) {
+    return {
+      status: 400,
+      body: {
+        success: false,
+        error: 'Validation failed',
+        details: result.issues.map(issue => ({
+          type: 'field',
+          location: 'body',
+          path: issue.path,
+          code: issue.code,
+          params: issue.params,
+          msg: describeSettingsIssue(issue),
+        })),
+      },
+    };
+  }
+
+  const state = getState();
+  if (state.settings.version !== version) {
+    throw new DemoHttpError(409, 'System settings were changed by someone else');
+  }
+
+  state.settings = {
+    values: result.settings,
+    version: version + 1,
+    updatedAt: new Date().toISOString(),
+    updatedBy: admin.id,
+  };
+  persist();
+  return ok(settingsRecord(), 'System settings updated');
+};
+
+const getPricingPolicy = (): DemoResponse => ok(currentSettings());
+
+// --- supplier dashboard ------------------------------------------------------
+
+// Awaiting the supplier's response; `processed` ones wait on the buyer.
+const OPEN_QUOTATION_STATUSES: Quotation['status'][] = ['pending'];
+const ACTIVE_ORDER_STATUSES: Order['status'][] = ['pending', 'processing'];
+
+/** Mirrors GET /orders/supplier/summary: figures over every order, not one page. */
+const supplierSummary = (req: DemoRequest): DemoResponse => {
+  const supplier = requireRole(req, 'supplier');
+  const orders = visibleOrders(supplier);
+  const billable = orders.filter(order => order.status !== 'cancelled');
+  const volume = billable.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+
+  const summary: SupplierDashboardSummary = {
+    pendingQuotations: getState().quotations.filter(
+      quotation =>
+        isSuppliersQuotation(quotation, supplier.id) &&
+        OPEN_QUOTATION_STATUSES.includes(quotation.status)
+    ).length,
+    activeOrders: orders.filter(order => ACTIVE_ORDER_STATUSES.includes(order.status)).length,
+    billableOrders: billable.length,
+    orderVolume: Math.round(volume * 100) / 100,
+  };
+  return ok(summary);
+};
+
 const route = (method: string, path: string, handle: (req: DemoRequest) => DemoResponse): Route => {
   const keys: string[] = [];
   const pattern = new RegExp(
@@ -868,6 +1119,11 @@ export const ROUTES: Route[] = [
   route('GET', '/products/specifications', listSpecifications),
   route('GET', '/products', listProducts),
   route('POST', '/products', createProduct),
+  route('POST', '/products/import/csv', importProductsCsv),
+  route('GET', '/products/supplier/mine', req => {
+    const supplier = requireRole(req, 'supplier');
+    return ok(getState().products.filter(product => product.supplierId === supplier.id));
+  }),
   route('GET', '/products/:id', req => ok(productById(Number(req.params.id)))),
   route('PUT', '/products/:id', updateProduct),
   route('DELETE', '/products/:id', deleteProduct),
@@ -884,6 +1140,7 @@ export const ROUTES: Route[] = [
 
   route('GET', '/orders/admin/all', listAllOrders),
   route('GET', '/orders/admin/stats', orderStats),
+  route('GET', '/orders/supplier/summary', supplierSummary),
   route('POST', '/orders', createOrder),
   route('GET', '/orders', listOrders),
   route('GET', '/orders/:id/history', getOrderHistory),
@@ -894,6 +1151,10 @@ export const ROUTES: Route[] = [
   route('GET', '/admin/companies/queue', verificationQueue),
   route('PUT', '/admin/companies/:id/verify', verifyCompany),
   route('POST', '/admin/companies/:id/validate-cnpj', validateCnpj),
+  route('GET', '/admin/settings', getAdminSettings),
+  route('PUT', '/admin/settings', updateAdminSettings),
+
+  route('GET', '/settings/pricing', getPricingPolicy),
 ];
 
 /**

@@ -1,208 +1,169 @@
 import React from 'react';
-import { Box, Button, Card, Chip, IconButton, Typography } from '@mui/material';
-import { EditNote, VisibilityOutlined } from '@mui/icons-material';
+import { Link as RouterLink } from 'react-router-dom';
+import { Box, Button, ButtonBase, Card, Chip, Skeleton, Typography } from '@mui/material';
+import { ChevronRight, InboxOutlined } from '@mui/icons-material';
 import type { Quotation } from '@shared/types';
 import { useT } from '../../contexts/LanguageContext';
-import type { TranslationKey } from '../../locales';
 import { formatBRL } from '../../utils/currency';
 import {
   quoteDisplayStatus,
   quoteTotalValue,
   QUOTE_STATUS_CHIP_STYLES,
 } from '../../utils/supplierDashboard';
+import { SECTION_TITLE_SX } from './sectionStyles';
 
 interface SupplierQuoteQueueProps {
   quotes: Quotation[];
+  supplierId: number;
   dateLocale: string;
-  onViewAll: () => void;
-  onOpenQuote: (quotationId: number) => void;
+  loading: boolean;
 }
 
-const COLUMNS: ReadonlyArray<{ key: TranslationKey; span: number; align?: 'right' | 'center' }> = [
-  { key: 'supplierDashboard.columns.id', span: 2 },
-  { key: 'supplierDashboard.columns.buyer', span: 3 },
-  { key: 'supplierDashboard.columns.status', span: 3 },
-  { key: 'supplierDashboard.columns.value', span: 2, align: 'right' },
-  { key: 'supplierDashboard.columns.action', span: 2, align: 'center' },
-];
-
-const SECTION_TITLE_SX = {
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  color: 'text.secondary',
+const ROW_SX = {
+  width: '100%',
+  minHeight: 64,
+  p: 1.5,
+  gap: 1,
+  justifyContent: 'space-between',
+  textAlign: 'left',
+  '&:hover': { bgcolor: 'action.hover' },
+  '&.Mui-focusVisible': { bgcolor: 'action.focus' },
 } as const;
 
 /**
- * Preview of the quotations awaiting this supplier, each row deep-linking to the
- * quotation itself. The column header is hidden on narrow screens, where the
- * rows reflow into a stacked layout.
+ * Preview of the quotations waiting on this supplier. Each row is one link to
+ * the quotation, so the whole row is the tap target and a keyboard reaches it.
  *
  * @example
- * <SupplierQuoteQueue
- *   quotes={pendingQuotes}
- *   dateLocale='pt-BR'
- *   onViewAll={() => navigate('/supplier/quotations')}
- *   onOpenQuote={id => navigate(`/supplier/quotations/${id}`)}
- * />
+ * <SupplierQuoteQueue quotes={pendingQuotes} supplierId={user.id} dateLocale='pt-BR' loading={false} />
  */
 export const SupplierQuoteQueue: React.FC<SupplierQuoteQueueProps> = ({
   quotes,
+  supplierId,
   dateLocale,
-  onViewAll,
-  onOpenQuote,
+  loading,
 }) => {
   const t = useT();
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    <Box
+      component='section'
+      aria-labelledby='quote-queue-title'
+      sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}
+    >
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant='subtitle2' sx={SECTION_TITLE_SX}>
+        <Typography id='quote-queue-title' variant='subtitle2' component='h2' sx={SECTION_TITLE_SX}>
           {t('supplierDashboard.quotationQueue')}
         </Typography>
         <Button
-          variant='text'
+          component={RouterLink}
+          to='/supplier/quotations'
           size='small'
-          sx={{ fontSize: '0.75rem', fontWeight: 600, minWidth: 'auto', p: 0 }}
-          onClick={onViewAll}
+          sx={{ minHeight: 44, fontWeight: 600 }}
         >
           {t('supplierDashboard.viewAll')}
         </Button>
       </Box>
 
       <Card variant='outlined' sx={{ borderRadius: 2, overflow: 'hidden' }}>
-        <Box
-          sx={{
-            display: { xs: 'none', sm: 'grid' },
-            gridTemplateColumns: 'repeat(12, 1fr)',
-            gap: 2,
-            p: 1.5,
-            bgcolor: 'grey.50',
-            borderBottom: 1,
-            borderColor: 'divider',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            color: 'text.secondary',
-          }}
-        >
-          {COLUMNS.map(column => (
-            <Box
-              key={column.key}
-              sx={{ gridColumn: `span ${column.span}`, textAlign: column.align }}
-            >
-              {t(column.key)}
-            </Box>
-          ))}
-        </Box>
+        {loading && quotes.length === 0 ? (
+          <Box sx={{ p: 1.5 }}>
+            <Skeleton variant='text' width='40%' />
+            <Skeleton variant='text' width='70%' />
+          </Box>
+        ) : quotes.length === 0 ? (
+          <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+            <InboxOutlined aria-hidden />
+            <Typography variant='body2'>{t('supplierDashboard.emptyQueue')}</Typography>
+          </Box>
+        ) : (
+          <Box
+            component='ul'
+            sx={{
+              listStyle: 'none',
+              m: 0,
+              p: 0,
+              '& > li:not(:last-child)': { borderBottom: 1, borderColor: 'divider' },
+            }}
+          >
+            {quotes.map(quote => {
+              const status = quoteDisplayStatus(quote.status);
+              const chip = QUOTE_STATUS_CHIP_STYLES[status];
+              const buyer = quote.company?.companyName || t('supplierDashboard.fallbackBuyer');
+              const itemCount = quote.items.length;
 
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            '& > *:not(:last-child)': { borderBottom: 1, borderColor: 'divider' },
-          }}
-        >
-          {quotes.map(quote => {
-            const status = quoteDisplayStatus(quote.status);
-            const chip = QUOTE_STATUS_CHIP_STYLES[status];
-            const needsResponse = status === 'Review';
-
-            return (
-              <Box
-                key={quote.id}
-                sx={{
-                  p: 1.5,
-                  '&:hover': { bgcolor: 'action.hover', transition: 'background-color 0.2s' },
-                }}
-              >
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    mb: 1,
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography
-                      variant='caption'
-                      sx={{ fontFamily: 'monospace', color: 'text.secondary' }}
-                    >
-                      #QT-{quote.id}
-                    </Typography>
-                    <Chip
-                      label={
-                        needsResponse
-                          ? t('supplierDashboard.statusReview')
-                          : t('supplierDashboard.statusNew')
-                      }
-                      size='small'
-                      sx={{
-                        height: 18,
-                        fontSize: '0.625rem',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        bgcolor: chip.bgcolor,
-                        color: chip.color,
-                        border: 1,
-                        borderColor: chip.borderColor,
-                        borderRadius: 1,
-                      }}
-                    />
-                  </Box>
-                  <Typography
-                    variant='body2'
-                    sx={{ fontFamily: 'monospace', fontWeight: 500, color: 'text.primary' }}
+              return (
+                <li key={quote.id}>
+                  <ButtonBase
+                    component={RouterLink}
+                    to={`/supplier/quotations/${quote.id}`}
+                    aria-label={t('supplierDashboard.quoteActionAria', { id: quote.id, buyer })}
+                    sx={ROW_SX}
                   >
-                    {formatBRL(quoteTotalValue(quote))}
-                  </Typography>
-                </Box>
-
-                <Box
-                  sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}
-                >
-                  <Box sx={{ minWidth: 0, pr: 2 }}>
-                    <Typography
-                      variant='body2'
-                      noWrap
-                      sx={{ fontWeight: 600, color: 'text.primary' }}
-                    >
-                      {quote.company?.companyName || t('supplierDashboard.fallbackBuyer')}
-                    </Typography>
-                    <Typography
-                      variant='caption'
-                      noWrap
-                      sx={{ color: 'text.secondary', display: 'block', mt: 0.5, maxWidth: 200 }}
-                    >
-                      {t('supplierDashboard.itemsCount', { count: quote.items.length })} •{' '}
-                      {new Date(quote.createdAt || Date.now()).toLocaleDateString(dateLocale)}
-                    </Typography>
-                  </Box>
-                  <IconButton
-                    size='small'
-                    aria-label={t('supplierDashboard.quoteActionAria', { id: quote.id })}
-                    onClick={() => onOpenQuote(quote.id)}
-                    sx={{
-                      bgcolor: needsResponse ? 'primary.main' : 'background.paper',
-                      color: needsResponse ? 'primary.contrastText' : 'text.primary',
-                      border: needsResponse ? 0 : 1,
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      p: 0.5,
-                      '&:hover': { bgcolor: needsResponse ? 'primary.dark' : 'action.hover' },
-                    }}
-                  >
-                    {needsResponse ? (
-                      <EditNote fontSize='small' />
-                    ) : (
-                      <VisibilityOutlined fontSize='small' />
-                    )}
-                  </IconButton>
-                </Box>
-              </Box>
-            );
-          })}
-        </Box>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        <Typography
+                          variant='caption'
+                          sx={{ fontFamily: 'monospace', color: 'text.secondary' }}
+                        >
+                          #QT-{quote.id}
+                        </Typography>
+                        <Chip
+                          label={
+                            status === 'Review'
+                              ? t('supplierDashboard.statusReview')
+                              : t('supplierDashboard.statusNew')
+                          }
+                          size='small'
+                          sx={{
+                            height: 20,
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            bgcolor: chip.bgcolor,
+                            color: chip.color,
+                            border: 1,
+                            borderColor: chip.borderColor,
+                            borderRadius: 1,
+                          }}
+                        />
+                      </Box>
+                      <Typography
+                        variant='body2'
+                        noWrap
+                        sx={{ fontWeight: 600, color: 'text.primary', mt: 0.5 }}
+                      >
+                        {buyer}
+                      </Typography>
+                      <Typography
+                        variant='caption'
+                        sx={{ color: 'text.secondary', display: 'block' }}
+                      >
+                        {itemCount === 1
+                          ? t('supplierDashboard.itemsCountOne')
+                          : t('supplierDashboard.itemsCount', { count: itemCount })}{' '}
+                        • {new Date(quote.createdAt || Date.now()).toLocaleDateString(dateLocale)}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                      <Typography
+                        variant='body2'
+                        sx={{
+                          fontWeight: 600,
+                          color: 'text.primary',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        {formatBRL(quoteTotalValue(quote, supplierId))}
+                      </Typography>
+                      <ChevronRight aria-hidden sx={{ color: 'text.secondary' }} />
+                    </Box>
+                  </ButtonBase>
+                </li>
+              );
+            })}
+          </Box>
+        )}
       </Card>
     </Box>
   );

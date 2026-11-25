@@ -122,7 +122,7 @@ export const CompanyQueueItem: React.FC<CompanyQueueItemProps> = ({
             sx={{
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              fontSize: '0.6rem',
+              fontSize: '0.75rem',
               color: 'text.secondary',
             }}
           >

@@ -14,6 +14,8 @@ jest.mock('../../models/User');
 jest.mock('../../models/Quotation');
 jest.mock('../../models/QuotationItem');
 jest.mock('../../models/Product');
+// No settings row: pricing falls back to DEFAULT_SYSTEM_SETTINGS.
+jest.mock('../../models/SystemSettings');
 
 const MockOrder = Order as jest.Mocked<typeof Order>;
 const MockUser = User as jest.Mocked<typeof User>;

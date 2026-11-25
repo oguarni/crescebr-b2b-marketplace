@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getAllProducts,
+  getSupplierProducts,
   getProductById,
   createProduct,
   updateProduct,
@@ -23,6 +24,14 @@ const router = Router();
 router.get('/', searchRateLimit, getAllProducts);
 router.get('/categories', searchRateLimit, getCategories);
 router.get('/specifications', searchRateLimit, getAvailableSpecifications);
+// The signed-in supplier's own catalogue; a literal path, kept ahead of /:id.
+router.get(
+  '/supplier/mine',
+  authenticateJWT,
+  requireRole('supplier'),
+  generalRateLimit,
+  getSupplierProducts
+);
 router.get(
   '/import/stats',
   authenticateJWT,

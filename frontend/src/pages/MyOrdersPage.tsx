@@ -54,8 +54,11 @@ import { ordersService } from '../services/ordersService';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrders } from '../hooks';
 import toast from 'react-hot-toast';
-import { useT } from '../contexts/LanguageContext';
+import { useLanguage, useT } from '../contexts/LanguageContext';
 import { orderTimelineDescription } from '../utils/orderStatus';
+import { formatOrderNumber } from '../utils/orderNumber';
+import { orderStatusLabel } from '../utils/orderStatus';
+import { dateLocaleFor } from '../utils/supplierDashboard';
 
 interface OrderHistory {
   order: Order;
@@ -67,8 +70,23 @@ interface OrderHistory {
   }>;
 }
 
+const ORDER_STATUS_OPTIONS: readonly Order['status'][] = [
+  'pending',
+  'processing',
+  'shipped',
+  'delivered',
+  'cancelled',
+];
+
 const MyOrdersPage: React.FC = () => {
   const t = useT();
+  const { language } = useLanguage();
+  const formatOrderDate = (date: Date | string): string =>
+    new Date(date).toLocaleDateString(dateLocaleFor(language), {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -157,8 +175,13 @@ const MyOrdersPage: React.FC = () => {
   return (
     <Container maxWidth='lg'>
       <Box sx={{ mb: 4 }}>
-        <Typography variant='h4' gutterBottom>
-          Meus Pedidos
+        <Typography
+          variant='h4'
+          component='h1'
+          gutterBottom
+          sx={{ fontSize: { xs: '1.6rem', sm: '2.125rem' } }}
+        >
+          {t('myOrders.title')}
         </Typography>
         <Typography variant='body1' color='text.secondary'>
           {t('myOrders.subtitle')}
@@ -171,21 +194,22 @@ const MyOrdersPage: React.FC = () => {
           <Grid container spacing={2} alignItems='center'>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <FormControl fullWidth>
-                <InputLabel>Status</InputLabel>
+                <InputLabel id='order-status-filter-label'>{t('myOrders.status')}</InputLabel>
                 <Select
+                  labelId='order-status-filter-label'
                   value={statusFilter}
-                  label='Status'
+                  label={t('myOrders.status')}
                   onChange={e => {
                     setStatusFilter(e.target.value);
                     setCurrentPage(1);
                   }}
                 >
-                  <MenuItem value=''>Todos</MenuItem>
-                  <MenuItem value='pending'>Pendente</MenuItem>
-                  <MenuItem value='processing'>Processando</MenuItem>
-                  <MenuItem value='shipped'>Enviado</MenuItem>
-                  <MenuItem value='delivered'>Entregue</MenuItem>
-                  <MenuItem value='cancelled'>Cancelado</MenuItem>
+                  <MenuItem value=''>{t('myOrders.allStatuses')}</MenuItem>
+                  {ORDER_STATUS_OPTIONS.map(status => (
+                    <MenuItem key={status} value={status}>
+                      {orderStatusLabel(t, status)}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Grid>
@@ -197,7 +221,7 @@ const MyOrdersPage: React.FC = () => {
                   setCurrentPage(1);
                 }}
               >
-                Limpar Filtros
+                {t('myOrders.clearFilters')}
               </Button>
             </Grid>
           </Grid>
@@ -214,17 +238,17 @@ const MyOrdersPage: React.FC = () => {
           <CardContent sx={{ textAlign: 'center', py: 8 }}>
             <Receipt sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
             <Typography variant='h6' color='text.secondary' gutterBottom>
-              Nenhum pedido encontrado
+              {t('myOrders.emptyTitle')}
             </Typography>
             <Typography variant='body2' color='text.secondary' sx={{ mb: 3 }}>
               {statusFilter
                 ? t('myOrders.emptyFiltered', {
-                    status: ordersService.getStatusLabel(statusFilter),
+                    status: orderStatusLabel(t, statusFilter),
                   })
                 : t('myOrders.emptyNoOrders')}
             </Typography>
             <Button variant='contained' onClick={() => navigate('/')}>
-              Explorar Produtos
+              {t('myOrders.exploreProducts')}
             </Button>
           </CardContent>
         </Card>
@@ -236,12 +260,18 @@ const MyOrdersPage: React.FC = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>ID do Pedido</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align='right'>Total</TableCell>
-                      <TableCell>Data do Pedido</TableCell>
-                      <TableCell>Entrega Estimada</TableCell>
-                      <TableCell>Rastreamento</TableCell>
+                      <TableCell>{t('myOrders.columns.order')}</TableCell>
+                      <TableCell>{t('myOrders.status')}</TableCell>
+                      <TableCell align='right'>{t('myOrders.columns.total')}</TableCell>
+                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                        {t('myOrders.columns.placedOn')}
+                      </TableCell>
+                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                        {t('myOrders.columns.estimatedDelivery')}
+                      </TableCell>
+                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                        {t('myOrders.columns.tracking')}
+                      </TableCell>
                       <TableCell align='center'>{t('common.actions')}</TableCell>
                     </TableRow>
                   </TableHead>
@@ -250,13 +280,13 @@ const MyOrdersPage: React.FC = () => {
                       <TableRow key={order.id} hover>
                         <TableCell>
                           <Typography variant='body2' fontWeight='medium'>
-                            #{order.id.slice(0, 8)}
+                            {formatOrderNumber(order.id)}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Chip
                             icon={getStatusIcon(order.status)}
-                            label={ordersService.getStatusLabel(order.status)}
+                            label={orderStatusLabel(t, order.status)}
                             color={ordersService.getStatusColor(order.status)}
                             size='small'
                           />
@@ -266,42 +296,46 @@ const MyOrdersPage: React.FC = () => {
                             {ordersService.formatPrice(order.totalAmount)}
                           </Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                           <Typography variant='body2'>
-                            {ordersService.formatDate(order.createdAt!)}
+                            {formatOrderDate(order.createdAt!)}
                           </Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                           <Typography variant='body2'>
                             {order.estimatedDeliveryDate
-                              ? ordersService.formatDate(order.estimatedDeliveryDate)
-                              : 'A definir'}
+                              ? formatOrderDate(order.estimatedDeliveryDate)
+                              : t('myOrders.toBeDefined')}
                           </Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                           {order.trackingNumber ? (
-                            <Chip
-                              label={order.trackingNumber}
-                              size='small'
-                              variant='outlined'
-                              clickable
-                            />
+                            <Chip label={order.trackingNumber} size='small' variant='outlined' />
                           ) : (
                             <Typography variant='body2' color='text.secondary'>
-                              Sem rastreamento
+                              {t('myOrders.noTracking')}
                             </Typography>
                           )}
                         </TableCell>
                         <TableCell align='center'>
                           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                            <Tooltip title='Ver Timeline'>
-                              <IconButton size='small' onClick={() => handleViewTimeline(order)}>
+                            <Tooltip title={t('myOrders.viewTimeline')}>
+                              <IconButton
+                                size='small'
+                                aria-label={t('myOrders.viewTimelineAria', {
+                                  order: formatOrderNumber(order.id),
+                                })}
+                                onClick={() => handleViewTimeline(order)}
+                              >
                                 <TimelineIcon />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title='Ver Detalhes'>
+                            <Tooltip title={t('myOrders.viewQuotation')}>
                               <IconButton
                                 size='small'
+                                aria-label={t('myOrders.viewQuotationAria', {
+                                  order: formatOrderNumber(order.id),
+                                })}
                                 onClick={() => navigate(`/quotations/${order.quotationId}`)}
                               >
                                 <Visibility />
@@ -336,9 +370,11 @@ const MyOrdersPage: React.FC = () => {
         <DialogTitle>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant='h6'>
-              Timeline do Pedido #{selectedOrder?.id.slice(0, 8)}
+              {t('myOrders.timelineTitle', {
+                order: selectedOrder ? formatOrderNumber(selectedOrder.id) : '',
+              })}
             </Typography>
-            <IconButton onClick={handleCloseTimeline}>
+            <IconButton onClick={handleCloseTimeline} aria-label={t('common.close')}>
               <Close />
             </IconButton>
           </Box>
@@ -356,17 +392,17 @@ const MyOrdersPage: React.FC = () => {
                   <Grid container spacing={2}>
                     <Grid size={{ xs: 12, sm: 6 }}>
                       <Typography variant='body2' color='text.secondary'>
-                        Status Atual
+                        {t('myOrders.currentStatus')}
                       </Typography>
                       <Chip
                         icon={getStatusIcon(orderHistory.order.status)}
-                        label={ordersService.getStatusLabel(orderHistory.order.status)}
+                        label={orderStatusLabel(t, orderHistory.order.status)}
                         color={ordersService.getStatusColor(orderHistory.order.status)}
                       />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
                       <Typography variant='body2' color='text.secondary'>
-                        Total do Pedido
+                        {t('myOrders.orderTotal')}
                       </Typography>
                       <Typography variant='h6' color='primary'>
                         {ordersService.formatPrice(orderHistory.order.totalAmount)}
@@ -385,10 +421,10 @@ const MyOrdersPage: React.FC = () => {
                     {orderHistory.order.estimatedDeliveryDate && (
                       <Grid size={{ xs: 12, sm: 6 }}>
                         <Typography variant='body2' color='text.secondary'>
-                          Entrega Estimada
+                          {t('myOrders.columns.estimatedDelivery')}
                         </Typography>
                         <Typography variant='body1' fontWeight='medium'>
-                          {ordersService.formatDate(orderHistory.order.estimatedDeliveryDate)}
+                          {formatOrderDate(orderHistory.order.estimatedDeliveryDate)}
                         </Typography>
                       </Grid>
                     )}
@@ -401,7 +437,7 @@ const MyOrdersPage: React.FC = () => {
                 {orderHistory.timeline.map((item, index) => (
                   <TimelineItem key={index}>
                     <TimelineOppositeContent color='text.secondary'>
-                      {ordersService.formatDate(item.date)}
+                      {formatOrderDate(item.date)}
                     </TimelineOppositeContent>
                     <TimelineSeparator>
                       <TimelineDot color={getTimelineDotColor(item.status)}>
@@ -410,9 +446,7 @@ const MyOrdersPage: React.FC = () => {
                       {index < orderHistory.timeline.length - 1 && <TimelineConnector />}
                     </TimelineSeparator>
                     <TimelineContent>
-                      <Typography variant='h6'>
-                        {ordersService.getStatusLabel(item.status)}
-                      </Typography>
+                      <Typography variant='h6'>{orderStatusLabel(t, item.status)}</Typography>
                       <Typography variant='body2' color='text.secondary'>
                         {orderTimelineDescription(t, item.status, item.description)}
                       </Typography>
@@ -426,7 +460,7 @@ const MyOrdersPage: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseTimeline}>Fechar</Button>
+          <Button onClick={handleCloseTimeline}>{t('common.close')}</Button>
         </DialogActions>
       </Dialog>
     </Container>

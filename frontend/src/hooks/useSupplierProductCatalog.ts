@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import type { Product } from '@shared/types';
 import { productsService } from '../services/productsService';
-import { useProducts } from './useProducts';
 import { useAuth } from '../contexts/AuthContext';
 import { useT } from '../contexts/LanguageContext';
 import { browserLogger } from '../utils/browserLogger';
+import { getErrorMessage } from '../utils/errorHandler';
 import type { ProductFormData } from '../utils/supplierProducts';
 
 interface UseSupplierProductCatalogResult {
@@ -14,6 +14,8 @@ interface UseSupplierProductCatalogResult {
   loading: boolean;
   saveProduct: (form: ProductFormData, editingProduct: Product | null) => Promise<boolean>;
   deleteProduct: (productId: number) => Promise<void>;
+  /** Imports a CSV file and reloads the catalogue; reports the outcome itself. */
+  importProducts: (file: File) => Promise<void>;
 }
 
 /**
@@ -29,8 +31,28 @@ interface UseSupplierProductCatalogResult {
 export const useSupplierProductCatalog = (): UseSupplierProductCatalogResult => {
   const t = useT();
   const { user } = useAuth();
-  const { products, loading, refetch } = useProducts();
+  // The supplier's own catalogue in full. It used to come from the public,
+  // paginated list: the first ten products of every supplier, so the screen
+  // showed (and exported) other suppliers' products and missed its own.
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    try {
+      setProducts(await productsService.getSupplierProducts());
+    } catch (error) {
+      browserLogger.error('Failed to load supplier products', { error });
+      toast.error(t('supplierProducts.toast.loadError'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -89,5 +111,32 @@ export const useSupplierProductCatalog = (): UseSupplierProductCatalogResult => 
     [refetch, t]
   );
 
-  return { products, categories, loading, saveProduct, deleteProduct };
+  const importProducts = useCallback(
+    async (file: File): Promise<void> => {
+      try {
+        const result = await productsService.importProductsCsv(file);
+        if (result.failed === 0) {
+          toast.success(t('supplierProducts.toast.imported', { count: result.imported }));
+        } else {
+          const [first] = result.errors;
+          toast.error(
+            t('supplierProducts.toast.importedWithErrors', {
+              imported: result.imported,
+              failed: result.failed,
+              row: first?.row ?? '-',
+              error: first?.error ?? '',
+            }),
+            { duration: 10000 }
+          );
+        }
+        if (result.imported > 0) await refetch();
+      } catch (error) {
+        browserLogger.error('CSV import failed', { error });
+        toast.error(t('supplierProducts.toast.importError', { reason: getErrorMessage(error) }));
+      }
+    },
+    [refetch, t]
+  );
+
+  return { products, categories, loading, saveProduct, deleteProduct, importProducts };
 };

@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 import { OrderStatusService } from '../services/orderStatusService';
 import { orderService } from '../services/orderService';
+import { supplierDashboardService } from '../services/supplierDashboardService';
 
 export const createOrderFromQuotation = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
@@ -142,4 +143,9 @@ export const updateOrderNfe = asyncHandler(async (req: AuthenticatedRequest, res
     message: 'NF-e data updated successfully',
     data: updatedOrder,
   });
+});
+
+export const getSupplierSummary = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const data = await supplierDashboardService.getSummary(req.user!.id);
+  res.status(200).json({ success: true, data });
 });

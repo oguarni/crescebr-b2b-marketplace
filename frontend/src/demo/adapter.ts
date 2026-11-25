@@ -38,6 +38,32 @@ const toPath = (config: InternalAxiosRequestConfig): string => {
   return serialized ? `${trimmed || '/'}?${serialized}` : trimmed || '/';
 };
 
+/**
+ * A multipart upload arrives as FormData. Handlers are synchronous, so the file
+ * is read here and passed on as text: `{ csvText, fileName }` for the CSV
+ * import, plus any plain fields.
+ */
+/** FileReader rather than Blob.text(): the same code runs in browsers and jsdom. */
+const readText = (file: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+
+const fromFormData = async (form: FormData): Promise<Record<string, unknown>> => {
+  const body: Record<string, unknown> = {};
+  for (const [key, value] of form.entries()) {
+    if (typeof value === 'string') body[key] = value;
+    else {
+      body.csvText = await readText(value);
+      body.fileName = value.name;
+    }
+  }
+  return body;
+};
+
 const toBody = (config: InternalAxiosRequestConfig): Record<string, unknown> => {
   if (config.data === undefined || config.data === null) return {};
   if (typeof config.data === 'string') {
@@ -70,10 +96,12 @@ const delay = (ms: number): Promise<void> =>
 const toWireFormat = (body: unknown): unknown => JSON.parse(JSON.stringify(body));
 
 export const demoAdapter: AxiosAdapter = async config => {
+  const requestBody =
+    config.data instanceof FormData ? await fromFormData(config.data) : toBody(config);
   const { status, body } = handleDemoRequest(
     config.method ?? 'get',
     toPath(config),
-    toBody(config),
+    requestBody,
     toToken(config)
   );
 

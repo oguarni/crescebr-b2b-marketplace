@@ -11,6 +11,14 @@ interface ProductsResponse {
   };
 }
 
+export interface ProductCsvImportResult {
+  imported: number;
+  failed: number;
+  /** The first ten problems; `totalErrors` counts all of them. */
+  errors: Array<{ row: number; error: string }>;
+  totalErrors: number;
+}
+
 export interface ProductsQueryParams {
   category?: string;
   search?: string;
@@ -61,6 +69,15 @@ class ProductsService {
       throw new Error(response.error || 'Failed to fetch products');
     }
 
+    return response.data;
+  }
+
+  /** Every product of the signed-in supplier (not the public, paginated catalogue). */
+  async getSupplierProducts(): Promise<Product[]> {
+    const response = await apiService.get<ApiResponse<Product[]>>('/products/supplier/mine');
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to fetch your products');
+    }
     return response.data;
   }
 
@@ -119,6 +136,25 @@ class ProductsService {
       throw new Error(response.error || 'Failed to update product');
     }
 
+    return response.data;
+  }
+
+  /**
+   * Uploads a CSV in the export format (name, description, price, imageUrl,
+   * category, supplierId, tierPricing). Products are created under the signed-in
+   * supplier; invalid rows are skipped and reported by row number.
+   */
+  async importProductsCsv(file: File): Promise<ProductCsvImportResult> {
+    const form = new FormData();
+    form.append('csvFile', file);
+    const response = await apiService.post<ApiResponse<ProductCsvImportResult>>(
+      '/products/import/csv',
+      form,
+      { handlesErrors: true }
+    );
+    if (!response.data) {
+      throw new Error(response.error || 'Failed to import products');
+    }
     return response.data;
   }
 

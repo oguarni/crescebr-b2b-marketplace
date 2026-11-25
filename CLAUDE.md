@@ -268,6 +268,9 @@ the public site now answers its own API calls in the browser:
   `queryInterface`. Do not hand-edit it; change the seeder and regenerate.
 - `src/demo/pricing.ts` is a line-for-line port of `backend/src/services/quoteService.ts`. If that
   service changes, this must change with it.
+- `src/utils/systemSettingsRules.ts` is a line-for-line port of
+  `backend/src/services/systemSettingsRules.ts` (the settings form and the demo's
+  `PUT /admin/settings` both use it). Change the two together; their test files hold the same cases.
 
 Two traps worth keeping in mind:
 
@@ -287,6 +290,32 @@ stayed on the 2026-08-27 release while main moved on, because every deploy was a
 every job passes, keyless through Workload Identity Federation, and `Live Grade` checks the result.
 One-time setup is `scripts/setup-hosting-deploy.sh`; the trust boundary is in `docs/SECURITY.md` →
 Hosting Deployment.
+
+## System settings (2026-11-25)
+
+Tax rate, quotation validity, the freight table (base fee, per-kg rate, delivery days per method) and
+the default volume tiers live in the single `system_settings` row (migration `20261125000000`),
+seeded with the constants they replaced. `systemSettingsService.getSettings()` is what quotes,
+quotation `validUntil` and shipped-order delivery estimates read; with no row it returns
+`DEFAULT_SYSTEM_SETTINGS`, so test databases built by `sync` keep working.
+
+- `GET/PUT /api/v1/admin/settings` require the `manage_system_config` permission, checked against the
+  stored account. `PUT` carries the `version` it read and is one conditional UPDATE: a stale version
+  is a 409, never a silent overwrite. A 400 lists every invalid field by JSON path and code.
+- `GET /api/v1/settings/pricing` is public on purpose: every value already reaches buyers in quotes.
+- A product whose `tierPricing` is `[]` (the column default) is priced with the default tiers. Before
+  this, an empty array counted as "custom tiers" and the defaults never applied to anything.
+- Unit tests that reach pricing without a database mock `models/SystemSettings` (automock returns no
+  row, so the defaults apply).
+
+## Mobile navigation (2026-11-25)
+
+`components/navigation/MobileBottomNav` is the only bottom bar: one item list per role in
+`bottomNavItems.ts`, real links with `aria-current`, rendered by `Layout` below the `md` breakpoint and
+only on each role's top-level screens. Drill-down pages (quotation detail, checkout) keep their own
+action bar. Do not add page-level bottom bars or a second app bar; the supplier dashboard used to stack
+one under the global header. The theme gives buttons, icon buttons, clickable chips and pagination a
+44px minimum target below `md`.
 
 ## End-to-End Tests (Playwright, added 2026-08-07)
 

@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { handleDemoRequest } from '../handlers';
-import { getState, resetState } from '../store';
+import { getState, resetState, SEED_ORDER_IDS } from '../store';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../utils/systemSettingsRules';
+
+const [FIRST_ORDER, SECOND_ORDER] = SEED_ORDER_IDS;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 interface Envelope<T = unknown> {
   success: boolean;
@@ -391,7 +395,9 @@ describe('demo API — orders', () => {
     expect(body.data?.status).toBe('pending');
     const quotation = getState().quotations.find(q => q.id === 3);
     expect(body.data?.totalAmount).toBeGreaterThan(quotation?.totalAmount ?? 0);
-    expect(body.data?.items[0].orderId).toBe(Number(body.data?.id.replace('demo-order-', '')));
+    // UUIDs like the backend's, so short order numbers stay distinguishable.
+    expect(body.data?.id).toMatch(UUID);
+    expect(body.data?.items[0].orderId).toEqual(expect.any(Number));
     expect(quotation?.status).toBe('completed');
   });
 
@@ -461,13 +467,13 @@ describe('demo API — orders', () => {
   });
 
   it('reads one order, its history, and blocks a company that does not own it', () => {
-    expect(call<{ id: string }>('GET', '/orders/demo-order-1', {}, asBuyer()).body.data?.id).toBe(
-      'demo-order-1'
+    expect(call<{ id: string }>('GET', `/orders/${FIRST_ORDER}`, {}, asBuyer()).body.data?.id).toBe(
+      FIRST_ORDER
     );
 
     const history = call<{ timeline: Array<{ status: string; canTransitionTo: string[] }> }>(
       'GET',
-      '/orders/demo-order-1/history',
+      `/orders/${FIRST_ORDER}/history`,
       {},
       asBuyer()
     ).body.data;
@@ -476,31 +482,31 @@ describe('demo API — orders', () => {
     expect(timeline[timeline.length - 1]?.status).toBe('delivered');
 
     const outsider = signIn('supplier4@example.com', 'supplier123');
-    expect(call('GET', '/orders/demo-order-1', {}, outsider).status).toBe(403);
-    expect(call('GET', '/orders/demo-order-1/history', {}, outsider).status).toBe(403);
+    expect(call('GET', `/orders/${FIRST_ORDER}`, {}, outsider).status).toBe(403);
+    expect(call('GET', `/orders/${FIRST_ORDER}/history`, {}, outsider).status).toBe(403);
     expect(call('GET', '/orders/nope', {}, asBuyer()).status).toBe(404);
   });
 
   it('enforces the status transition rules', () => {
     const admin = asAdmin();
 
-    // demo-order-2 is shipped; delivered is legal, pending is not.
-    expect(call('PUT', '/orders/demo-order-2/status', { status: 'pending' }, admin).status).toBe(
+    // The second seeded order is shipped; delivered is legal, pending is not.
+    expect(call('PUT', `/orders/${SECOND_ORDER}/status`, { status: 'pending' }, admin).status).toBe(
       400
     );
 
     const delivered = call<{ status: string; trackingNumber: string }>(
       'PUT',
-      '/orders/demo-order-2/status',
+      `/orders/${SECOND_ORDER}/status`,
       { status: 'delivered', trackingNumber: 'BR1', notes: 'Left at dock' },
       admin
     );
     expect(delivered.body.data?.status).toBe('delivered');
 
     // A delivered order is terminal.
-    expect(call('PUT', '/orders/demo-order-2/status', { status: 'cancelled' }, admin).status).toBe(
-      400
-    );
+    expect(
+      call('PUT', `/orders/${SECOND_ORDER}/status`, { status: 'cancelled' }, admin).status
+    ).toBe(400);
   });
 
   it('requires valid shipping metadata for processing-to-shipped transitions', () => {
@@ -546,7 +552,7 @@ describe('demo API — orders', () => {
 
   it('keeps status updates away from buyers', () => {
     expect(
-      call('PUT', '/orders/demo-order-1/status', { status: 'cancelled' }, asBuyer()).status
+      call('PUT', `/orders/${FIRST_ORDER}/status`, { status: 'cancelled' }, asBuyer()).status
     ).toBe(403);
   });
 
@@ -712,5 +718,189 @@ describe('demo API — persistence', () => {
     resetState();
 
     expect(getState().products).toHaveLength(20);
+  });
+});
+
+describe('demo API — system settings', () => {
+  const KEY = 'crescebr_demo_state';
+
+  it('serves the defaults at version 0 to an admin only', () => {
+    const { status, body } = call<{ version: number; settings: { taxRate: number } }>(
+      'GET',
+      '/admin/settings',
+      {},
+      asAdmin()
+    );
+    expect(status).toBe(200);
+    expect(body.data).toMatchObject({ version: 0, settings: { taxRate: 0.18 }, updatedBy: null });
+    expect(call('GET', '/admin/settings', {}, asSupplier()).status).toBe(403);
+    expect(call('GET', '/admin/settings', {}, asBuyer()).status).toBe(403);
+  });
+
+  it('saves a valid document, names the editor and prices with it', () => {
+    const admin = asAdmin();
+    const settings = { ...DEFAULTS(), taxRate: 0.1, quotationValidityDays: 3 };
+
+    const saved = call<{ version: number; updatedBy: { email: string } }>(
+      'PUT',
+      '/admin/settings',
+      { settings, version: 0 },
+      admin
+    );
+    expect(saved.status).toBe(200);
+    expect(saved.body.data).toMatchObject({
+      version: 1,
+      updatedBy: { email: 'admin@crescebr.com' },
+    });
+
+    const buyer = asBuyer();
+    const quote = call<{
+      calculations: { taxRate: number; totalTax: number; totalSubtotal: number };
+    }>('POST', '/quotations/calculate', { items: [{ productId: 2, quantity: 1 }] }, buyer);
+    expect(quote.body.data?.calculations.taxRate).toBe(0.1);
+    expect(quote.body.data?.calculations.totalTax).toBeCloseTo(
+      (quote.body.data?.calculations.totalSubtotal ?? 0) * 0.1
+    );
+
+    const created = call<{ validUntil: string }>(
+      'POST',
+      '/quotations',
+      { items: [{ productId: 2, quantity: 1 }] },
+      buyer
+    );
+    const days = (new Date(created.body.data!.validUntil).getTime() - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(2.99);
+    expect(days).toBeLessThan(3.01);
+
+    expect(call<{ taxRate: number }>('GET', '/settings/pricing').body.data?.taxRate).toBe(0.1);
+  });
+
+  it('answers a stale version with 409 and an invalid document with field details', () => {
+    const admin = asAdmin();
+    expect(call('PUT', '/admin/settings', { settings: DEFAULTS(), version: 0 }, admin).status).toBe(
+      200
+    );
+    expect(call('PUT', '/admin/settings', { settings: DEFAULTS(), version: 0 }, admin).status).toBe(
+      409
+    );
+
+    const invalid = call<unknown>(
+      'PUT',
+      '/admin/settings',
+      { settings: { ...DEFAULTS(), taxRate: 18 }, version: 1 },
+      admin
+    );
+    expect(invalid.status).toBe(400);
+    expect(
+      (invalid.body as unknown as { details: Array<{ path: string; code: string }> }).details
+    ).toEqual([expect.objectContaining({ path: 'settings.taxRate', code: 'range' })]);
+
+    const envelope = call<unknown>('PUT', '/admin/settings', { version: -1 }, admin);
+    expect(envelope.status).toBe(400);
+    expect(
+      (envelope.body as unknown as { details: Array<{ path: string }> }).details.map(
+        detail => detail.path
+      )
+    ).toEqual(['version', 'settings']);
+  });
+
+  it("adopts another tab's write, so a stale tab hits the version check", () => {
+    const admin = asAdmin();
+    const { body } = call<{ version: number; settings: unknown }>(
+      'GET',
+      '/admin/settings',
+      {},
+      admin
+    );
+
+    // Another tab saves: it writes the shared storage and this tab is told.
+    const otherTab = JSON.parse(JSON.stringify(getState()));
+    otherTab.settings = {
+      ...otherTab.settings,
+      version: 4,
+      values: { ...DEFAULTS(), taxRate: 0.2 },
+    };
+    window.localStorage.setItem(KEY, JSON.stringify(otherTab));
+    window.dispatchEvent(new window.StorageEvent('storage', { key: KEY }));
+
+    const save = call(
+      'PUT',
+      '/admin/settings',
+      { settings: body.data?.settings, version: 0 },
+      admin
+    );
+    expect(save.status).toBe(409);
+    expect(getState().settings.values.taxRate).toBe(0.2);
+  });
+});
+
+describe('demo API — supplier summary', () => {
+  it('counts only quotations awaiting the supplier and excludes cancelled orders', () => {
+    const supplier = asSupplier();
+    const { status, body } = call<{
+      pendingQuotations: number;
+      activeOrders: number;
+      billableOrders: number;
+      orderVolume: number;
+    }>('GET', '/orders/supplier/summary', {}, supplier);
+
+    const supplierId = getState().companies.find(c => c.email === 'supplier@example.com')!.id;
+    const mine = getState().quotations.filter(q =>
+      q.items.some(item => item.product?.supplierId === supplierId)
+    );
+    expect(status).toBe(200);
+    expect(body.data?.pendingQuotations).toBe(mine.filter(q => q.status === 'pending').length);
+    expect(body.data?.billableOrders).toBe(2);
+    expect(call('GET', '/orders/supplier/summary', {}, asBuyer()).status).toBe(403);
+  });
+});
+
+function DEFAULTS() {
+  return JSON.parse(JSON.stringify(DEFAULT_SYSTEM_SETTINGS));
+}
+
+describe('demo API — supplier catalogue and shared quotations', () => {
+  it("lists only the signed-in supplier's products, all of them", () => {
+    const supplier = asSupplier();
+    const supplierId = getState().companies.find(c => c.email === 'supplier@example.com')!.id;
+    const { status, body } = call<Array<{ supplierId: number }>>(
+      'GET',
+      '/products/supplier/mine',
+      {},
+      supplier
+    );
+    expect(status).toBe(200);
+    expect(body.data?.length).toBe(
+      getState().products.filter(p => p.supplierId === supplierId).length
+    );
+    expect(body.data?.every(p => p.supplierId === supplierId)).toBe(true);
+    expect(call('GET', '/products/supplier/mine', {}, asBuyer()).status).toBe(403);
+  });
+
+  it("refuses a supplier's status change on a quotation that lists another supplier's products", () => {
+    const supplier = asSupplier();
+    const supplierId = getState().companies.find(c => c.email === 'supplier@example.com')!.id;
+    const own = getState().products.find(p => p.supplierId === supplierId)!;
+    const other = getState().products.find(p => p.supplierId !== supplierId)!;
+    const created = call<{ id: number }>(
+      'POST',
+      '/quotations',
+      {
+        items: [
+          { productId: own.id, quantity: own.minimumOrderQuantity || 1 },
+          { productId: other.id, quantity: other.minimumOrderQuantity || 1 },
+        ],
+      },
+      asBuyer()
+    );
+
+    const response = call(
+      'PUT',
+      `/quotations/supplier/${created.body.data!.id}`,
+      { status: 'processed' },
+      supplier
+    );
+    expect(response.status).toBe(409);
+    expect(getState().quotations.find(q => q.id === created.body.data!.id)?.status).toBe('pending');
   });
 });

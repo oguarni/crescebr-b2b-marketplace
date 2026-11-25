@@ -7,17 +7,25 @@ import SupplierProductsPage from '../SupplierProductsPage';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import { productsService } from '../../services/productsService';
 import toast from 'react-hot-toast';
+import { downloadCsv } from '../../utils/productCsv';
 
 // Mock services
 vi.mock('../../services/productsService', () => ({
   productsService: {
-    getAllProducts: vi.fn(),
+    getSupplierProducts: vi.fn(),
     getCategories: vi.fn(),
     createProduct: vi.fn(),
     updateProduct: vi.fn(),
     deleteProduct: vi.fn(),
+    importProductsCsv: vi.fn(),
   },
 }));
+
+vi.mock('../../utils/productCsv', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../utils/productCsv')>('../../utils/productCsv');
+  return { ...actual, downloadCsv: vi.fn() };
+});
 
 // Mock AuthContext
 vi.mock('../../contexts/AuthContext', () => ({
@@ -95,10 +103,8 @@ const mockProducts: Product[] = [
 ];
 
 const mockCategories = ['Industrial Equipment', 'Safety Equipment', 'Construction Materials'];
-const productsResponse = (products: Product[]) => ({
-  products,
-  pagination: { total: products.length, page: 1, limit: 100, totalPages: products.length ? 1 : 0 },
-});
+// The supplier screen reads GET /products/supplier/mine, which returns a plain array.
+const productsResponse = (products: Product[]) => products;
 
 // Defaults to English so the assertions below can stay in the source language of
 // the screen's copy; the localization test at the bottom passes 'pt' explicitly.
@@ -119,7 +125,9 @@ const renderPage = async (language: 'pt' | 'en' = 'en') => {
 describe('SupplierProductsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(productsResponse(mockProducts));
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(
+      productsResponse(mockProducts)
+    );
     vi.mocked(productsService.getCategories).mockResolvedValue(mockCategories);
     vi.mocked(productsService.createProduct).mockResolvedValue({ ...mockProducts[0], id: 4 });
     vi.mocked(productsService.updateProduct).mockResolvedValue(mockProducts[0]);
@@ -169,7 +177,7 @@ describe('SupplierProductsPage', () => {
     await user.type(searchInput, 'Helmet');
 
     await waitFor(() => {
-      expect(productsService.getAllProducts).toHaveBeenCalled();
+      expect(productsService.getSupplierProducts).toHaveBeenCalled();
     });
   });
 
@@ -341,7 +349,7 @@ describe('SupplierProductsPage', () => {
   }, 15000);
 
   it('shows no active products alert when active tab is empty', async () => {
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(
       productsResponse([
         {
           ...mockProducts[2], // out_of_stock
@@ -366,7 +374,7 @@ describe('SupplierProductsPage', () => {
   }, 15000);
 
   it('shows no out of stock alert when out-of-stock tab is empty', async () => {
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(
       productsResponse([mockProducts[0]]) // only in_stock product
     );
     await renderPage();
@@ -385,7 +393,7 @@ describe('SupplierProductsPage', () => {
   }, 15000);
 
   it('shows no products found message on All tab when all products filtered out', async () => {
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(productsResponse([]));
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(productsResponse([]));
     await renderPage();
 
     await waitFor(() => {
@@ -402,7 +410,7 @@ describe('SupplierProductsPage', () => {
       name: 'Custom Order Product',
       availability: 'custom_order' as const,
     };
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(
       productsResponse([customOrderProduct])
     );
     await renderPage();
@@ -465,25 +473,78 @@ describe('SupplierProductsPage', () => {
     );
   }, 15000);
 
-  it('triggers CSV import toast when a file is selected', async () => {
+  it('imports the chosen CSV, reports the result and reloads the catalogue', async () => {
+    vi.mocked(productsService.importProductsCsv).mockResolvedValue({
+      imported: 3,
+      failed: 0,
+      errors: [],
+      totalErrors: 0,
+    });
     await renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
     });
+    const loadsBefore = vi.mocked(productsService.getSupplierProducts).mock.calls.length;
 
     const fileInput = document.getElementById('csv-import') as HTMLInputElement;
-    expect(fileInput).toBeInTheDocument();
-
     const file = new File(['name,price\nTest,100'], 'products.csv', { type: 'text/csv' });
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(toast).toHaveBeenCalledWith('CSV import feature coming soon');
+      expect(productsService.importProductsCsv).toHaveBeenCalledWith(file);
+      expect(toast.success).toHaveBeenCalledWith('3 product(s) imported');
     });
+    await waitFor(() =>
+      expect(vi.mocked(productsService.getSupplierProducts).mock.calls.length).toBeGreaterThan(
+        loadsBefore
+      )
+    );
   });
 
-  it('triggers CSV export toast when Export CSV button is clicked', async () => {
+  it('names the first rejected row when an import partly fails', async () => {
+    vi.mocked(productsService.importProductsCsv).mockResolvedValue({
+      imported: 1,
+      failed: 2,
+      errors: [{ row: 3, error: 'Valid price is required (must be a positive number)' }],
+      totalErrors: 2,
+    });
+    await renderPage();
+    await waitFor(() => expect(screen.getByText('Industrial Pump')).toBeInTheDocument());
+
+    const fileInput = document.getElementById('csv-import') as HTMLInputElement;
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['x'], 'p.csv', { type: 'text/csv' })] },
+    });
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        '1 imported, 2 failed. Row 3: Valid price is required (must be a positive number)',
+        { duration: 10000 }
+      )
+    );
+  });
+
+  it('reports an import the server refused', async () => {
+    vi.mocked(productsService.importProductsCsv).mockRejectedValue(
+      new Error('Only CSV files are allowed')
+    );
+    await renderPage();
+    await waitFor(() => expect(screen.getByText('Industrial Pump')).toBeInTheDocument());
+
+    const fileInput = document.getElementById('csv-import') as HTMLInputElement;
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['x'], 'p.txt', { type: 'text/plain' })] },
+    });
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'The file could not be imported: Only CSV files are allowed'
+      )
+    );
+  });
+
+  it('exports the catalogue in the import format', async () => {
     await renderPage();
     const user = userEvent.setup();
 
@@ -491,12 +552,15 @@ describe('SupplierProductsPage', () => {
       expect(screen.getByText('Industrial Pump')).toBeInTheDocument();
     });
 
-    const exportButton = screen.getByText('Export CSV');
-    await user.click(exportButton);
+    await user.click(screen.getByText('Export CSV'));
 
-    await waitFor(() => {
-      expect(toast).toHaveBeenCalledWith('CSV export feature coming soon');
-    });
+    expect(downloadCsv).toHaveBeenCalledWith(
+      expect.stringMatching(/^name,description,price,imageUrl,category,supplierId,tierPricing\n/),
+      'produtos-crescebr.csv'
+    );
+    expect(toast.success).toHaveBeenCalledWith(
+      expect.stringMatching(/product\(s\) exported in the import format/)
+    );
   });
 
   it('does not delete product when confirmation is cancelled', async () => {
@@ -526,7 +590,7 @@ describe('SupplierProductsPage', () => {
       name: 'Unknown Availability Product',
       availability: 'unknown_value' as unknown as (typeof mockProducts)[0]['availability'],
     };
-    vi.mocked(productsService.getAllProducts).mockResolvedValue(
+    vi.mocked(productsService.getSupplierProducts).mockResolvedValue(
       productsResponse([unknownAvailabilityProduct])
     );
     await renderPage();

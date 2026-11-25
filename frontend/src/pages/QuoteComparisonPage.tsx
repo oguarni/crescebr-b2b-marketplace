@@ -41,6 +41,15 @@ import { Product } from '@shared/types';
 import { useProducts } from '../hooks';
 import toast from 'react-hot-toast';
 import { useT } from '../contexts/LanguageContext';
+import { usePricingPolicy } from '../hooks/usePricingPolicy';
+import { sectorLabel } from '../utils/companyVerification';
+import type { TranslationKey } from '../locales';
+
+const SHIPPING_LABEL_KEYS: Record<'standard' | 'express' | 'economy', TranslationKey> = {
+  standard: 'quoteComparison.shippingStandard',
+  express: 'quoteComparison.shippingExpress',
+  economy: 'quoteComparison.shippingEconomy',
+};
 
 interface SupplierQuote {
   supplier: {
@@ -125,7 +134,11 @@ const QuoteComparisonPage: React.FC = () => {
       if (response.quotes.length === 0) {
         toast('Nenhum fornecedor encontrado para este produto');
       } else {
-        toast.success(t('quoteComparison.toast.found', { count: response.quotes.length }));
+        toast.success(
+          response.quotes.length === 1
+            ? t('quoteComparison.toast.foundOne')
+            : t('quoteComparison.toast.found', { count: response.quotes.length })
+        );
       }
     } catch (_error) {
       toast.error(t('quoteComparison.toast.loadError'));
@@ -145,17 +158,14 @@ const QuoteComparisonPage: React.FC = () => {
     return `${(value * 100).toFixed(1)}%`;
   };
 
-  const getShippingMethodLabel = (method: string) => {
-    switch (method) {
-      case 'standard':
-        return t('quoteComparison.shippingStandardDays');
-      case 'express':
-        return 'Expressa (2 dias)';
-      case 'economy':
-        return t('quoteComparison.shippingEconomyDays');
-      default:
-        return method;
-    }
+  // Delivery times come from the admin-editable settings, so the label always
+  // states the time the quote was priced with.
+  const policy = usePricingPolicy();
+
+  const getShippingMethodLabel = (method: 'standard' | 'express' | 'economy') => {
+    const name = t(SHIPPING_LABEL_KEYS[method]);
+    const days = policy?.shippingMethods[method].deliveryDays;
+    return days ? t('quoteComparison.shippingWithDays', { name, days }) : name;
   };
 
   const getBestQuote = () => {
@@ -266,10 +276,13 @@ const QuoteComparisonPage: React.FC = () => {
 
             <Grid size={{ xs: 12, md: 2 }}>
               <FormControl fullWidth>
-                <InputLabel>Entrega</InputLabel>
+                <InputLabel id='comparison-shipping-label'>
+                  {t('quoteComparison.shippingMethod')}
+                </InputLabel>
                 <Select
+                  labelId='comparison-shipping-label'
                   value={shippingMethod}
-                  label='Entrega'
+                  label={t('quoteComparison.shippingMethod')}
                   onChange={(e: SelectChangeEvent<string>) => {
                     switch (e.target.value) {
                       case 'standard':
@@ -280,9 +293,9 @@ const QuoteComparisonPage: React.FC = () => {
                     }
                   }}
                 >
-                  <MenuItem value='economy'>{t('quoteComparison.shippingEconomy')}</MenuItem>
-                  <MenuItem value='standard'>{t('quoteComparison.shippingStandard')}</MenuItem>
-                  <MenuItem value='express'>Expressa</MenuItem>
+                  <MenuItem value='economy'>{getShippingMethodLabel('economy')}</MenuItem>
+                  <MenuItem value='standard'>{getShippingMethodLabel('standard')}</MenuItem>
+                  <MenuItem value='express'>{getShippingMethodLabel('express')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -407,13 +420,23 @@ const QuoteComparisonPage: React.FC = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Fornecedor</TableCell>
-                      <TableCell align='center'>{t('quoteComparison.ratingColumn')}</TableCell>
-                      <TableCell align='right'>{t('quoteComparison.unitPriceColumn')}</TableCell>
-                      <TableCell align='right'>Desconto</TableCell>
-                      <TableCell align='right'>Subtotal</TableCell>
-                      <TableCell align='right'>Frete</TableCell>
-                      <TableCell align='right'>Total</TableCell>
+                      <TableCell>{t('quoteComparison.supplierColumn')}</TableCell>
+                      <TableCell align='center' sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                        {t('quoteComparison.ratingColumn')}
+                      </TableCell>
+                      <TableCell align='right' sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                        {t('quoteComparison.unitPriceColumn')}
+                      </TableCell>
+                      <TableCell align='right' sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                        {t('quoteComparison.discountColumn')}
+                      </TableCell>
+                      <TableCell align='right' sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                        {t('quoteComparison.subtotalColumn')}
+                      </TableCell>
+                      <TableCell align='right' sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                        {t('quoteComparison.shippingColumn')}
+                      </TableCell>
+                      <TableCell align='right'>{t('quoteComparison.totalColumn')}</TableCell>
                       <TableCell align='center'>{t('common.actions')}</TableCell>
                     </TableRow>
                   </TableHead>
@@ -439,7 +462,7 @@ const QuoteComparisonPage: React.FC = () => {
                                   {supplierQuote.supplier.companyName}
                                   {supplierQuote === bestQuote && (
                                     <Chip
-                                      label='Melhor Oferta'
+                                      label={t('quoteComparison.bestOffer')}
                                       size='small'
                                       color='success'
                                       sx={{ ml: 1 }}
@@ -447,13 +470,18 @@ const QuoteComparisonPage: React.FC = () => {
                                   )}
                                 </Typography>
                                 <Typography variant='caption' color='text.secondary'>
-                                  {supplierQuote.supplier.industrySector}
+                                  {supplierQuote.supplier.industrySector
+                                    ? sectorLabel(t, supplierQuote.supplier.industrySector)
+                                    : ''}
                                 </Typography>
                               </Box>
                             </Box>
                           </TableCell>
 
-                          <TableCell align='center'>
+                          <TableCell
+                            align='center'
+                            sx={{ display: { xs: 'none', md: 'table-cell' } }}
+                          >
                             {supplierQuote.supplier.averageRating ? (
                               <Box
                                 sx={{
@@ -481,10 +509,16 @@ const QuoteComparisonPage: React.FC = () => {
 
                           {supplierQuote.quote ? (
                             <>
-                              <TableCell align='right'>
+                              <TableCell
+                                align='right'
+                                sx={{ display: { xs: 'none', md: 'table-cell' } }}
+                              >
                                 {formatPrice(supplierQuote.quote.unitPriceAfterDiscount)}
                               </TableCell>
-                              <TableCell align='right'>
+                              <TableCell
+                                align='right'
+                                sx={{ display: { xs: 'none', md: 'table-cell' } }}
+                              >
                                 <Chip
                                   label={formatPercentage(supplierQuote.quote.tierDiscount)}
                                   size='small'
@@ -493,10 +527,16 @@ const QuoteComparisonPage: React.FC = () => {
                                   }
                                 />
                               </TableCell>
-                              <TableCell align='right'>
+                              <TableCell
+                                align='right'
+                                sx={{ display: { xs: 'none', md: 'table-cell' } }}
+                              >
                                 {formatPrice(supplierQuote.quote.subtotal)}
                               </TableCell>
-                              <TableCell align='right'>
+                              <TableCell
+                                align='right'
+                                sx={{ display: { xs: 'none', md: 'table-cell' } }}
+                              >
                                 {formatPrice(supplierQuote.quote.shippingCost)}
                               </TableCell>
                               <TableCell align='right'>

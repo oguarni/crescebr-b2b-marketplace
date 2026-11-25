@@ -209,7 +209,7 @@ describe('QuoteComparisonPage', () => {
 
     expect(screen.getByText('Resumo da Comparação')).toBeInTheDocument();
     expect(screen.getByText('Cotações dos Fornecedores')).toBeInTheDocument();
-    expect(screen.getByText('Melhor Oferta')).toBeInTheDocument();
+    expect(screen.getByText('Melhor oferta')).toBeInTheDocument();
   });
 
   it('shows empty state with no quotes message when no suppliers found', async () => {

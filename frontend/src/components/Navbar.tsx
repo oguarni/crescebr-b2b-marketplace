@@ -231,6 +231,15 @@ const Navbar: React.FC = () => {
                   <ApprovedSupplierOnly>
                     <MenuItem
                       onClick={() => {
+                        navigate('/supplier/quotations');
+                        handleClose();
+                      }}
+                    >
+                      <RequestQuote sx={{ mr: 1 }} />
+                      {t('nav.receivedQuotations')}
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => {
                         navigate('/supplier/products');
                         handleClose();
                       }}

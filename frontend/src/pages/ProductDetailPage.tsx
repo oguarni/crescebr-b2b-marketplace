@@ -43,6 +43,7 @@ import {
   showPlaceholderOnError,
   supplierDisplayName,
 } from '../utils/productDisplay';
+import { usePricingPolicy } from '../hooks/usePricingPolicy';
 
 const AVAILABILITY_COLOR: Record<Product['availability'], ChipProps['color']> = {
   in_stock: 'success',
@@ -114,7 +115,12 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
   const canRequestQuote = !user || user.role === 'customer';
   const supplier = supplierDisplayName(t, product);
   const specEntries = Object.entries(product.specifications ?? {});
-  const tiers = product.tierPricing ?? [];
+  // A product without tiers of its own is priced with the platform's default
+  // tiers, exactly as the quote API does, so show those instead of nothing.
+  const policy = usePricingPolicy();
+  const ownTiers = product.tierPricing ?? [];
+  const usesDefaultTiers = ownTiers.length === 0;
+  const tiers = usesDefaultTiers ? (policy?.pricingTiers ?? []) : ownTiers;
   const basePrice = Number(product.unitPrice || product.price);
 
   return (
@@ -343,7 +349,9 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
                 color='text.secondary'
                 sx={{ display: 'block', mt: 1.5 }}
               >
-                {t('productDetail.volumePricingNote')}
+                {usesDefaultTiers
+                  ? t('productDetail.volumePricingDefaultNote')
+                  : t('productDetail.volumePricingNote')}
               </Typography>
             </Section>
           </Grid>

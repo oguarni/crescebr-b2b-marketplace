@@ -1,86 +1,64 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Box } from '@mui/material';
+import React from 'react';
+import { Alert, Box, Container, Typography } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useLanguage, useT } from '../contexts/LanguageContext';
 import { useSupplierDashboard } from '../hooks/useSupplierDashboard';
-import { SupplierDashboardHeader } from '../components/supplier/SupplierDashboardHeader';
-import { SupplierNavDrawer } from '../components/supplier/SupplierNavDrawer';
-import { SupplierBottomNav } from '../components/supplier/SupplierBottomNav';
+import { ErrorMessage } from '../components/ErrorMessage';
 import { SupplierMetricCards } from '../components/supplier/SupplierMetricCards';
 import { SupplierQuoteQueue } from '../components/supplier/SupplierQuoteQueue';
 import { SupplierRecentOrders } from '../components/supplier/SupplierRecentOrders';
 import { dateLocaleFor } from '../utils/supplierDashboard';
 
-const DASHBOARD_PATH = '/supplier/dashboard';
-
 /**
- * The supplier's landing screen: headline metrics, the quotations waiting on
- * them, and recent orders, wrapped in the supplier area's own navigation.
+ * The supplier's landing screen: headline figures, the quotations waiting on
+ * them and the orders still to prepare.
  *
- * Data loading lives in `useSupplierDashboard` and the derivations in
- * `utils/supplierDashboard`; this file only wires the blocks together.
+ * It sits under the app's single header like every other page; on phones the
+ * role's bottom navigation (rendered by Layout) moves between the supplier
+ * screens. Data loading lives in `useSupplierDashboard`.
  */
 const SupplierDashboardPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const t = useT();
+  const { user } = useAuth();
   const { language } = useLanguage();
-  const navigate = useNavigate();
-  const { metrics, pendingQuotes, recentOrders } = useSupplierDashboard();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const { summary, pendingQuotes, recentOrders, loading, error, reload } = useSupplierDashboard();
 
   const dateLocale = dateLocaleFor(language);
 
-  const navigateFromDrawer = (path: string) => {
-    setDrawerOpen(false);
-    navigate(path);
-  };
-
-  const handleLogout = () => {
-    setDrawerOpen(false);
-    logout();
-    navigate('/');
-  };
-
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', pb: 10 }}>
-      <SupplierDashboardHeader
-        companyName={user?.companyName}
-        pendingQuotations={metrics.pendingQuotations}
-        onOpenMenu={() => setDrawerOpen(true)}
-        onOpenNotifications={() => navigate('/supplier/quotations')}
-      />
-
-      <SupplierNavDrawer
-        open={drawerOpen}
-        companyName={user?.companyName}
-        email={user?.email}
-        onClose={() => setDrawerOpen(false)}
-        onNavigate={navigateFromDrawer}
-        onLogout={handleLogout}
-      />
-
-      <Box
-        component='main'
-        sx={{ p: 2, maxWidth: 'md', mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}
-      >
-        <SupplierMetricCards metrics={metrics} />
-
-        <SupplierQuoteQueue
-          quotes={pendingQuotes}
-          dateLocale={dateLocale}
-          onViewAll={() => navigate('/supplier/quotations')}
-          onOpenQuote={id => navigate(`/supplier/quotations/${id}`)}
-        />
-
-        <SupplierRecentOrders
-          orders={recentOrders}
-          dateLocale={dateLocale}
-          onOpenOrders={() => navigate('/supplier/orders')}
-        />
+    <Container maxWidth='md' sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <Box component='header'>
+        <Typography
+          variant='h4'
+          component='h1'
+          sx={{ fontSize: { xs: '1.5rem', sm: '2rem' }, fontWeight: 700 }}
+        >
+          {t('supplierDashboard.title')}
+        </Typography>
+        <Typography color='text.secondary' sx={{ mt: 0.5 }}>
+          {user?.companyName || t('supplierDashboard.fallbackCompany')}
+        </Typography>
       </Box>
 
-      <SupplierBottomNav activePath={DASHBOARD_PATH} onNavigate={navigate} />
-    </Box>
+      {user?.status && user.status !== 'approved' && (
+        <Alert severity='info'>{t('access.supplierPending')}</Alert>
+      )}
+
+      {error && !summary ? (
+        <ErrorMessage message={t('supplierDashboard.loadError')} onRetry={reload} />
+      ) : (
+        <>
+          <SupplierMetricCards summary={summary} />
+          <SupplierQuoteQueue
+            quotes={pendingQuotes}
+            supplierId={user?.id ?? 0}
+            dateLocale={dateLocale}
+            loading={loading}
+          />
+          <SupplierRecentOrders orders={recentOrders} dateLocale={dateLocale} loading={loading} />
+        </>
+      )}
+    </Container>
   );
 };
 

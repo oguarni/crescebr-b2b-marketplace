@@ -44,6 +44,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -52,6 +53,7 @@ import {
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
 import { useT } from '../contexts/LanguageContext';
+import { formatOrderNumber } from '../utils/orderNumber';
 
 interface TransactionData {
   orders: OrderDetail[];
@@ -441,7 +443,9 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                     </Typography>
                     <Typography variant='h4'>{metrics.totalOrders}</Typography>
                     <Typography variant='body2' color='text.secondary' sx={{ mt: 1 }}>
-                      {metrics.pendingOrders} pendentes
+                      {metrics.pendingOrders === 1
+                        ? t('transactionMonitoring.pendingOne')
+                        : t('transactionMonitoring.pendingOther', { count: metrics.pendingOrders })}
                     </Typography>
                   </Box>
                   <ShoppingCart sx={{ fontSize: 40, color: 'info.main' }} />
@@ -535,19 +539,19 @@ const AdminTransactionMonitoringPage: React.FC = () => {
               <Box sx={{ height: 300 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                   <PieChart>
-                    <Pie
-                      data={statusPieData}
-                      cx='50%'
-                      cy='50%'
-                      outerRadius={80}
-                      dataKey='value'
-                      label={entry => `${entry.name ?? ''}: ${entry.value ?? 0}`}
-                    >
+                    {/* Counts go in the legend: labels drawn outside the slices
+                        were clipped at the card's edge ("nviado: 1"). */}
+                    <Pie data={statusPieData} cx='50%' cy='45%' outerRadius={80} dataKey='value'>
                       {statusPieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
                     </Pie>
                     <Tooltip />
+                    <Legend
+                      formatter={(value, entry) =>
+                        `${value}: ${(entry.payload as { value?: number } | undefined)?.value ?? 0}`
+                      }
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </Box>
@@ -566,11 +570,15 @@ const AdminTransactionMonitoringPage: React.FC = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>ID do Pedido</TableCell>
-                  <TableCell>Empresa</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align='right'>Valor</TableCell>
-                  <TableCell>Data</TableCell>
+                  <TableCell>{t('transactionMonitoring.csv.orderId')}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    {t('transactionMonitoring.csv.company')}
+                  </TableCell>
+                  <TableCell>{t('transactionMonitoring.csv.status')}</TableCell>
+                  <TableCell align='right'>{t('transactionMonitoring.value')}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    {t('transactionMonitoring.date')}
+                  </TableCell>
                   <TableCell align='center'>{t('common.actions')}</TableCell>
                 </TableRow>
               </TableHead>
@@ -579,10 +587,10 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                   <TableRow key={order.id} hover>
                     <TableCell>
                       <Typography variant='body2' fontFamily='monospace'>
-                        #{order.id.slice(0, 8)}
+                        {formatOrderNumber(order.id)}
                       </Typography>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                       <Box>
                         <Typography variant='subtitle2'>{order.user.companyName}</Typography>
                         <Typography variant='caption' color='text.secondary'>
@@ -602,7 +610,7 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                         {formatCurrency(order.totalAmount)}
                       </Typography>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                       <Typography variant='body2'>{formatDate(order.createdAt)}</Typography>
                     </TableCell>
                     <TableCell align='center'>
@@ -612,7 +620,10 @@ const AdminTransactionMonitoringPage: React.FC = () => {
                           setSelectedOrder(order);
                           setOrderDetailDialog(true);
                         }}
-                        title='Ver detalhes'
+                        title={t('transactionMonitoring.viewDetails')}
+                        aria-label={t('transactionMonitoring.viewDetailsAria', {
+                          order: formatOrderNumber(order.id),
+                        })}
                       >
                         <Visibility />
                       </IconButton>
@@ -644,7 +655,11 @@ const AdminTransactionMonitoringPage: React.FC = () => {
         maxWidth='md'
         fullWidth
       >
-        <DialogTitle>Detalhes do Pedido #{selectedOrder?.id.slice(0, 8)}</DialogTitle>
+        <DialogTitle>
+          {t('transactionMonitoring.orderDetailsTitle', {
+            order: selectedOrder ? formatOrderNumber(selectedOrder.id) : '',
+          })}
+        </DialogTitle>
         <DialogContent>
           {selectedOrder && (
             <Box sx={{ mt: 1 }}>

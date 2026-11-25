@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticateJWT } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { Permission, requirePermission, requireRole } from '../middleware/rbac';
 import { adminRateLimit } from '../middleware/rateLimiting';
 import { handleValidationErrors } from '../middleware/handleValidationErrors';
 import {
@@ -8,6 +8,8 @@ import {
   companyIdValidation,
   updateCompanyStatusValidation,
   moderateProductValidation,
+  updateSystemSettingsValidation,
+  systemSettingsRulesValidation,
 } from '../validators/admin.validators';
 import {
   getAllPendingCompanies,
@@ -21,6 +23,8 @@ import {
   getSupplierMetrics,
   getVerificationQueue,
   getDashboardAnalytics,
+  getSystemSettings,
+  updateSystemSettings,
 } from '../controllers/adminController';
 
 const router = Router();
@@ -74,5 +78,19 @@ router.put(
 
 // Transaction monitoring
 router.get('/transactions', getTransactionMonitoring);
+
+// System settings: the commercial parameters every quote is priced with.
+// Gated by permission rather than role alone, so the capability stays explicit
+// if an admin role without it is ever introduced.
+const manageSystemConfig = requirePermission(Permission.MANAGE_SYSTEM_CONFIG);
+router.get('/settings', manageSystemConfig, getSystemSettings);
+router.put(
+  '/settings',
+  manageSystemConfig,
+  updateSystemSettingsValidation,
+  handleValidationErrors,
+  systemSettingsRulesValidation,
+  updateSystemSettings
+);
 
 export default router;

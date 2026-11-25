@@ -97,6 +97,7 @@ const mockCalculation = {
         subtotal: 600,
         shippingCost: 53.75,
         tax: 108,
+        taxRate: 0.18,
         total: 761.75,
         savings: 0,
         appliedTier: null,
@@ -110,6 +111,7 @@ const mockCalculation = {
         subtotal: 150,
         shippingCost: 51.25,
         tax: 27,
+        taxRate: 0.18,
         total: 228.25,
         savings: 0,
         appliedTier: null,
@@ -118,6 +120,7 @@ const mockCalculation = {
     totalSubtotal: 750,
     totalShipping: 105,
     totalTax: 135,
+    taxRate: 0.18,
     grandTotal: 990,
     totalSavings: 0,
   },
@@ -374,10 +377,12 @@ describe('QuotationDetailPage', () => {
         savings: 60,
         subtotal: 540,
         tax: 97.2,
+        taxRate: 0.18,
       });
       Object.assign(discounted.calculations, {
         totalSubtotal: 690,
         totalTax: 124.2,
+        taxRate: 0.18,
         grandTotal: 919.2,
         totalSavings: 60,
       });

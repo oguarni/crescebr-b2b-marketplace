@@ -7,9 +7,15 @@ import type { Product } from '@shared/types';
 import ProductDetailPage from '../ProductDetailPage';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import { productsService } from '../../services/productsService';
+import { settingsService } from '../../services/settingsService';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../utils/systemSettingsRules';
 
 vi.mock('../../services/productsService', () => ({
   productsService: { getProductById: vi.fn() },
+}));
+
+vi.mock('../../services/settingsService', () => ({
+  settingsService: { getPricingPolicy: vi.fn() },
 }));
 
 const mockAddItem = vi.fn();
@@ -74,6 +80,7 @@ const renderAt = (path: string) =>
 describe('ProductDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(settingsService.getPricingPolicy).mockResolvedValue(DEFAULT_SYSTEM_SETTINGS);
     mockUser = null;
   });
 
@@ -112,7 +119,20 @@ describe('ProductDetailPage', () => {
     expect(rows[2]).toHaveTextContent(/201\+ units20%R\$\s?120,00/);
   });
 
-  it('omits the volume pricing section when the product has no tiers', async () => {
+  it('shows the platform default tiers for a product without its own', async () => {
+    vi.mocked(settingsService.getPricingPolicy).mockResolvedValue(DEFAULT_SYSTEM_SETTINGS);
+    vi.mocked(productsService.getProductById).mockResolvedValue({ ...product, tierPricing: [] });
+    renderAt('/products/1');
+
+    const table = await screen.findByRole('table', { name: 'Volume pricing' });
+    // 150 with the default 5% for 11-50 units.
+    expect(within(table).getAllByRole('row')[2]).toHaveTextContent(/11–50|11-50/);
+    expect(within(table).getAllByRole('row')[2]).toHaveTextContent(/R\$\s?142,50/);
+    expect(screen.getByText(/platform default discounts/)).toBeInTheDocument();
+  });
+
+  it('omits the volume pricing section when no tiers are known', async () => {
+    vi.mocked(settingsService.getPricingPolicy).mockRejectedValue(new Error('offline'));
     vi.mocked(productsService.getProductById).mockResolvedValue({ ...product, tierPricing: [] });
     renderAt('/products/1');
 

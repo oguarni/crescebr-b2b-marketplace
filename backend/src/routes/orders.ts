@@ -7,6 +7,7 @@ import {
   getOrderHistory,
   getAllOrders,
   getOrderStats,
+  getSupplierSummary,
 } from '../controllers/ordersController';
 import {
   createOrderValidation,
@@ -26,6 +27,8 @@ router.use(authenticateJWT, generalRateLimit);
 // Customer/General routes
 router.post('/', createOrderValidation, handleValidationErrors, createOrderFromQuotation);
 router.get('/', getUserOrders);
+// Literal path, kept ahead of the :orderId routes.
+router.get('/supplier/summary', requireRole('supplier'), getSupplierSummary);
 router.get('/:orderId/history', orderIdValidation, handleValidationErrors, getOrderHistory);
 
 // Admin/Supplier routes
